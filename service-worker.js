@@ -1,4 +1,4 @@
-const CACHE = 'mab-personal-v1';
+const CACHE = 'mab-personal-v2-1';
 const ASSETS = [
   './','./index.html','./manifest.webmanifest','./styles.css',
   './app.js','./db.js','./repositories.js','./router.js',
