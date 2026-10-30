@@ -1,0 +1,3 @@
+export const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+export function number(v,min=0,max=9999){const n=Number(String(v).replace(',','.'));if(!Number.isFinite(n)||n<min||n>max)throw new Error('Valor numérico inválido.');return n}
+export function validateBackup(b){if(!b||b.metadata?.app!=='Controle de Treinos MAB Personal')throw new Error('O arquivo não pertence ao MAB Personal.');if(b.metadata.formatVersion!==1)throw new Error('Versão de backup não suportada.');if(!b.data||typeof b.data!=='object')throw new Error('Estrutura de dados inválida.');return true}
