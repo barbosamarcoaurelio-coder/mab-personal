@@ -17,9 +17,7 @@
     <div><small>CONTROLE DE TREINOS</small><h1>MAB Personal</h1></div>
     <button id="settingsBtn" class="icon-btn" aria-label="Configurações e dados">⚙</button>
   </header>
-
   <main id="app" tabindex="-1"></main>
-
   <nav class="bottom-nav" aria-label="Navegação principal">
     <button data-route="dashboard">⌂<span>Início</span></button>
     <button data-route="workout">▶<span>Treino</span></button>
@@ -27,11 +25,10 @@
     <button data-route="exercises">≡<span>Exercícios</span></button>
     <button data-route="evolution">↗<span>Evolução</span></button>
   </nav>
-
   <dialog id="modal"><div id="modalContent"></div></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
   <input id="importInput" type="file" accept="application/json,.json" hidden>
-
   <script type="module" src="app.js"></script>
+  <script src="hotfix-v271.js" defer></script>
 </body>
 </html>
