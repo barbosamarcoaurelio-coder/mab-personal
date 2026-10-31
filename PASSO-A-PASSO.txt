@@ -1,0 +1,47 @@
+MAB PERSONAL v2.8 - PASSO A PASSO DA ATUALIZACAO
+
+1. FACA UMA COPIA DE SEGURANCA
+- Guarde uma copia da pasta/ZIP atual do MAB Personal.
+- Se o app atual possui opcao de exportar os dados, faca tambem o backup dos dados antes da troca.
+
+2. EXTRAIA ESTE ZIP
+- Descompacte MAB_Personal_v2_8_Pacote_Atualizacao.zip.
+- O arquivo principal da correcao e proximo-treino-hotfix.js.
+
+3. COPIE O HOTFIX PARA A PASTA DO APP
+- Coloque proximo-treino-hotfix.js junto dos arquivos JavaScript do MAB Personal.
+
+4. CARREGUE O ARQUIVO NO APP
+- No index.html, inclua o script proximo-treino-hotfix.js depois dos scripts que carregam os dados/historico.
+Exemplo:
+  <script src="proximo-treino-hotfix.js"></script>
+
+5. APLIQUE A REGRA NO CARD "PROXIMO TREINO"
+- No ponto em que a tela Inicio define o treino sugerido, obtenha o codigo assim:
+  const codigo = MABProximoTreino.obterProximoTreino(atividades);
+- Use esse codigo para localizar o Treino A/B/C/D correspondente no plano e exibir seu nome.
+
+6. RECALCULE DEPOIS DE CONCLUIR UMA MUSCULACAO
+- Depois de salvar uma musculacao como concluida, atualize/renderize novamente a tela Inicio.
+- Outras atividades nao devem avancar a sequencia.
+
+7. SE O APP FOR PWA
+- Atualize o cache/versionamento do service worker da versao principal para que o navegador baixe os arquivos novos.
+- Depois publique/substitua os arquivos no mesmo local onde o PWA atual esta hospedado.
+
+8. CONFIRA A ATUALIZACAO
+Na tela Inicio, compare "Atividades recentes" com "Proximo treino":
+  ultimo A -> proximo B
+  ultimo B -> proximo C
+  ultimo C -> proximo D
+  ultimo D -> proximo A
+  sem historico -> A
+
+No caso mostrado anteriormente:
+  Atividade recente: Musculacao - Treino B
+  Resultado esperado no card: Treino C
+
+9. SE A TELA AINDA MOSTRAR A VERSAO ANTIGA
+- Feche e abra novamente o PWA.
+- Se necessario, remova a instalacao antiga e abra novamente a versao publicada.
+- Antes de limpar dados locais do navegador, garanta que existe backup/exportacao dos dados.

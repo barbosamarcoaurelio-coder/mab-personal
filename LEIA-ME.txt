@@ -1,0 +1,18 @@
+MAB PERSONAL v2.8 - PACOTE DE ATUALIZACAO
+
+OBJETIVO
+Corrigir a sugestao de "Proximo treino" na tela Inicio.
+
+REGRA
+A -> B -> C -> D -> A
+
+EXEMPLO
+Se a ultima musculacao concluida foi Treino B, o proximo treino sugerido deve ser Treino C.
+
+O QUE ESTE PACOTE CONTEM
+- proximo-treino-hotfix.js: logica da rotacao A/B/C/D.
+- teste.html: teste local da regra.
+- PASSO-A-PASSO.txt: instrucoes de integracao e verificacao.
+
+IMPORTANTE
+Este e um pacote de atualizacao da logica. Ele nao contem o restante do codigo-fonte do MAB Personal. Por isso, deve ser incorporado a pasta da versao atual do app antes de publicar/instalar.
