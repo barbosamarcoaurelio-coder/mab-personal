@@ -1,6 +1,6 @@
 import { repo } from './repositories.js';
 
-const VERSION = '2.9.0';
+const VERSION = '2.9.1';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function getWorkoutContext() {
@@ -83,11 +83,12 @@ async function enhanceWorkout() {
   const info = ensureInfoArea(nextButton);
 
   if (isLast) {
-    nextButton.disabled = true;
-    nextButton.textContent = '✓ Último exercício';
-    nextButton.setAttribute('aria-disabled', 'true');
-    info.innerHTML = '<span class="muted">Sequência concluída</span><strong>Finalize o treino no botão superior</strong>';
+    nextButton.hidden = true;
+    info.hidden = true;
+    info.innerHTML = '';
   } else {
+    nextButton.hidden = false;
+    info.hidden = false;
     const nextItem = items[index + 1];
     const nextExercise = exercises.find(e => e.id === nextItem?.exerciseId);
     nextButton.disabled = false;

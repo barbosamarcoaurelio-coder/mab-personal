@@ -1,4 +1,4 @@
-const CACHE = 'mab-personal-v2-9-0';
+const CACHE = 'mab-personal-v2-9-1';
 const CORE = [
   './',
   './index.html',
