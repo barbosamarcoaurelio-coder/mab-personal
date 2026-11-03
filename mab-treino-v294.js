@@ -1,0 +1,92 @@
+import { repo } from './repositories.js';
+const VERSION = '2.9.4';
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function getWorkoutContext(){const sessions=await repo.all('workoutSessions');const current=sessions.find(s=>s.status==='in_progress');if(!current)return null;const items=(await repo.all('planItems')).filter(x=>x.cycleId===current.cycleId&&x.groupCode===current.groupCode&&x.active).sort((a,b)=>a.order-b.order);const exercises=await repo.all('exercises');const index=Math.min(current.currentIndex||0,Math.max(items.length-1,0));const item=items[index];if(!item)return{current,items,exercises,index,item:null};return{current,items,exercises,index,item};}
+async function getPreviousSeries(context){const{current,item}=context;if(!item)return[];const sessions=(await repo.all('workoutSessions')).filter(s=>s.status==='completed'&&s.id!==current.id&&s.groupCode===current.groupCode).sort((a,b)=>(b.finishedAt||b.startedAt||'').localeCompare(a.finishedAt||a.startedAt||''));const sets=await repo.all('executedSets');for(const session of sessions){const match=sets.filter(s=>s.sessionId===session.id&&s.exerciseId===item.exerciseId&&s.completed).sort((a,b)=>a.setNumber-b.setNumber);if(match.length)return match;}return[];}
+function escapeHtml(value){return String(value).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function insertVideoLink(context){const ex=context.exercises.find(e=>e.id===context.item.exerciseId);document.querySelector('#mabExerciseVideo')?.remove();if(!ex?.videoUrl)return;const h2=[...document.querySelectorAll('h2')].find(x=>x.textContent.trim()===ex.name);if(!h2)return;const a=document.createElement('a');a.id='mabExerciseVideo';a.href=ex.videoUrl;a.target='_blank';a.rel='noopener noreferrer';a.textContent='▶ Ver execução';a.style.cssText='display:inline-flex;margin-top:8px;color:#ff851b;font-weight:700;text-decoration:none;font-size:16px;';h2.insertAdjacentElement('afterend',a);}
+function ensureInfoArea(nextButton){let area=document.querySelector('#mabNextExerciseInfo');if(!area){area=document.createElement('div');area.id='mabNextExerciseInfo';area.className='mab-next-exercise';nextButton.parentElement?.insertBefore(area,nextButton);}return area;}
+function ensureV293Styles(){if(document.querySelector('#mabV293Styles'))return;const style=document.createElement('style');style.id='mabV293Styles';style.textContent=`
+.set-row{display:grid!important;grid-template-columns:72px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 108px;column-gap:10px;row-gap:8px;align-items:end}
+.set-row>strong{grid-column:1;grid-row:1;align-self:center}
+.set-row>label:nth-of-type(1){grid-column:2;grid-row:1}
+.set-row>label:nth-of-type(2){grid-column:3;grid-row:1}
+.set-row>label:nth-of-type(3){grid-column:4;grid-row:1}
+.set-row>.done{grid-column:5;grid-row:1;align-self:end}
+.mab-previous-row{grid-column:1/-1;display:grid;grid-template-columns:72px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 108px;column-gap:10px;align-items:center;padding:2px 0 8px;color:#aaa;font-size:14px}
+.mab-previous-row .mab-label{font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.mab-previous-row .mab-value{text-align:center;font-weight:700;color:#d0d0d0}
+@media(max-width:540px){.set-row,.mab-previous-row{grid-template-columns:64px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 72px;column-gap:8px}.set-row input{width:100%;min-width:0}.set-row>.done{width:72px;min-width:72px}.mab-previous-row{font-size:13px}}
+`;document.head.appendChild(style);}
+async function enhanceWorkout(){if(!document.querySelector('[data-action="save-set"]'))return;ensureV293Styles();const context=await getWorkoutContext();if(!context?.item)return;const{items,exercises,index}=context;insertVideoLink(context);const previous=await getPreviousSeries(context);const savedCurrent=(await repo.all('executedSets')).filter(s=>s.sessionId===context.current.id&&s.exerciseId===context.item.exerciseId);document.querySelectorAll('.set-row').forEach((row,rowIndex)=>{const seriesNumber=rowIndex+1;const alreadySaved=savedCurrent.some(s=>s.setNumber===seriesNumber&&s.completed);const prior=previous.find(s=>s.setNumber===seriesNumber);const kg=row.querySelector('[data-set="weight"]');const reps=row.querySelector('[data-set="reps"]');const rir=row.querySelector('[data-set="rir"]');[kg,reps,rir].forEach(input=>{if(input)input.style.fontSize='16px';});row.querySelector('.mab-load-reference')?.remove();row.querySelector('.mab-previous-row')?.remove();if(prior){const ref=document.createElement('div');ref.className='mab-previous-row';ref.setAttribute('aria-label',`Execução anterior da série ${seriesNumber}`);ref.innerHTML=`<span class="mab-label">Anterior</span><span class="mab-value">${escapeHtml(prior.reps??'-')}</span><span class="mab-value">${escapeHtml(prior.weight??'-')}</span><span class="mab-value">${escapeHtml(prior.rir??'-')}</span><span></span>`;row.appendChild(ref);}if(alreadySaved)row.classList.add('mab-series-saved');else row.classList.remove('mab-series-saved');});const nextButton=document.querySelector('[data-action="next"]');if(!nextButton)return;const isLast=index>=items.length-1;const info=ensureInfoArea(nextButton);if(isLast){nextButton.hidden=true;info.hidden=true;info.innerHTML='';}else{nextButton.hidden=false;info.hidden=false;const nextItem=items[index+1];const nextExercise=exercises.find(e=>e.id===nextItem?.exerciseId);nextButton.disabled=false;nextButton.textContent='Próximo →';nextButton.removeAttribute('aria-disabled');info.innerHTML=`<span class="muted">A seguir</span><strong>${escapeHtml(nextExercise?.name||'Próximo exercício')}</strong>`;}}
+function restoreViewport(){const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();document.body.style.zoom='1';document.documentElement.style.zoom='1';window.scrollTo({top:Math.max(0,window.scrollY-1),behavior:'smooth'});}
+document.addEventListener('click',async event=>{const save=event.target.closest('[data-action="save-set"]');if(!save)return;await sleep(120);restoreViewport();await sleep(180);await enhanceWorkout();},true);
+const observer=new MutationObserver(()=>{clearTimeout(window.__mabV293Timer);window.__mabV293Timer=setTimeout(()=>enhanceWorkout().catch(console.error),60);});observer.observe(document.querySelector('#app')||document.body,{childList:true,subtree:true});window.addEventListener('routechange',()=>setTimeout(()=>enhanceWorkout().catch(console.error),80));window.addEventListener('focus',()=>setTimeout(()=>enhanceWorkout().catch(console.error),80));document.documentElement.dataset.mabVersion=VERSION;setTimeout(()=>enhanceWorkout().catch(console.error),100);
+
+
+const SHORT_WORKOUT_SECONDS=300;
+async function deleteWorkoutSession(session){
+  const sets=(await repo.all('executedSets')).filter(x=>x.sessionId===session.id);
+  for(const set of sets)await repo.remove('executedSets',set.id);
+  const timers=(await repo.all('restTimers')).filter(x=>x.sessionId===session.id);
+  for(const timer of timers)await repo.remove('restTimers',timer.id);
+  await repo.remove('workoutSessions',session.id);
+}
+function sessionSeconds(session){
+  const start=Date.parse(session.startedAt||'');
+  const end=Date.parse(session.finishedAt||new Date().toISOString());
+  return Number.isFinite(start)&&Number.isFinite(end)?Math.max(0,Math.floor((end-start)/1000)):0;
+}
+async function handleShortWorkoutFinish(event){
+  const button=event.target.closest('[data-action="finish"]');
+  if(!button)return;
+  const session=(await repo.all('workoutSessions')).find(x=>x.status==='in_progress');
+  if(!session||sessionSeconds(session)>=SHORT_WORKOUT_SECONDS)return;
+  event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+  const seconds=sessionSeconds(session);
+  const keep=confirm(`Este treino teve apenas ${fmtShort(seconds)}. Deseja manter o registro?\n\nOK = manter\nCancelar = apagar o treino iniciado por engano`);
+  if(keep){
+    session.status='completed';session.finishedAt=new Date().toISOString();
+    await repo.put('workoutSessions',session);
+  }else{
+    await deleteWorkoutSession(session);
+  }
+  document.querySelector('.bottom-nav [data-route="dashboard"]')?.click();
+}
+function fmtShort(total){const m=Math.floor(total/60),s=total%60;return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;}
+async function enhanceShortWorkoutHistory(){
+  if(!document.querySelector('.dashboard-layout'))return;
+  const sessions=(await repo.all('workoutSessions')).filter(x=>x.status==='completed'&&sessionSeconds(x)<SHORT_WORKOUT_SECONDS).sort((a,b)=>(b.startedAt||'').localeCompare(a.startedAt||''));
+  const rows=[...document.querySelectorAll('.dashboard-layout .exercise-item')];
+  for(const row of rows){
+    if(row.querySelector('.mab-delete-short'))continue;
+    const title=row.querySelector('strong')?.textContent||'';
+    const detail=row.querySelector('.muted')?.textContent||'';
+    const group=(title.match(/Treino\s+([A-D])/i)||[])[1];
+    const date=(detail.match(/\d{4}-\d{2}-\d{2}/)||[])[0];
+    const duration=(detail.match(/(\d{2}):(\d{2})/)||[]);
+    if(!group||!date||!duration)continue;
+    const seconds=Number(duration[1])*60+Number(duration[2]);
+    if(seconds>=SHORT_WORKOUT_SECONDS)continue;
+    const session=sessions.find(x=>x.groupCode===group.toUpperCase()&&(x.startedAt||'').slice(0,10)===date&&Math.abs(sessionSeconds(x)-seconds)<=1);
+    if(!session)continue;
+    row.querySelector('.orange')?.remove();
+    const button=document.createElement('button');
+    button.className='ghost mab-delete-short';button.textContent='Apagar';button.dataset.sessionId=session.id;
+    button.setAttribute('aria-label',`Apagar Treino ${group} de ${date}`);
+    row.appendChild(button);
+  }
+}
+document.addEventListener('click',handleShortWorkoutFinish,true);
+document.addEventListener('click',async event=>{
+  const button=event.target.closest('.mab-delete-short');if(!button)return;
+  event.preventDefault();event.stopPropagation();
+  const session=await repo.get('workoutSessions',button.dataset.sessionId);if(!session)return;
+  if(!confirm(`Apagar definitivamente este Treino ${session.groupCode} de ${fmtShort(sessionSeconds(session))}?`))return;
+  await deleteWorkoutSession(session);
+  button.closest('.exercise-item')?.remove();
+  window.dispatchEvent(new Event('routechange'));
+},true);
+const shortHistoryObserver=new MutationObserver(()=>{clearTimeout(window.__mabShortHistoryTimer);window.__mabShortHistoryTimer=setTimeout(()=>enhanceShortWorkoutHistory().catch(console.error),100);});
+shortHistoryObserver.observe(document.querySelector('#app')||document.body,{childList:true,subtree:true});
+setTimeout(()=>enhanceShortWorkoutHistory().catch(console.error),150);
