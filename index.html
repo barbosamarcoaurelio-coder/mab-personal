@@ -6,15 +6,19 @@
   <meta name="theme-color" content="#080808">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="MAB Personal">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css">
-  <title>Controle de Treinos MAB Personal</title>
+  <meta name="apple-mobile-web-app-title" content="MAB Training">
+  <meta name="application-name" content="MAB Training">
+  <meta name="description" content="Treino, atividade e evolução em um só lugar.">
+  <link rel="manifest" href="manifest.webmanifest?v=3.0.0">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=3.0.0">
+  <link rel="icon" href="mab-icon.svg?v=3.0.0" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css?v=3.0.0">
+  <link rel="stylesheet" href="mab-brand-v300.css?v=3.0.0">
+  <title>MAB Training | Treino, Atividade e Evolução</title>
 </head>
 <body>
   <header class="topbar">
-    <div><small>CONTROLE DE TREINOS</small><h1>MAB Personal</h1></div>
+    <div><small>CONTROLE DE TREINOS</small><h1><strong>MAB</strong> <span>Training</span></h1></div>
     <button id="settingsBtn" class="icon-btn" aria-label="Configurações e dados">⚙</button>
   </header>
   <main id="app" tabindex="-1"></main>
@@ -28,8 +32,9 @@
   <dialog id="modal"><div id="modalContent"></div></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
   <input id="importInput" type="file" accept="application/json,.json" hidden>
-  <script type="module" src="app.js?v=2.11.0"></script>
-  <script src="proximo-treino-v282.js?v=2.11.0" defer></script>
-  <script type="module" src="mab-treino-v2110.js?v=2.11.0"></script>
+  <script type="module" src="app.js?v=3.0.0"></script>
+  <script src="proximo-treino-v282.js?v=3.0.0" defer></script>
+  <script type="module" src="mab-treino-v300.js?v=3.0.0"></script>
+  <script src="mab-brand-v300.js?v=3.0.0" defer></script>
 </body>
 </html>

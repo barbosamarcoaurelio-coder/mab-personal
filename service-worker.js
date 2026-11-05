@@ -1,19 +1,5 @@
-const CACHE='mab-personal-v2-11-0';
-const ASSETS=[
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './styles.css',
-  './app.js',
-  './repositories.js',
-  './router.js',
-  './timer-service.js',
-  './validators.js',
-  './backup-service.js',
-  './db.js',
-  './proximo-treino-v282.js',
-  './mab-treino-v2110.js'
-];
-self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
-self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))));self.clients.claim();});
-self.addEventListener('fetch',event=>{if(event.request.method!=='GET')return;event.respondWith(fetch(event.request).then(response=>{const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));return response;}).catch(()=>caches.match(event.request)));});
+const CACHE='mab-training-v3-0-0';
+const ASSETS=['./','./index.html','./manifest.webmanifest','./styles.css','./mab-brand-v300.css','./mab-logo.svg','./mab-icon.svg','./apple-touch-icon.png','./icons/icon-192.png','./icons/icon-512.png','./app.js','./repositories.js','./router.js','./timer-service.js','./validators.js','./backup-service.js','./db.js','./proximo-treino-v282.js','./mab-treino-v300.js','./mab-brand-v300.js'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));self.skipWaiting()});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request)))});

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 260" role="img" aria-label="MAB Training">
+  <defs><linearGradient id="metal" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff"/><stop offset=".52" stop-color="#e5e7eb"/><stop offset="1" stop-color="#a9adb3"/></linearGradient></defs>
+  <g fill="url(#metal)">
+    <path d="M38 48h72l74 81 74-81h72v164h-60V126l-86 92-86-92v86H38z"/>
+    <path d="M353 212 465 42l112 170h-70l-42-69-42 69z"/>
+    <path d="M601 48h176c53 0 82 19 82 55 0 23-12 39-36 48 29 8 44 27 44 53 0 39-32 58-94 58H601zm62 45v38h103c19 0 29-7 29-19s-10-19-29-19zm0 78v40h111c21 0 31-7 31-20s-10-20-31-20z"/>
+  </g>
+  <path fill="#ff851b" d="m465 119 38 62h-76z"/>
+</svg>
