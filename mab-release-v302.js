@@ -1,6 +1,6 @@
 (()=>{
   'use strict';
-  const VERSION='3.0.2';
+  const VERSION='3.0.3';
   const SOUND_KEY='mab-rest-sound-enabled';
   const soundEnabled=()=>localStorage.getItem(SOUND_KEY)!=='false';
   let audioCtx=null;

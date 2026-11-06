@@ -9,7 +9,7 @@ function applyMabBrand(){
   }
   const settings=document.querySelector('#modalContent');
   if(settings?.querySelector('#exportBtn')&&!settings.querySelector('.mab-version-badge')){
-    const b=document.createElement('div');b.className='mab-version-badge';b.textContent='MAB TRAINING · v3.0.2';settings.querySelector('.stack')?.appendChild(b);
+    const b=document.createElement('div');b.className='mab-version-badge';b.textContent='MAB TRAINING · v3.0.3';settings.querySelector('.stack')?.appendChild(b);
   }
 }
 function showBrandSplash(){
