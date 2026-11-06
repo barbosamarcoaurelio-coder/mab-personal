@@ -1,6 +1,6 @@
 export const DB_NAME='mab_personal_db';
-export const DB_VERSION=1;
-export const STORES=['settings','exercises','cycles','workoutGroups','planItems','workoutSessions','executedSets','bodyAssessments','activityDiary','restTimers'];
+export const DB_VERSION=2;
+export const STORES=['settings','exercises','cycles','workoutGroups','planItems','workoutSessions','executedSets','bodyAssessments','activityDiary','restTimers','dailyRecovery'];
 let dbPromise;
 export function uuid(){return crypto.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`}
 export function openDatabase(){
@@ -20,8 +20,11 @@ export function openDatabase(){
       s=make('bodyAssessments'); if(!s.indexNames.contains('date'))s.createIndex('date','date');
       s=make('activityDiary'); if(!s.indexNames.contains('date'))s.createIndex('date','date');
       s=make('restTimers'); if(!s.indexNames.contains('sessionId'))s.createIndex('sessionId','sessionId'); if(!s.indexNames.contains('status'))s.createIndex('status','status');
+      s=make('dailyRecovery'); if(!s.indexNames.contains('date'))s.createIndex('date','date',{unique:true});
     };
-    req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error); req.onblocked=()=>reject(new Error('Feche outras abas do aplicativo e tente novamente.'));
+    req.onsuccess=()=>{const db=req.result;db.onversionchange=()=>{db.close();dbPromise=null};resolve(db)};
+    req.onerror=()=>{dbPromise=null;reject(req.error)};
+    req.onblocked=()=>{dbPromise=null;reject(new Error('Feche outras abas do aplicativo e tente novamente.'))};
   });
   return dbPromise;
 }
