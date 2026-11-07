@@ -2,6 +2,16 @@
 
 PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e backup/restauração em JSON.
 
+## Versão 3.0.9 — Teclado e sincronia do sono
+
+- Campos de sono em hh:mm abrem o teclado completo no iPhone, permitindo digitar os dois pontos (ex.: 6:40).
+- O sono informado no check-in pré-treino também alimenta o registro diário de Sono e recuperação da mesma data.
+
+## Versão 3.0.8 — Sono em hh:mm e RPE explicado
+
+- Sono pré-treino e registro diário aceitam horas e minutos (ex.: 7:30), com médias exibidas como 7h30.
+- Esforço geral da sessão (RPE) com legenda simples: 1 = muito leve · 10 = esforço máximo.
+
 ## Versão 3.0.7 — Dicas de medição
 
 - Orientações de onde posicionar a fita métrica nos campos de abdômen, cintura e quadril, tanto na nova avaliação quanto na edição.

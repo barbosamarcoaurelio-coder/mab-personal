@@ -201,15 +201,21 @@ async function startSessionWithCheckin(group){
   if(!cycle){toast('Crie um ciclo ativo.');return}
   const date=today();
   const recovery=(await repo.all('dailyRecovery')).find(item=>item.date===date);
-  showModal(`<form id="mabV306PreWorkout" class="stack"><div class="row"><h2>Antes do treino · opcional</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Preencha rapidamente ou pule. O Treino ${esc(group)} e o plano permanecem iguais.</p><label class="field">Disposição antes do treino · 1–5<input name="readinessBefore" type="number" min="1" max="5" inputmode="numeric" placeholder="Não informar"></label><label class="field">Sono na noite anterior · hh:mm<input name="sleepHoursBefore" type="text" inputmode="numeric" value="${toSleepInput(recovery?.sleepHours)}" placeholder="Ex.: 7:30"><small class="muted">Horas e minutos — ex.: 7:30. Deixe vazio para não informar.</small></label><div class="row"><button type="button" class="ghost" id="mabV306SkipStart">Pular</button><button class="primary">Começar Treino ${esc(group)}</button></div></form>`);
+  showModal(`<form id="mabV306PreWorkout" class="stack"><div class="row"><h2>Antes do treino · opcional</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Preencha rapidamente ou pule. O Treino ${esc(group)} e o plano permanecem iguais.</p><label class="field">Disposição antes do treino · 1–5<input name="readinessBefore" type="number" min="1" max="5" inputmode="numeric" placeholder="Não informar"></label><label class="field">Sono na noite anterior · hh:mm<input name="sleepHoursBefore" type="text" value="${toSleepInput(recovery?.sleepHours)}" placeholder="Ex.: 7:30"><small class="muted">Horas e minutos — ex.: 7:30. Deixe vazio para não informar.</small></label><div class="row"><button type="button" class="ghost" id="mabV306SkipStart">Pular</button><button class="primary">Começar Treino ${esc(group)}</button></div></form>`);
   const form=modalContent().querySelector('#mabV306PreWorkout');
   modalContent().querySelectorAll('[data-close]').forEach(button=>button.onclick=closeModal);
   const createSession=async includeCheckin=>{
     const readinessValue=includeCheckin?form.elements.readinessBefore.value:'';
     const sleepValue=includeCheckin?form.elements.sleepHoursBefore.value:'';
+    const sleepParsed=parseSleepHM(sleepValue);
+    let recoveryRecord=recovery;
+    if(sleepParsed!=null){
+      recoveryRecord={...(recovery||{}),id:recovery?.id||repo.uuid(),date,sleepHours:sleepParsed,updatedAt:new Date().toISOString(),createdAt:recovery?.createdAt||new Date().toISOString()};
+      await repo.put('dailyRecovery',recoveryRecord);
+    }
     const wakeLock=navigator.wakeLock;
     if(wakeLock)try{await wakeLock.request('screen')}catch{}
-    await repo.put('workoutSessions',{id:repo.uuid(),cycleId:cycle.id,groupCode:group,status:'in_progress',startedAt:new Date().toISOString(),currentIndex:0,readinessBefore:optional(readinessValue,1,5),sleepHoursBefore:parseSleepHM(sleepValue),dailyRecoveryId:recovery?.id||null});
+    await repo.put('workoutSessions',{id:repo.uuid(),cycleId:cycle.id,groupCode:group,status:'in_progress',startedAt:new Date().toISOString(),currentIndex:0,readinessBefore:optional(readinessValue,1,5),sleepHoursBefore:sleepParsed,dailyRecoveryId:recoveryRecord?.id||null});
     closeModal();navigate('workout')
   };
   modalContent().querySelector('#mabV306SkipStart').onclick=()=>createSession(false).catch(error=>toast(error.message));
@@ -236,7 +242,7 @@ async function enhanceEvolution(){
 
 function renderRecoveryForm(existing=null){
   const date=existing?.date||today();
-  showModal(`<form id="mabV306RecoveryForm" class="stack"><div class="row"><h2>${existing?'Editar':'Sono e recuperação'}</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Registro diário opcional. Campos vazios não são tratados como zero.</p><label class="field">Data<input name="date" type="date" required value="${esc(date)}"></label><label class="field">Sono da noite · hh:mm<input name="sleepHours" type="text" inputmode="numeric" value="${toSleepInput(existing?.sleepHours)}" placeholder="Ex.: 7:30"><small class="muted">Horas e minutos — ex.: 7:30.</small></label><label class="field">Qualidade do sono · 1–5<select name="sleepQuality"><option value="">Não informado</option>${[1,2,3,4,5].map(n=>`<option value="${n}" ${Number(existing?.sleepQuality)===n?'selected':''}>${n}</option>`).join('')}</select></label><label class="field">Recuperação ao acordar · 1–5<select name="morningRecovery"><option value="">Não informado</option>${[1,2,3,4,5].map(n=>`<option value="${n}" ${Number(existing?.morningRecovery)===n?'selected':''}>${n}</option>`).join('')}</select></label><div class="row"><button type="button" class="ghost" data-close>Cancelar</button><button class="primary">Salvar registro</button></div></form>`);
+  showModal(`<form id="mabV306RecoveryForm" class="stack"><div class="row"><h2>${existing?'Editar':'Sono e recuperação'}</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Registro diário opcional. Campos vazios não são tratados como zero.</p><label class="field">Data<input name="date" type="date" required value="${esc(date)}"></label><label class="field">Sono da noite · hh:mm<input name="sleepHours" type="text" value="${toSleepInput(existing?.sleepHours)}" placeholder="Ex.: 7:30"><small class="muted">Horas e minutos — ex.: 7:30.</small></label><label class="field">Qualidade do sono · 1–5<select name="sleepQuality"><option value="">Não informado</option>${[1,2,3,4,5].map(n=>`<option value="${n}" ${Number(existing?.sleepQuality)===n?'selected':''}>${n}</option>`).join('')}</select></label><label class="field">Recuperação ao acordar · 1–5<select name="morningRecovery"><option value="">Não informado</option>${[1,2,3,4,5].map(n=>`<option value="${n}" ${Number(existing?.morningRecovery)===n?'selected':''}>${n}</option>`).join('')}</select></label><div class="row"><button type="button" class="ghost" data-close>Cancelar</button><button class="primary">Salvar registro</button></div></form>`);
   modalContent().querySelectorAll('[data-close]').forEach(button=>button.onclick=closeModal);
   modalContent().querySelector('form').onsubmit=async event=>{
     event.preventDefault();const form=new FormData(event.currentTarget),recordDate=form.get('date');
@@ -389,5 +395,5 @@ function observeUi(){
 }
 
 observeUi();
-window.MAB306={version:'3.0.8',versionName:'Performance & Recovery',toCsv};
+window.MAB306={version:'3.0.9',versionName:'Performance & Recovery',toCsv};
 export {toCsv};

@@ -223,13 +223,19 @@ async function start(group) {
   const recovery = (await repo.all('dailyRecovery')).find(x => x.date === date);
   const sleepHM = v => { const s = String(v ?? '').trim().replace(',', '.'); if (!s) return null; const m = s.match(/^(\d{1,2})[:hH](\d{1,2})$/); let h; if (m) { if (Number(m[2]) > 59) return null; h = Number(m[1]) + Number(m[2]) / 60 } else { if (!/^\d{1,2}(\.\d{1,2})?$/.test(s)) return null; h = Number(s) } return h >= 0 && h <= 24 ? Math.round(h * 100) / 100 : null };
   const sleepHMInput = v => { if (v == null || !Number.isFinite(Number(v))) return ''; const t = Math.round(Number(v) * 60), h = Math.floor(t / 60), m = t % 60; return `${h}:${String(m).padStart(2, '0')}` };
-  modalContent.innerHTML = `<form id="preWorkoutForm" class="stack"><div class="row"><h2>Antes do treino · opcional</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Preencha rapidamente ou pule. O Treino ${group} e o plano permanecem iguais.</p><label class="field">Disposição antes do treino · 1–5<input name="readinessBefore" type="number" min="1" max="5" inputmode="numeric" placeholder="Não informar"></label><label class="field">Sono na noite anterior · hh:mm<input name="sleepHoursBefore" type="text" inputmode="numeric" value="${sleepHMInput(recovery?.sleepHours)}" placeholder="Ex.: 7:30"><small class="muted">Horas e minutos — ex.: 7:30. Deixe vazio para não informar.</small></label><div class="row"><button type="button" class="ghost" id="skipPreWorkout">Pular</button><button class="primary">Começar Treino ${group}</button></div></form>`;
+  modalContent.innerHTML = `<form id="preWorkoutForm" class="stack"><div class="row"><h2>Antes do treino · opcional</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Preencha rapidamente ou pule. O Treino ${group} e o plano permanecem iguais.</p><label class="field">Disposição antes do treino · 1–5<input name="readinessBefore" type="number" min="1" max="5" inputmode="numeric" placeholder="Não informar"></label><label class="field">Sono na noite anterior · hh:mm<input name="sleepHoursBefore" type="text" value="${sleepHMInput(recovery?.sleepHours)}" placeholder="Ex.: 7:30"><small class="muted">Horas e minutos — ex.: 7:30. Deixe vazio para não informar.</small></label><div class="row"><button type="button" class="ghost" id="skipPreWorkout">Pular</button><button class="primary">Começar Treino ${group}</button></div></form>`;
   modal.showModal();
   modalContent.querySelector('[data-close]').onclick = () => modal.close();
   const createSession = async (includeCheckin) => {
     const form = modalContent.querySelector('#preWorkoutForm');
     const readinessValue = includeCheckin ? form.elements.readinessBefore.value.trim() : '';
     const sleepValue = includeCheckin ? form.elements.sleepHoursBefore.value.trim() : '';
+    const sleepParsed = sleepHM(sleepValue);
+    let recoveryRecord = recovery;
+    if (sleepParsed != null) {
+      recoveryRecord = { ...(recovery || {}), id: recovery?.id || repo.uuid(), date, sleepHours: sleepParsed, updatedAt: new Date().toISOString(), createdAt: recovery?.createdAt || new Date().toISOString() };
+      await repo.put('dailyRecovery', recoveryRecord);
+    }
     await requestScreenWakeLock();
     await repo.put('workoutSessions', {
       id: repo.uuid(),
@@ -239,8 +245,8 @@ async function start(group) {
       startedAt: new Date().toISOString(),
       currentIndex: 0,
       readinessBefore: readinessValue ? number(readinessValue, 1, 5) : null,
-      sleepHoursBefore: sleepHM(sleepValue),
-      dailyRecoveryId: recovery?.id || null
+      sleepHoursBefore: sleepParsed,
+      dailyRecoveryId: recoveryRecord?.id || null
     });
     modal.close();
     navigate('workout')
