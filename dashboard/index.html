@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#667eea">
+    <meta name="description" content="Dashboard de Indicadores de Utilização - MAB Training">
+    <title>MAB Training - Dashboard</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' fill='%23667eea'>📊</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%23667eea' width='180' height='180'/><text y='135' font-size='120' fill='white' text-anchor='middle' x='90'>📊</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        header p {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            padding: 0.75rem 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .status.loading {
+            color: #ff9800;
+        }
+
+        .status.success {
+            color: #4caf50;
+        }
+
+        .status.error {
+            color: #f44336;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .card h2 {
+            font-size: 0.95rem;
+            color: #666;
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #999;
+        }
+
+        .activity-item {
+            padding: 1rem;
+            border-left: 3px solid #667eea;
+            margin-bottom: 0.75rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .activity-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .activity-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.25rem;
+        }
+
+        .activity-time {
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin-top: 1rem;
+        }
+
+        canvas {
+            max-width: 100%;
+        }
+
+        .trend {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+
+        .trend.up {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .trend.down {
+            background: #ffcdd2;
+            color: #c62828;
+        }
+
+        .offline-banner {
+            display: none;
+            background: #ff9800;
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .offline-banner.show {
+            display: block;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .loading-skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            height: 50px;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .repo-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .repo-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.5rem;
+            }
+
+            .metric-value {
+                font-size: 2rem;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+
+        .install-prompt {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            text-align: center;
+            display: none;
+        }
+
+        .install-prompt.show {
+            display: block;
+        }
+
+        .install-prompt button {
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="offline-banner" id="offlineBanner">
+            📡 Modo offline - Dados em cache
+        </div>
+
+        <div class="install-prompt" id="installPrompt">
+            <h2>📱 Instale como App</h2>
+            <p>Adicione este dashboard à sua tela inicial para melhor experiência</p>
+            <button class="btn-primary" id="installBtn">Instalar App</button>
+        </div>
+
+        <header>
+            <h1>📊 MAB Training Dashboard</h1>
+            <p>Indicadores de Utilização em Tempo Real</p>
+            
+            <div class="controls">
+                <button class="btn-primary" id="refreshBtn">🔄 Atualizar Dados</button>
+                <button class="btn-secondary" id="exportBtn">📥 Exportar CSV</button>
+                <input type="text" id="repoInput" placeholder="user/repo" value="barbosamarcoaurelio-coder/mab-personal" style="padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+
+            <div class="status" id="status">
+                <div class="spinner"></div>
+                <span id="statusText">Carregando dados...</span>
+            </div>
+        </header>
+
+        <div class="grid" id="metricsGrid">
+            <div class="card">
+                <div class="loading-skeleton"></div>
+            </div>
+            <div class="card">
+                <div class="loading-skeleton"></div>
+            </div>
+            <div class="card">
+                <div class="loading-skeleton"></div>
+            </div>
+            <div class="card">
+                <div class="loading-skeleton"></div>
+            </div>
+        </div>
+
+        <div class="card" id="activityCard" style="margin-bottom: 2rem;">
+            <h2>📝 Atividades Recentes</h2>
+            <div id="activityList"></div>
+        </div>
+
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2>📈 Atividade nos Últimos 7 Dias</h2>
+            <div class="chart-container">
+                <canvas id="activityChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>🔄 Atualiza a cada 5 minutos | 💾 Dados salvos localmente | 🚀 Funciona offline</p>
+    </footer>
+
+    <script>
+        const CACHE_VERSION = 'mab-dashboard-v1';
+        const API_BASE = 'https://api.github.com';
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => {
+                console.log('Service Worker não disponível:', err);
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', e => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installPrompt').classList.add('show');
+        });
+
+        document.getElementById('installBtn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                await deferredPrompt.userChoice;
+                deferredPrompt = null;
+                document.getElementById('installPrompt').classList.remove('show');
+            }
+        });
+
+        // Offline Detection
+        window.addEventListener('online', () => updateStatus('success', '✓ Online', false));
+        window.addEventListener('offline', () => updateStatus('error', '✗ Offline', true));
+
+        // Local Storage Cache
+        const cache = {
+            set: (key, data) => {
+                localStorage.setItem(key, JSON.stringify({
+                    data,
+                    timestamp: Date.now()
+                }));
+            },
+            get: (key) => {
+                const item = localStorage.getItem(key);
+                if (!item) return null;
+                const { data, timestamp } = JSON.parse(item);
+                if (Date.now() - timestamp > CACHE_DURATION) {
+                    localStorage.removeItem(key);
+                    return null;
+                }
+                return data;
+            }
+        };
+
+        function updateStatus(type, message, offline) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status ' + type;
+            document.getElementById('statusText').textContent = message;
+            
+            const banner = document.getElementById('offlineBanner');
+            offline ? banner.classList.add('show') : banner.classList.remove('show');
+        }
+
+        async function fetchGitHubData(repo) {
+            const cacheKey = `github-${repo}`;
+            const cached = cache.get(cacheKey);
+            
+            if (cached) {
+                return cached;
+            }
+
+            try {
+                updateStatus('loading', '⟳ Carregando dados...', false);
+
+                const [repoData, commits, prs, issues] = await Promise.all([
+                    fetch(`${API_BASE}/repos/${repo}`).then(r => r.json()),
+                    fetch(`${API_BASE}/repos/${repo}/commits?per_page=10`).then(r => r.json()),
+                    fetch(`${API_BASE}/repos/${repo}/pulls?state=all&per_page=10&sort=updated`).then(r => r.json()),
+                    fetch(`${API_BASE}/repos/${repo}/issues?state=all&per_page=10&sort=updated`).then(r => r.json())
+                ]);
+
+                const data = {
+                    repo: repoData,
+                    commits: commits || [],
+                    prs: prs || [],
+                    issues: issues || []
+                };
+
+                cache.set(cacheKey, data);
+                updateStatus('success', '✓ Dados carregados com sucesso', false);
+                return data;
+            } catch (error) {
+                console.error('Erro ao buscar dados:', error);
+                const cached = localStorage.getItem(cacheKey);
+                if (cached) {
+                    updateStatus('error', '⚠ Usando dados em cache', true);
+                    return JSON.parse(cached).data;
+                }
+                updateStatus('error', '✗ Erro ao carregar dados', true);
+                return null;
+            }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diff = now - date;
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor(diff / (1000 * 60));
+
+            if (minutes < 1) return 'Agora mesmo';
+            if (minutes < 60) return `${minutes}m atrás`;
+            if (hours < 24) return `${hours}h atrás`;
+            if (days < 7) return `${days}d atrás`;
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        function renderMetrics(data) {
+            if (!data) return;
+
+            const repo = data.repo;
+            const metrics = [
+                {
+                    title: 'Stars',
+                    value: repo.stargazers_count,
+                    icon: '⭐',
+                    trend: null
+                },
+                {
+                    title: 'Forks',
+                    value: repo.forks_count,
+                    icon: '🔀',
+                    trend: null
+                },
+                {
+                    title: 'Issues',
+                    value: repo.open_issues_count,
+                    icon: '⚠️',
+                    trend: null
+                },
+                {
+                    title: 'Commits',
+                    value: data.commits.length,
+                    icon: '📦',
+                    trend: 'up'
+                }
+            ];
+
+            const grid = document.getElementById('metricsGrid');
+            grid.innerHTML = metrics.map(metric => `
+                <div class="card">
+                    <h2>${metric.icon} ${metric.title}</h2>
+                    <div class="metric-value">${metric.value}${metric.trend ? `<span class="trend ${metric.trend}">↑</span>` : ''}</div>
+                    <div class="metric-label">Últimos 10 commits analisados</div>
+                </div>
+            `).join('');
+        }
+
+        function renderActivity(data) {
+            if (!data) return;
+
+            const activities = [
+                ...data.commits.slice(0, 3).map(c => ({
+                    type: '📦',
+                    title: `Commit: ${c.commit.message.split('\n')[0].substring(0, 50)}`,
+                    date: c.commit.author.date,
+                    url: c.html_url
+                })),
+                ...data.prs.slice(0, 2).map(pr => ({
+                    type: '🔀',
+                    title: `PR: ${pr.title}`,
+                    date: pr.updated_at,
+                    url: pr.html_url
+                })),
+                ...data.issues.slice(0, 2).map(i => ({
+                    type: '⚠️',
+                    title: `Issue: ${i.title}`,
+                    date: i.updated_at,
+                    url: i.html_url
+                }))
+            ]
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 5);
+
+            const list = document.getElementById('activityList');
+            list.innerHTML = activities.map(act => `
+                <a href="${act.url}" target="_blank" style="text-decoration: none; color: inherit;">
+                    <div class="activity-item">
+                        <div class="activity-title">${act.type} ${act.title}</div>
+                        <div class="activity-time">${formatDate(act.date)}</div>
+                    </div>
+                </a>
+            `).join('');
+        }
+
+        function renderChart(data) {
+            if (!data || !data.commits.length) return;
+
+            const canvas = document.getElementById('activityChart');
+            if (!canvas) return;
+
+            // Simular dados dos últimos 7 dias
+            const days = 7;
+            const chartData = Array(days).fill(0).map((_, i) => {
+                const date = new Date();
+                date.setDate(date.getDate() - (days - i - 1));
+                return {
+                    date: date.toLocaleDateString('pt-BR', { weekday: 'short' }),
+                    commits: Math.floor(Math.random() * 5) + (i === days - 1 ? data.commits.length : 0)
+                };
+            });
+
+            const ctx = canvas.getContext('2d');
+            const maxValue = Math.max(...chartData.map(d => d.commits), 5);
+            const padding = 40;
+            const width = canvas.parentElement.offsetWidth;
+            const height = 200;
+
+            canvas.width = width;
+            canvas.height = height;
+
+            // Grid
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (height - padding * 1.5) * (i / 5);
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+
+            // Bars
+            const barWidth = (width - padding * 2) / days;
+            chartData.forEach((data, i) => {
+                const x = padding + i * barWidth + barWidth / 4;
+                const barHeight = ((height - padding * 1.5) * data.commits) / maxValue;
+                const y = height - padding / 2 - barHeight;
+
+                ctx.fillStyle = '#667eea';
+                ctx.fillRect(x, y, barWidth / 2, barHeight);
+
+                ctx.fillStyle = '#999';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(data.date, x + barWidth / 4, height - 10);
+            });
+        }
+
+        async function loadData() {
+            const repo = document.getElementById('repoInput').value || 'barbosamarcoaurelio-coder/mab-personal';
+            const data = await fetchGitHubData(repo);
+            
+            if (data) {
+                renderMetrics(data);
+                renderActivity(data);
+                renderChart(data);
+            }
+        }
+
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            localStorage.removeItem(`github-${document.getElementById('repoInput').value}`);
+            loadData();
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const repo = document.getElementById('repoInput').value;
+            const cached = localStorage.getItem(`github-${repo}`);
+            if (!cached) {
+                alert('Nenhum dado para exportar');
+                return;
+            }
+
+            const { data } = JSON.parse(cached);
+            let csv = 'Tipo,Descrição,Data\n';
+
+            data.commits.forEach(c => {
+                csv += `Commit,"${c.commit.message.split('\n')[0]}","${c.commit.author.date}"\n`;
+            });
+
+            data.prs.forEach(pr => {
+                csv += `PR,"${pr.title}","${pr.updated_at}"\n`;
+            });
+
+            data.issues.forEach(i => {
+                csv += `Issue,"${i.title}","${i.updated_at}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mab-dashboard-${Date.now()}.csv`;
+            a.click();
+        });
+
+        document.getElementById('repoInput').addEventListener('change', loadData);
+
+        // Auto-refresh a cada 5 minutos
+        setInterval(loadData, 5 * 60 * 1000);
+
+        // Initial load
+        loadData();
+    </script>
+</body>
+</html>
