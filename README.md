@@ -2,6 +2,17 @@
 
 PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e backup/restauração em JSON.
 
+## Roadmap
+
+- **Próximo (avaliação aprovada)**: chat de consultoria com IA focado em musculação, após estabilizar a versão atual com o feedback dos testadores.
+  - Fase 1: Chat UI no app + proxy seguro (Cloudflare Worker gratuito, chave fora do código) + contexto automático do aluno (peso, treino ativo, cargas recentes, sono, RPE) + avaliação de resultados e sugestões em texto.
+  - Fase 2: IA propondo criação/ajuste de treinos com tela de confirmação antes de gravar no plano A/B/C/D.
+
+## Versão 3.0.10 — Lembrete de backup
+
+- Ao concluir um treino, se o último backup tiver 7 dias ou mais (ou nunca tiver sido feito), o app oferece exportar o JSON na hora.
+- Configurações mostram há quanto tempo foi o último backup neste aparelho.
+
 ## Versão 3.0.9 — Teclado e sincronia do sono
 
 - Campos de sono em hh:mm abrem o teclado completo no iPhone, permitindo digitar os dois pontos (ex.: 6:40).

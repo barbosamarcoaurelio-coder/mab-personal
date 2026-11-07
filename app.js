@@ -598,11 +598,20 @@ function exportPeriodForm() {
 }
 
 function settings() {
-  modalContent.innerHTML = `<div class="stack"><div class="row"><h2>Configurações e Dados</h2><button class="ghost" data-close>✕</button></div><p class="muted">Os dados ficam neste aparelho. Faça backups periódicos.</p><button class="primary" id="exportBtn">Exportar backup JSON</button><button class="secondary" id="importBtn">Importar backup JSON</button><button class="ghost" id="exportPeriodBtn">Exportar treinos por período</button><button class="danger" id="eraseBtn">Apagar todos os dados</button></div>`;
+  modalContent.innerHTML = `<div class="stack"><div class="row"><h2>Configurações e Dados</h2><button class="ghost" data-close>✕</button></div><p class="muted">Os dados ficam neste aparelho. Faça backups periódicos.</p><p class="muted" id="lastBackupInfo"></p><button class="primary" id="exportBtn">Exportar backup JSON</button><button class="secondary" id="importBtn">Importar backup JSON</button><button class="ghost" id="exportPeriodBtn">Exportar treinos por período</button><button class="danger" id="eraseBtn">Apagar todos os dados</button></div>`;
   modal.showModal();
+  const updateBackupInfo = r => {
+    const el = modalContent.querySelector('#lastBackupInfo');
+    if (!el) return;
+    if (!r?.value) { el.textContent = 'Backup: nunca exportado neste aparelho.'; return }
+    const d = Math.floor((Date.now() - new Date(r.value).getTime()) / 86400000);
+    el.textContent = d <= 0 ? 'Último backup: hoje.' : `Último backup: há ${d} ${d === 1 ? 'dia' : 'dias'}.`
+  };
+  repo.get('settings', 'lastBackupAt').then(updateBackupInfo).catch(() => {});
   modalContent.querySelector('[data-close]').onclick = () => modal.close();
   modalContent.querySelector('#exportBtn').onclick = async () => {
     downloadBackup(await exportBackup());
+    updateBackupInfo({ value: new Date().toISOString() });
     showToast('Backup exportado')
   };
   modalContent.querySelector('#importBtn').onclick = () => document.querySelector('#importInput').click();

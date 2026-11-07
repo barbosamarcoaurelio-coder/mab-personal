@@ -1,6 +1,7 @@
 import {
   all,
   DB_VERSION,
+  put,
   tx,
   STORES
 } from './db.js';
@@ -24,6 +25,7 @@ export async function exportBackup() {
   }
 }
 export function downloadBackup(obj, prefix = 'mab-personal-backup') {
+  put('settings', { key: 'lastBackupAt', value: new Date().toISOString() }).catch(() => {});
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
   const blob = new Blob([JSON.stringify(obj, null, 2)], {
     type: 'application/json'

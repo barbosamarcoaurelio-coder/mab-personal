@@ -301,6 +301,29 @@ function estimateCalories(weight, seconds) {
   return Math.round(workoutMET() * weight * (seconds / 3600))
 }
 
+const BACKUP_REMINDER_DAYS = 7;
+async function maybePromptBackupReminder() {
+  try {
+    const rec = await repo.get('settings', 'lastBackupAt');
+    const last = rec?.value ? new Date(rec.value).getTime() : null;
+    const days = last != null && Number.isFinite(last) ? Math.floor((Date.now() - last) / 86400000) : null;
+    if (days != null && days < BACKUP_REMINDER_DAYS) return;
+    const modal = document.querySelector('#modal');
+    const content = document.querySelector('#modalContent');
+    if (!modal || !content) return;
+    content.innerHTML = `<div class="stack"><div class="row"><h2>Backup do histórico</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">${days != null ? `Faz ${days} dias desde o último backup.` : 'Você ainda não exportou um backup.'} Se o app for removido ou os dados do navegador forem limpos, o histórico pode se perder. Guarde o arquivo JSON em local seguro.</p><div class="row"><button type="button" class="ghost" data-close>Agora não</button><button class="primary" id="mabBackupNow">Exportar backup agora</button></div></div>`;
+    modal.showModal();
+    content.querySelectorAll('[data-close]').forEach(b => b.onclick = () => modal.close());
+    content.querySelector('#mabBackupNow').onclick = async () => {
+      try {
+        const mod = await import('./backup-service.js');
+        mod.downloadBackup(await mod.exportBackup())
+      } finally {
+        modal.close()
+      }
+    }
+  } catch (_) {}
+}
 function closeSummaryModal() {
   document.querySelector('#mabFinishOverlay')?.remove()
 }
@@ -337,6 +360,7 @@ async function saveWorkoutSummary(session) {
   window.__mabFinishPending = false;
   closeSummaryModal();
   document.querySelector('.bottom-nav [data-route="dashboard"]')?.click();
+  await maybePromptBackupReminder();
 }
 async function openWorkoutSummary(session) {
   if (document.querySelector('#mabFinishOverlay')) return;
