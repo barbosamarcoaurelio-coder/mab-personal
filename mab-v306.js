@@ -14,6 +14,9 @@ const showModal=html=>{const content=modalContent(),modal=dialog();if(!content||
 const closeModal=()=>dialog()?.close();
 const parseDate=value=>String(value||'').slice(0,10);
 const displayValue=(value,unit='')=>value==null||value===''?'—':`${fmtNumber(value)}${unit}`;
+const parseSleepHM=value=>{const s=String(value??'').trim().replace(',','.');if(!s)return null;const m=s.match(/^(\d{1,2})[:hH](\d{1,2})$/);let h;if(m){if(Number(m[2])>59)return null;h=Number(m[1])+Number(m[2])/60}else{if(!/^\d{1,2}(\.\d{1,2})?$/.test(s))return null;h=Number(s)}return h>=0&&h<=24?Math.round(h*100)/100:null};
+const fmtSleepHM=value=>{if(value==null||value===''||!Number.isFinite(Number(value)))return'—';const t=Math.round(Number(value)*60),h=Math.floor(t/60),m=t%60;return m?`${h}h${String(m).padStart(2,'0')}`:`${h}h`};
+const toSleepInput=value=>{if(value==null||!Number.isFinite(Number(value)))return'';const t=Math.round(Number(value)*60),h=Math.floor(t/60),m=t%60;return `${h}:${String(m).padStart(2,'0')}`};
 
 function addStyles(){
   if(document.querySelector('#mabV306Styles'))return;
@@ -127,7 +130,7 @@ async function enhanceRecoveryCard(){
   const card=document.createElement('section');
   card.id='mabV306Recovery';
   card.className='card mab-v306-panel';
-  card.innerHTML=`<div class="row"><div><h3>Sono e recuperação</h3><div class="mab-v306-muted">Registro diário opcional</div></div><button class="primary" data-v306-recovery-add>+ Registrar</button></div><div class="mab-v306-grid" style="margin-top:12px"><div class="mab-v306-metric"><span>Sono médio · últimos 7 registros</span><strong>${avg('sleepHours')==null?'—':`${fmtNumber(avg('sleepHours'))} h`}</strong></div><div class="mab-v306-metric"><span>Qualidade média</span><strong>${avg('sleepQuality')==null?'—':`${fmtNumber(avg('sleepQuality'))}/5`}</strong></div><div class="mab-v306-metric"><span>Recuperação média</span><strong>${avg('morningRecovery')==null?'—':`${fmtNumber(avg('morningRecovery'))}/5`}</strong></div></div><div>${entries.slice(0,3).map(row=>`<div class="exercise-item"><div><strong>${esc(row.date)}</strong><div class="muted">Sono: ${displayValue(row.sleepHours,' h')} · Qualidade: ${displayValue(row.sleepQuality,'/5')} · Recuperação: ${displayValue(row.morningRecovery,'/5')}</div></div><button class="ghost" data-v306-recovery-edit="${esc(row.id)}">Editar</button></div>`).join('')||'<div class="empty">Sem registros de sono e recuperação.</div>'}</div>`;
+  card.innerHTML=`<div class="row"><div><h3>Sono e recuperação</h3><div class="mab-v306-muted">Registro diário opcional</div></div><button class="primary" data-v306-recovery-add>+ Registrar</button></div><div class="mab-v306-grid" style="margin-top:12px"><div class="mab-v306-metric"><span>Sono médio · últimos 7 registros</span><strong>${avg('sleepHours')==null?'—':fmtSleepHM(avg('sleepHours'))}</strong></div><div class="mab-v306-metric"><span>Qualidade média</span><strong>${avg('sleepQuality')==null?'—':`${fmtNumber(avg('sleepQuality'))}/5`}</strong></div><div class="mab-v306-metric"><span>Recuperação média</span><strong>${avg('morningRecovery')==null?'—':`${fmtNumber(avg('morningRecovery'))}/5`}</strong></div></div><div>${entries.slice(0,3).map(row=>`<div class="exercise-item"><div><strong>${esc(row.date)}</strong><div class="muted">Sono: ${fmtSleepHM(row.sleepHours)} · Qualidade: ${displayValue(row.sleepQuality,'/5')} · Recuperação: ${displayValue(row.morningRecovery,'/5')}</div></div><button class="ghost" data-v306-recovery-edit="${esc(row.id)}">Editar</button></div>`).join('')||'<div class="empty">Sem registros de sono e recuperação.</div>'}</div>`;
   if(document.querySelector('#mabV306Recovery'))return;
   otherActivities.insertAdjacentElement('beforebegin',card)
 }
@@ -141,7 +144,7 @@ async function enhanceTrainingSummary(){
   const durations=sessions.map(formatSessionDuration);
   const durationTotal=durations.reduce((sum,value)=>sum+value,0);
   const card=document.createElement('section');card.id='mabV306TrainingSummary';card.className='card mab-v306-panel';
-  card.innerHTML=`<h3>Treinos · últimos 7 dias</h3><div class="mab-v306-grid" style="margin-top:10px"><div class="mab-v306-metric"><span>Musculações</span><strong>${sessions.length}</strong></div><div class="mab-v306-metric"><span>Outras atividades</span><strong>${activities.length}</strong></div><div class="mab-v306-metric"><span>Duração de musculação</span><strong>${fmt(durationTotal)}</strong></div><div class="mab-v306-metric"><span>Duração média</span><strong>${durations.length?fmt(Math.round(average(durations))):'—'}</strong></div><div class="mab-v306-metric"><span>RPE médio</span><strong>${average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null))==null?'—':`${fmtNumber(average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null)))}/10`}</strong></div></div>`;
+  card.innerHTML=`<h3>Treinos · últimos 7 dias</h3><div class="mab-v306-grid" style="margin-top:10px"><div class="mab-v306-metric"><span>Musculações</span><strong>${sessions.length}</strong></div><div class="mab-v306-metric"><span>Outras atividades</span><strong>${activities.length}</strong></div><div class="mab-v306-metric"><span>Duração de musculação</span><strong>${fmt(durationTotal)}</strong></div><div class="mab-v306-metric"><span>Duração média</span><strong>${durations.length?fmt(Math.round(average(durations))):'—'}</strong></div><div class="mab-v306-metric"><span>Esforço médio (RPE)</span><strong>${average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null))==null?'—':`${fmtNumber(average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null)))}/10`}</strong></div></div>`;
   if(document.querySelector('#mabV306TrainingSummary'))return;
   chartCard.insertAdjacentElement('beforebegin',card)
 }
@@ -198,7 +201,7 @@ async function startSessionWithCheckin(group){
   if(!cycle){toast('Crie um ciclo ativo.');return}
   const date=today();
   const recovery=(await repo.all('dailyRecovery')).find(item=>item.date===date);
-  showModal(`<form id="mabV306PreWorkout" class="stack"><div class="row"><h2>Antes do treino · opcional</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Preencha rapidamente ou pule. O Treino ${esc(group)} e o plano permanecem iguais.</p><label class="field">Disposição antes do treino · 1–5<input name="readinessBefore" type="number" min="1" max="5" inputmode="numeric" placeholder="Não informar"></label><label class="field">Sono na noite anterior · horas<input name="sleepHoursBefore" type="number" min="0" max="24" step="0.25" inputmode="decimal" value="${recovery?.sleepHours??''}" placeholder="Não informar"></label><div class="row"><button type="button" class="ghost" id="mabV306SkipStart">Pular</button><button class="primary">Começar Treino ${esc(group)}</button></div></form>`);
+  showModal(`<form id="mabV306PreWorkout" class="stack"><div class="row"><h2>Antes do treino · opcional</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Preencha rapidamente ou pule. O Treino ${esc(group)} e o plano permanecem iguais.</p><label class="field">Disposição antes do treino · 1–5<input name="readinessBefore" type="number" min="1" max="5" inputmode="numeric" placeholder="Não informar"></label><label class="field">Sono na noite anterior · hh:mm<input name="sleepHoursBefore" type="text" inputmode="numeric" value="${toSleepInput(recovery?.sleepHours)}" placeholder="Ex.: 7:30"><small class="muted">Horas e minutos — ex.: 7:30. Deixe vazio para não informar.</small></label><div class="row"><button type="button" class="ghost" id="mabV306SkipStart">Pular</button><button class="primary">Começar Treino ${esc(group)}</button></div></form>`);
   const form=modalContent().querySelector('#mabV306PreWorkout');
   modalContent().querySelectorAll('[data-close]').forEach(button=>button.onclick=closeModal);
   const createSession=async includeCheckin=>{
@@ -206,7 +209,7 @@ async function startSessionWithCheckin(group){
     const sleepValue=includeCheckin?form.elements.sleepHoursBefore.value:'';
     const wakeLock=navigator.wakeLock;
     if(wakeLock)try{await wakeLock.request('screen')}catch{}
-    await repo.put('workoutSessions',{id:repo.uuid(),cycleId:cycle.id,groupCode:group,status:'in_progress',startedAt:new Date().toISOString(),currentIndex:0,readinessBefore:optional(readinessValue,1,5),sleepHoursBefore:optional(sleepValue,0,24),dailyRecoveryId:recovery?.id||null});
+    await repo.put('workoutSessions',{id:repo.uuid(),cycleId:cycle.id,groupCode:group,status:'in_progress',startedAt:new Date().toISOString(),currentIndex:0,readinessBefore:optional(readinessValue,1,5),sleepHoursBefore:parseSleepHM(sleepValue),dailyRecoveryId:recovery?.id||null});
     closeModal();navigate('workout')
   };
   modalContent().querySelector('#mabV306SkipStart').onclick=()=>createSession(false).catch(error=>toast(error.message));
@@ -233,13 +236,13 @@ async function enhanceEvolution(){
 
 function renderRecoveryForm(existing=null){
   const date=existing?.date||today();
-  showModal(`<form id="mabV306RecoveryForm" class="stack"><div class="row"><h2>${existing?'Editar':'Sono e recuperação'}</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Registro diário opcional. Campos vazios não são tratados como zero.</p><label class="field">Data<input name="date" type="date" required value="${esc(date)}"></label><label class="field">Horas dormidas<input name="sleepHours" type="number" min="0" max="24" step="0.25" inputmode="decimal" value="${existing?.sleepHours??''}"></label><label class="field">Qualidade do sono · 1–5<select name="sleepQuality"><option value="">Não informado</option>${[1,2,3,4,5].map(n=>`<option value="${n}" ${Number(existing?.sleepQuality)===n?'selected':''}>${n}</option>`).join('')}</select></label><label class="field">Recuperação ao acordar · 1–5<select name="morningRecovery"><option value="">Não informado</option>${[1,2,3,4,5].map(n=>`<option value="${n}" ${Number(existing?.morningRecovery)===n?'selected':''}>${n}</option>`).join('')}</select></label><div class="row"><button type="button" class="ghost" data-close>Cancelar</button><button class="primary">Salvar registro</button></div></form>`);
+  showModal(`<form id="mabV306RecoveryForm" class="stack"><div class="row"><h2>${existing?'Editar':'Sono e recuperação'}</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Registro diário opcional. Campos vazios não são tratados como zero.</p><label class="field">Data<input name="date" type="date" required value="${esc(date)}"></label><label class="field">Sono da noite · hh:mm<input name="sleepHours" type="text" inputmode="numeric" value="${toSleepInput(existing?.sleepHours)}" placeholder="Ex.: 7:30"><small class="muted">Horas e minutos — ex.: 7:30.</small></label><label class="field">Qualidade do sono · 1–5<select name="sleepQuality"><option value="">Não informado</option>${[1,2,3,4,5].map(n=>`<option value="${n}" ${Number(existing?.sleepQuality)===n?'selected':''}>${n}</option>`).join('')}</select></label><label class="field">Recuperação ao acordar · 1–5<select name="morningRecovery"><option value="">Não informado</option>${[1,2,3,4,5].map(n=>`<option value="${n}" ${Number(existing?.morningRecovery)===n?'selected':''}>${n}</option>`).join('')}</select></label><div class="row"><button type="button" class="ghost" data-close>Cancelar</button><button class="primary">Salvar registro</button></div></form>`);
   modalContent().querySelectorAll('[data-close]').forEach(button=>button.onclick=closeModal);
   modalContent().querySelector('form').onsubmit=async event=>{
     event.preventDefault();const form=new FormData(event.currentTarget),recordDate=form.get('date');
     const current=(await repo.all('dailyRecovery')).find(x=>x.date===recordDate);
     if(existing&&current&&current.id!==existing.id){toast('Já existe um registro de sono nesta data. Edite esse registro para evitar duplicidade.');return}
-    const record={...(current||existing||{}),id:current?.id||existing?.id||repo.uuid(),date:recordDate,sleepHours:optional(form.get('sleepHours'),0,24),sleepQuality:optional(form.get('sleepQuality'),1,5),morningRecovery:optional(form.get('morningRecovery'),1,5),updatedAt:new Date().toISOString(),createdAt:current?.createdAt||existing?.createdAt||new Date().toISOString()};
+    const record={...(current||existing||{}),id:current?.id||existing?.id||repo.uuid(),date:recordDate,sleepHours:parseSleepHM(form.get('sleepHours')),sleepQuality:optional(form.get('sleepQuality'),1,5),morningRecovery:optional(form.get('morningRecovery'),1,5),updatedAt:new Date().toISOString(),createdAt:current?.createdAt||existing?.createdAt||new Date().toISOString()};
     await repo.put('dailyRecovery',record);closeModal();navigate('evolution')
   }
 }
@@ -279,13 +282,13 @@ async function generateTxt(start,end,scope){
   if(scope!=='activities'){
     output+='## Resumo semanal\n';
     if(!weekly.size)output+='Nenhuma sessão no período.\n';
-    for(const [week,row] of weekly)output+=`${week}: ${row.strength} musculações · ${fmt(row.seconds)} de musculação · ${scope==='all'?`${row.activities} outras atividades · ${fmt(row.activitySeconds)} de outras atividades · `:''}RPE médio ${average(row.rpe)==null?'não informado':average(row.rpe).toFixed(1)} · disposição ${average(row.readiness)==null?'não informada':average(row.readiness).toFixed(1)}/5 · fadiga ${average(row.fatigue)==null?'não informada':average(row.fatigue).toFixed(1)}/5 · sono pré-treino ${average(row.sleep)==null?'não informado':average(row.sleep).toFixed(1)+' h'}\n`;
+    for(const [week,row] of weekly)output+=`${week}: ${row.strength} musculações · ${fmt(row.seconds)} de musculação · ${scope==='all'?`${row.activities} outras atividades · ${fmt(row.activitySeconds)} de outras atividades · `:''}esforço médio (RPE) ${average(row.rpe)==null?'não informado':average(row.rpe).toFixed(1)} · disposição ${average(row.readiness)==null?'não informada':average(row.readiness).toFixed(1)}/5 · fadiga ${average(row.fatigue)==null?'não informada':average(row.fatigue).toFixed(1)}/5 · sono pré-treino ${average(row.sleep)==null?'não informado':fmtSleepHM(average(row.sleep))}\n`;
     output+='\n## Musculação\n';
     if(!data.sessions.length)output+='Nenhuma sessão concluída no período.\n\n';
     for(const session of data.sessions){
       output+=`### ${parseDate(session.startedAt)} - Treino ${session.groupCode||''}\nDuração total: ${fmt(formatSessionDuration(session))}\n`;
       if(session.calories!=null)output+=`Calorias: ${session.calories} kcal · Fonte: ${session.calorieSource||'não informada'}\n`;
-      output+=`Disposição: ${session.readinessBefore??'não informada'}${session.readinessBefore!=null?'/5':''} · RPE: ${session.sessionRpe??'não informado'}${session.sessionRpe!=null?'/10':''} · Fadiga: ${session.fatigueAfter??'não informada'}${session.fatigueAfter!=null?'/5':''} · Sono: ${session.sleepHoursBefore??'não informado'}${session.sleepHoursBefore!=null?' h':''}\n`;
+      output+=`Disposição: ${session.readinessBefore??'não informada'}${session.readinessBefore!=null?'/5':''} · Esforço (RPE): ${session.sessionRpe??'não informado'}${session.sessionRpe!=null?'/10':''} · Fadiga: ${session.fatigueAfter??'não informada'}${session.fatigueAfter!=null?'/5':''} · Sono: ${session.sleepHoursBefore==null?'não informado':fmtSleepHM(session.sleepHoursBefore)}\n`;
       const sessionSets=data.sets.filter(set=>set.sessionId===session.id&&set.completed===true).sort((a,b)=>String(a.exerciseId).localeCompare(String(b.exerciseId))||a.setNumber-b.setNumber);
       const exerciseIds=[...new Set(sessionSets.map(set=>set.exerciseId))];
       for(const exerciseId of exerciseIds){
@@ -313,7 +316,7 @@ async function generateTxt(start,end,scope){
     output+='## Avaliações corporais\n';
     output+=data.assessments.length?data.assessments.map(a=>`${a.date}: Peso ${a.weight??'não informado'}${a.weight!=null?' kg':''} · % Gordura ${a.bodyFat??'não informada'}${a.bodyFat!=null?'%':''} · Massa gorda ${a.fatMass??'não informada'}${a.fatMass!=null?' kg':''} · Massa magra ${a.leanMass??'não informada'}${a.leanMass!=null?' kg':''}\nAbdômen ${a.abdomenCm??a.waistCm??'não informado'}${a.abdomenCm!=null||a.waistCm!=null?' cm':''} · Cintura ${a.waistCircumferenceCm??'não informada'}${a.waistCircumferenceCm!=null?' cm':''} · Quadril ${a.hipCm??'não informado'}${a.hipCm!=null?' cm':''}\nBíceps E/D ${a.bicepsLeftCm??'—'}/${a.bicepsRightCm??'—'} cm · Antebraço E/D ${a.forearmLeftCm??'—'}/${a.forearmRightCm??'—'} cm · Coxa E/D ${a.thighLeftCm??'—'}/${a.thighRightCm??'—'} cm · Panturrilha E/D ${a.calfLeftCm??'—'}/${a.calfRightCm??'—'} cm`).join('\n\n')+'\n\n':'Sem avaliações no período.\n\n';
     output+='## Sono e recuperação\n';
-    output+=data.recoveries.length?data.recoveries.map(row=>`${row.date}: ${row.sleepHours??'sono não informado'}${row.sleepHours!=null?' h':''} · qualidade ${row.sleepQuality??'não informada'}${row.sleepQuality!=null?'/5':''} · recuperação ao acordar ${row.morningRecovery??'não informada'}${row.morningRecovery!=null?'/5':''}`).join('\n')+'\n\n':'Sem registros de recuperação no período.\n\n';
+    output+=data.recoveries.length?data.recoveries.map(row=>`${row.date}: sono ${row.sleepHours==null?'não informado':fmtSleepHM(row.sleepHours)} · qualidade ${row.sleepQuality??'não informada'}${row.sleepQuality!=null?'/5':''} · recuperação ao acordar ${row.morningRecovery??'não informada'}${row.morningRecovery!=null?'/5':''}`).join('\n')+'\n\n':'Sem registros de recuperação no período.\n\n';
   }
   if(scope==='activities'){
     const activityWeeks=new Map();
@@ -386,5 +389,5 @@ function observeUi(){
 }
 
 observeUi();
-window.MAB306={version:'3.0.7',versionName:'Performance & Recovery',toCsv};
+window.MAB306={version:'3.0.8',versionName:'Performance & Recovery',toCsv};
 export {toCsv};

@@ -221,7 +221,9 @@ async function start(group) {
   if (!cycle) return showToast('Crie um ciclo ativo.');
   const date = new Date().toISOString().slice(0, 10);
   const recovery = (await repo.all('dailyRecovery')).find(x => x.date === date);
-  modalContent.innerHTML = `<form id="preWorkoutForm" class="stack"><div class="row"><h2>Antes do treino · opcional</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Preencha rapidamente ou pule. O Treino ${group} e o plano permanecem iguais.</p><label class="field">Disposição antes do treino · 1–5<input name="readinessBefore" type="number" min="1" max="5" inputmode="numeric" placeholder="Não informar"></label><label class="field">Sono na noite anterior · horas<input name="sleepHoursBefore" type="number" min="0" max="24" step="0.25" inputmode="decimal" value="${recovery?.sleepHours??''}" placeholder="Não informar"></label><div class="row"><button type="button" class="ghost" id="skipPreWorkout">Pular</button><button class="primary">Começar Treino ${group}</button></div></form>`;
+  const sleepHM = v => { const s = String(v ?? '').trim().replace(',', '.'); if (!s) return null; const m = s.match(/^(\d{1,2})[:hH](\d{1,2})$/); let h; if (m) { if (Number(m[2]) > 59) return null; h = Number(m[1]) + Number(m[2]) / 60 } else { if (!/^\d{1,2}(\.\d{1,2})?$/.test(s)) return null; h = Number(s) } return h >= 0 && h <= 24 ? Math.round(h * 100) / 100 : null };
+  const sleepHMInput = v => { if (v == null || !Number.isFinite(Number(v))) return ''; const t = Math.round(Number(v) * 60), h = Math.floor(t / 60), m = t % 60; return `${h}:${String(m).padStart(2, '0')}` };
+  modalContent.innerHTML = `<form id="preWorkoutForm" class="stack"><div class="row"><h2>Antes do treino · opcional</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Preencha rapidamente ou pule. O Treino ${group} e o plano permanecem iguais.</p><label class="field">Disposição antes do treino · 1–5<input name="readinessBefore" type="number" min="1" max="5" inputmode="numeric" placeholder="Não informar"></label><label class="field">Sono na noite anterior · hh:mm<input name="sleepHoursBefore" type="text" inputmode="numeric" value="${sleepHMInput(recovery?.sleepHours)}" placeholder="Ex.: 7:30"><small class="muted">Horas e minutos — ex.: 7:30. Deixe vazio para não informar.</small></label><div class="row"><button type="button" class="ghost" id="skipPreWorkout">Pular</button><button class="primary">Começar Treino ${group}</button></div></form>`;
   modal.showModal();
   modalContent.querySelector('[data-close]').onclick = () => modal.close();
   const createSession = async (includeCheckin) => {
@@ -237,7 +239,7 @@ async function start(group) {
       startedAt: new Date().toISOString(),
       currentIndex: 0,
       readinessBefore: readinessValue ? number(readinessValue, 1, 5) : null,
-      sleepHoursBefore: sleepValue ? number(sleepValue, 0, 24) : null,
+      sleepHoursBefore: sleepHM(sleepValue),
       dailyRecoveryId: recovery?.id || null
     });
     modal.close();
