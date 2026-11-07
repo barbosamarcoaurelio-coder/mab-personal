@@ -194,6 +194,30 @@ async function enhanceMuscleVolume(){
   history.insertAdjacentElement('beforebegin',card)
 }
 
+function showWarmup(session){
+  const overlay=document.createElement('div');
+  overlay.id='mabWarmupOverlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);display:flex;align-items:flex-end;justify-content:center;padding:16px;box-sizing:border-box';
+  const startedAt=Date.now();
+  let type='Caminhada leve';
+  overlay.innerHTML=`<div style="width:min(620px,100%);background:#151515;border:1px solid #3a3a3a;border-radius:22px;padding:20px;color:#fff;box-sizing:border-box"><div style="color:#ff851b;font-size:13px;font-weight:800;letter-spacing:.08em">AQUECIMENTO · OPCIONAL</div><h2 style="margin:6px 0 4px">Prepare o corpo</h2><div style="color:#aaa;font-size:13px;margin-bottom:14px">Sugestão: 5–10 minutos leves antes da musculação. O tempo de aquecimento não entra na duração da musculação.</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${['Caminhada leve','Bicicleta','Mobilidade','Alongamento','Livre'].map((t,i)=>`<button type="button" data-wtype="${t}" style="padding:10px 14px;border-radius:999px;border:1px solid ${i===0?'#ff851b':'#444'};background:${i===0?'rgba(255,133,27,.15)':'#101010'};color:#fff;font-size:14px">${t}</button>`).join('')}</div><div style="text-align:center;margin:6px 0 18px"><div id="mabWarmupTimer" style="font-size:44px;font-weight:800;color:#ff851b;font-variant-numeric:tabular-nums">00:00</div><div style="color:#888;font-size:12px">tempo de aquecimento</div></div><button id="mabWarmupDone" style="width:100%;background:#ff851b;color:#080808;border:0;border-radius:14px;padding:15px;font-size:16px;font-weight:800">Concluir aquecimento →</button><button id="mabWarmupSkip" style="width:100%;margin-top:10px;background:transparent;color:#bbb;border:1px solid #444;border-radius:14px;padding:13px;font-size:14px">Pular e ir direto para a musculação</button></div>`;
+  document.body.appendChild(overlay);
+  const timerEl=overlay.querySelector('#mabWarmupTimer');
+  const tick=setInterval(()=>{const s=Math.floor((Date.now()-startedAt)/1000);timerEl.textContent=fmt(s)},1000);
+  overlay.querySelectorAll('[data-wtype]').forEach(btn=>btn.onclick=()=>{type=btn.dataset.wtype;overlay.querySelectorAll('[data-wtype]').forEach(b=>{const on=b===btn;b.style.borderColor=on?'#ff851b':'#444';b.style.background=on?'rgba(255,133,27,.15)':'#101010'})});
+  const finish=async skipped=>{
+    clearInterval(tick);
+    const seconds=Math.round((Date.now()-startedAt)/1000);
+    session.warmupType=skipped?null:type;
+    session.warmupSeconds=skipped?null:seconds;
+    session.warmupSkipped=skipped;
+    await repo.put('workoutSessions',session);
+    overlay.remove();
+    navigate('workout')
+  };
+  overlay.querySelector('#mabWarmupDone').onclick=()=>finish(false).catch(error=>toast(error.message));
+  overlay.querySelector('#mabWarmupSkip').onclick=()=>finish(true).catch(error=>toast(error.message));
+}
 async function startSessionWithCheckin(group){
   const existing=(await repo.all('workoutSessions')).find(session=>session.status==='in_progress');
   if(existing){navigate('workout');return}
@@ -215,8 +239,9 @@ async function startSessionWithCheckin(group){
     }
     const wakeLock=navigator.wakeLock;
     if(wakeLock)try{await wakeLock.request('screen')}catch{}
-    await repo.put('workoutSessions',{id:repo.uuid(),cycleId:cycle.id,groupCode:group,status:'in_progress',startedAt:new Date().toISOString(),currentIndex:0,readinessBefore:optional(readinessValue,1,5),sleepHoursBefore:sleepParsed,dailyRecoveryId:recoveryRecord?.id||null});
-    closeModal();navigate('workout')
+    const session={id:repo.uuid(),cycleId:cycle.id,groupCode:group,status:'in_progress',startedAt:new Date().toISOString(),currentIndex:0,readinessBefore:optional(readinessValue,1,5),sleepHoursBefore:sleepParsed,dailyRecoveryId:recoveryRecord?.id||null};
+    await repo.put('workoutSessions',session);
+    closeModal();showWarmup(session)
   };
   modalContent().querySelector('#mabV306SkipStart').onclick=()=>createSession(false).catch(error=>toast(error.message));
   form.onsubmit=event=>{event.preventDefault();createSession(true).catch(error=>toast(error.message))}
@@ -294,7 +319,7 @@ async function generateTxt(start,end,scope){
     for(const session of data.sessions){
       output+=`### ${parseDate(session.startedAt)} - Treino ${session.groupCode||''}\nDuração total: ${fmt(formatSessionDuration(session))}\n`;
       if(session.calories!=null)output+=`Calorias: ${session.calories} kcal · Fonte: ${session.calorieSource||'não informada'}\n`;
-      output+=`Disposição: ${session.readinessBefore??'não informada'}${session.readinessBefore!=null?'/5':''} · Esforço (RPE): ${session.sessionRpe??'não informado'}${session.sessionRpe!=null?'/10':''} · Fadiga: ${session.fatigueAfter??'não informada'}${session.fatigueAfter!=null?'/5':''} · Sono: ${session.sleepHoursBefore==null?'não informado':fmtSleepHM(session.sleepHoursBefore)}\n`;
+      output+=`Disposição: ${session.readinessBefore??'não informada'}${session.readinessBefore!=null?'/5':''} · Esforço (RPE): ${session.sessionRpe??'não informado'}${session.sessionRpe!=null?'/10':''} · Fadiga: ${session.fatigueAfter??'não informada'}${session.fatigueAfter!=null?'/5':''} · Sono: ${session.sleepHoursBefore==null?'não informado':fmtSleepHM(session.sleepHoursBefore)} · Aquecimento: ${session.warmupSkipped?'pulado':session.warmupType?`${session.warmupType} (${fmt(session.warmupSeconds||0)})`:'não registrado'}\n`;
       const sessionSets=data.sets.filter(set=>set.sessionId===session.id&&set.completed===true).sort((a,b)=>String(a.exerciseId).localeCompare(String(b.exerciseId))||a.setNumber-b.setNumber);
       const exerciseIds=[...new Set(sessionSets.map(set=>set.exerciseId))];
       for(const exerciseId of exerciseIds){
@@ -339,10 +364,10 @@ async function generateTxt(start,end,scope){
 }
 
 function toCsv(data){
-  const headers=['record_type','record_id','date','session_id','daily_recovery_id','group_code','exercise_id','exercise_name','set_number','completed','reps','weight_kg','rir','duration_seconds','session_rpe','readiness_before','fatigue_after','sleep_hours','sleep_quality','morning_recovery','discomfort_region','discomfort_intensity','discomfort_notes','rest_seconds_before','primary_muscle_group','secondary_muscle_groups','body_weight_kg','body_fat_percent','fat_mass_kg','lean_mass_kg','abdomen_cm','waist_cm','hip_cm','biceps_left_cm','biceps_right_cm','forearm_left_cm','forearm_right_cm','thigh_left_cm','thigh_right_cm','calf_left_cm','calf_right_cm','activity','activity_duration_minutes','distance_km','calories','calorie_source','calorie_method','notes','intensity'];
+  const headers=['record_type','record_id','date','session_id','daily_recovery_id','group_code','exercise_id','exercise_name','set_number','completed','reps','weight_kg','rir','duration_seconds','session_rpe','readiness_before','fatigue_after','sleep_hours','sleep_quality','morning_recovery','discomfort_region','discomfort_intensity','discomfort_notes','rest_seconds_before','primary_muscle_group','secondary_muscle_groups','body_weight_kg','body_fat_percent','fat_mass_kg','lean_mass_kg','abdomen_cm','waist_cm','hip_cm','biceps_left_cm','biceps_right_cm','forearm_left_cm','forearm_right_cm','thigh_left_cm','thigh_right_cm','calf_left_cm','calf_right_cm','activity','activity_duration_minutes','distance_km','calories','calorie_source','calorie_method','notes','intensity','warmup_type','warmup_seconds','warmup_skipped'];
   const rows=[];const sessions=new Map(data.sessions.map(x=>[x.id,x]));const exercises=new Map(data.exercises.map(x=>[x.id,x]));
   if(data.scope!=='activities'){
-  for(const session of data.sessions)rows.push({record_type:'session',record_id:session.id,date:parseDate(session.startedAt),session_id:session.id,daily_recovery_id:session.dailyRecoveryId,group_code:session.groupCode,duration_seconds:formatSessionDuration(session),session_rpe:session.sessionRpe,readiness_before:session.readinessBefore,fatigue_after:session.fatigueAfter,sleep_hours:session.sleepHoursBefore,calories:session.calories,calorie_source:session.calorieSource,calorie_method:session.calorieMethod,notes:session.notes});
+  for(const session of data.sessions)rows.push({record_type:'session',record_id:session.id,date:parseDate(session.startedAt),session_id:session.id,daily_recovery_id:session.dailyRecoveryId,group_code:session.groupCode,duration_seconds:formatSessionDuration(session),session_rpe:session.sessionRpe,readiness_before:session.readinessBefore,fatigue_after:session.fatigueAfter,sleep_hours:session.sleepHoursBefore,calories:session.calories,calorie_source:session.calorieSource,calorie_method:session.calorieMethod,notes:session.notes,warmup_type:session.warmupSkipped?'pulado':session.warmupType??null,warmup_seconds:session.warmupSeconds??null,warmup_skipped:session.warmupSkipped===true?'sim':''});
   for(const set of data.sets){const session=sessions.get(set.sessionId);if(!session)continue;const exercise=exercises.get(set.exerciseId);rows.push({record_type:'set',record_id:set.id,date:parseDate(session.startedAt),session_id:session.id,daily_recovery_id:session.dailyRecoveryId,group_code:session.groupCode,exercise_id:set.exerciseId,exercise_name:exercise?.name,set_number:set.setNumber,completed:set.completed===true,reps:set.reps,weight_kg:set.weight,rir:set.rir,rest_seconds_before:set.restSecondsBefore,primary_muscle_group:exercise?.primaryMuscleGroup||exercise?.muscleGroup,secondary_muscle_groups:(exercise?.secondaryMuscleGroups||[]).join('|')})}
   for(const assessment of data.assessments)rows.push({record_type:'body_assessment',record_id:assessment.id,date:assessment.date,body_weight_kg:assessment.weight,body_fat_percent:assessment.bodyFat,fat_mass_kg:assessment.fatMass,lean_mass_kg:assessment.leanMass,abdomen_cm:assessment.abdomenCm??assessment.waistCm,waist_cm:assessment.waistCircumferenceCm,hip_cm:assessment.hipCm,biceps_left_cm:assessment.bicepsLeftCm,biceps_right_cm:assessment.bicepsRightCm,forearm_left_cm:assessment.forearmLeftCm,forearm_right_cm:assessment.forearmRightCm,thigh_left_cm:assessment.thighLeftCm,thigh_right_cm:assessment.thighRightCm,calf_left_cm:assessment.calfLeftCm,calf_right_cm:assessment.calfRightCm});
   for(const recovery of data.recoveries)rows.push({record_type:'recovery',record_id:recovery.id,date:recovery.date,sleep_hours:recovery.sleepHours,sleep_quality:recovery.sleepQuality,morning_recovery:recovery.morningRecovery});
@@ -395,5 +420,5 @@ function observeUi(){
 }
 
 observeUi();
-window.MAB306={version:'3.0.12',versionName:'Performance & Recovery',toCsv};
+window.MAB306={version:'3.0.13',versionName:'Performance & Recovery',toCsv};
 export {toCsv};

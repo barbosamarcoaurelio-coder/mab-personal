@@ -8,6 +8,12 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
   - Fase 1: Chat UI no app + proxy seguro (Cloudflare Worker gratuito, chave fora do código) + contexto automático do aluno (peso, treino ativo, cargas recentes, sono, RPE) + avaliação de resultados e sugestões em texto.
   - Fase 2: IA propondo criação/ajuste de treinos com tela de confirmação antes de gravar no plano A/B/C/D.
 
+## Versão 3.0.13 — Aquecimento opcional
+
+- Após o check-in (sono/disposição), uma etapa de aquecimento opcional com timer e tipo (caminhada leve, bicicleta, mobilidade, alongamento ou livre), com opção de pular direto para a musculação.
+- O tempo de aquecimento é gravado na sessão e não entra na duração da musculação.
+- Aquecimento incluído nos relatórios TXT e CSV (warmup_type, warmup_seconds, warmup_skipped).
+
 ## Versão 3.0.12 — Referência anterior restaurada
 
 - A linha "Anterior" (reps/KG/RIR da última execução) volta a aparecer ao abrir cada exercício, inclusive ao navegar com Próximo/Anterior.

@@ -357,7 +357,7 @@ async function saveWorkoutSummary(session) {
     intensity: painIntensity,
     notes: painNotes || null
   }] : [];
-  session.durationSeconds = sessionSeconds(session);
+  session.durationSeconds = Math.max(0, sessionSeconds(session) - (session.warmupSkipped ? 0 : session.warmupSeconds || 0));
   session.status = 'completed';
   session.finishedAt = session.finishedAt || new Date().toISOString();
   await repo.put('workoutSessions', session);
