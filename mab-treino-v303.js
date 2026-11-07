@@ -169,6 +169,10 @@ document.addEventListener('click', async event => {
   await sleep(180);
   await enhanceWorkout();
 }, true);
+document.addEventListener('click', event => {
+  if (!event.target.closest('[data-action="next"],[data-action="prev"],[data-action="rest"],[data-action="skip-rest"]')) return;
+  setTimeout(() => enhanceWorkout().catch(console.error), 250);
+}, true);
 const observer = new MutationObserver(() => {
   clearTimeout(window.__mabV293Timer);
   window.__mabV293Timer = setTimeout(() => enhanceWorkout().catch(console.error), 60);
@@ -177,7 +181,7 @@ observer.observe(document.querySelector('#app') || document.body, {
   childList: true,
   subtree: true
 });
-window.addEventListener('routechange', () => setTimeout(() => enhanceWorkout().catch(console.error), 80));
+window.addEventListener('routechange', () => [80, 350, 900].forEach(ms => setTimeout(() => enhanceWorkout().catch(console.error), ms)));
 window.addEventListener('focus', () => setTimeout(() => enhanceWorkout().catch(console.error), 80));
 document.documentElement.dataset.mabVersion = VERSION;
 setTimeout(() => enhanceWorkout().catch(console.error), 100);

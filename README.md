@@ -8,6 +8,11 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
   - Fase 1: Chat UI no app + proxy seguro (Cloudflare Worker gratuito, chave fora do código) + contexto automático do aluno (peso, treino ativo, cargas recentes, sono, RPE) + avaliação de resultados e sugestões em texto.
   - Fase 2: IA propondo criação/ajuste de treinos com tela de confirmação antes de gravar no plano A/B/C/D.
 
+## Versão 3.0.12 — Referência anterior restaurada
+
+- A linha "Anterior" (reps/KG/RIR da última execução) volta a aparecer ao abrir cada exercício, inclusive ao navegar com Próximo/Anterior.
+- Removido bloqueio legado da camada de estabilidade que impedia a atualização da referência sem salvar a série.
+
 ## Versão 3.0.11 — Bip de descanso confiável
 
 - Bip de fim de descanso mais confiável no iPhone: desbloqueio de áudio no toque, retomada automática ao voltar ao app e gatilho por verificação contínua.
