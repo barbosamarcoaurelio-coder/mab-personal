@@ -1,4 +1,4 @@
-const MAB_BRAND_VERSION='3.0.6';
+const MAB_BRAND_VERSION='3.0.7';
 function applyMabBrand(){
   document.title='MAB Training | Treino, Atividade e Evolução';
   document.documentElement.dataset.mabVersion=MAB_BRAND_VERSION;
@@ -9,7 +9,7 @@ function applyMabBrand(){
   }
   const settings=document.querySelector('#modalContent');
   if(settings?.querySelector('#exportBtn')&&!settings.querySelector('.mab-version-badge')){
-    const b=document.createElement('div');b.className='mab-version-badge';b.textContent='MAB TRAINING · v3.0.6';settings.querySelector('.stack')?.appendChild(b);
+    const b=document.createElement('div');b.className='mab-version-badge';b.textContent='MAB TRAINING · v3.0.7';settings.querySelector('.stack')?.appendChild(b);
   }
 }
 function showBrandSplash(){

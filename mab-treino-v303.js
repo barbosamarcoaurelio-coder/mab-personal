@@ -553,10 +553,11 @@ function assessmentEditorV2103(a) {
       <label class="field">Panturrilha direita<input name="calfRightCm" type="number" min="0" max="300" step="0.1" value="${val(a.calfRightCm)}"></label>
     </div>
     <h3>Tronco (cm)</h3>
+    <p class="muted">Meça em pé, sem prender a respiração, com a fita paralela ao chão.</p>
     <div class="grid two">
-      <label class="field">Abdômen<input name="abdomenCm" type="number" min="0" max="500" step="0.1" value="${val(a.abdomenCm ?? a.waistCm)}"></label>
-      <label class="field">Cintura<input name="waistCircumferenceCm" type="number" min="0" max="500" step="0.1" value="${val(a.waistCircumferenceCm)}"></label>
-      <label class="field">Quadril<input name="hipCm" type="number" min="0" max="500" step="0.1" value="${val(a.hipCm)}"></label>
+      <label class="field">Abdômen<input name="abdomenCm" type="number" min="0" max="500" step="0.1" value="${val(a.abdomenCm ?? a.waistCm)}"><small class="muted">Fita na altura do umbigo, com o abdômen relaxado (sem contrair).</small></label>
+      <label class="field">Cintura<input name="waistCircumferenceCm" type="number" min="0" max="500" step="0.1" value="${val(a.waistCircumferenceCm)}"><small class="muted">Parte mais estreita do tronco, geralmente um pouco acima do umbigo.</small></label>
+      <label class="field">Quadril<input name="hipCm" type="number" min="0" max="500" step="0.1" value="${val(a.hipCm)}"><small class="muted">Parte mais larga dos glúteos, com os pés juntos.</small></label>
     </div>
     <p class="muted">Campos vazios permanecem sem valor; não são convertidos em zero.</p>
     <button class="primary">Salvar alterações</button>

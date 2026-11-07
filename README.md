@@ -2,6 +2,10 @@
 
 PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e backup/restauração em JSON.
 
+## Versão 3.0.7 — Dicas de medição
+
+- Orientações de onde posicionar a fita métrica nos campos de abdômen, cintura e quadril, tanto na nova avaliação quanto na edição.
+
 ## Versão 3.0.6 — Performance e recuperação
 
 - Check-in opcional de disposição e sono antes da musculação.
