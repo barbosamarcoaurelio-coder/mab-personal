@@ -225,7 +225,7 @@ async function startSessionWithCheckin(group){
   if(!cycle){toast('Crie um ciclo ativo.');return}
   const date=today();
   const recovery=(await repo.all('dailyRecovery')).find(item=>item.date===date);
-  showModal(`<form id="mabV306PreWorkout" class="stack"><div class="row"><h2>Antes do treino · opcional</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Preencha rapidamente ou pule. O Treino ${esc(group)} e o plano permanecem iguais.</p><label class="field">Disposição antes do treino · 1–5<input name="readinessBefore" type="number" min="1" max="5" inputmode="numeric" placeholder="Não informar"></label><label class="field">Sono na noite anterior · hh:mm<input name="sleepHoursBefore" type="text" value="${toSleepInput(recovery?.sleepHours)}" placeholder="Ex.: 7:30"><small class="muted">Horas e minutos — ex.: 7:30. Deixe vazio para não informar.</small></label><div class="row"><button type="button" class="ghost" id="mabV306SkipStart">Pular</button><button class="primary">Começar Treino ${esc(group)}</button></div></form>`);
+  showModal(`<form id="mabV306PreWorkout" class="stack"><div class="row"><h2>Disposição e Sono</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Preencha rapidamente ou pule. O Treino ${esc(group)} e o plano permanecem iguais.</p><label class="field">Disposição antes do treino · 1–5<input name="readinessBefore" type="number" min="1" max="5" inputmode="numeric" placeholder="Não informar"></label><label class="field">Sono na noite anterior · hh:mm<input name="sleepHoursBefore" type="text" value="${toSleepInput(recovery?.sleepHours)}" placeholder="Ex.: 7:30"><small class="muted">Horas e minutos — ex.: 7:30. Deixe vazio para não informar.</small></label><div class="row"><button type="button" class="ghost" id="mabV306SkipStart">Pular</button><button class="primary">Começar Treino ${esc(group)}</button></div></form>`);
   const form=modalContent().querySelector('#mabV306PreWorkout');
   modalContent().querySelectorAll('[data-close]').forEach(button=>button.onclick=closeModal);
   const createSession=async includeCheckin=>{
@@ -420,5 +420,5 @@ function observeUi(){
 }
 
 observeUi();
-window.MAB306={version:'3.0.13',versionName:'Performance & Recovery',toCsv};
+window.MAB306={version:'4.0.0',versionName:'Performance & Recovery',toCsv};
 export {toCsv};

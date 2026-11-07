@@ -8,6 +8,15 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
   - Fase 1: Chat UI no app + proxy seguro (Cloudflare Worker gratuito, chave fora do código) + contexto automático do aluno (peso, treino ativo, cargas recentes, sono, RPE) + avaliação de resultados e sugestões em texto.
   - Fase 2: IA propondo criação/ajuste de treinos com tela de confirmação antes de gravar no plano A/B/C/D.
 
+## Versão 4.0.0 — Atividades ao vivo e detalhe da execução
+
+- "+ Registrar outra atividade" oferece Iniciar agora (cronômetro) ou Registrar atividade passada.
+- Cronômetro ao vivo com estimativa de calorias por MET da modalidade e GPS opcional (caminhada, corrida e bicicleta; a tela precisa ficar ligada).
+- Ao finalizar, o mesmo resumo da musculação: estimativa MAB, valor do dispositivo (Polar, Garmin...), esforço (RPE), fadiga e desconforto.
+- Toque em uma atividade recente na tela Início para ver o detalhe: tempo total, média por exercício, calorias, estrelas de esforço/fadiga e mapa muscular colorido.
+- Exportação por período com atalhos de intervalo (7 dias, 30 dias, mês ou tudo).
+- Check-in pré-treino renomeado para Disposição e Sono.
+
 ## Versão 3.0.13 — Aquecimento opcional
 
 - Após o check-in (sono/disposição), uma etapa de aquecimento opcional com timer e tipo (caminhada leve, bicicleta, mobilidade, alongamento ou livre), com opção de pular direto para a musculação.
