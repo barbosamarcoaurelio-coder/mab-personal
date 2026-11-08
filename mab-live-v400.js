@@ -163,20 +163,39 @@ async function finishLive() {
 const ZONE_MAP = { 'Ombros': 'shoulders', 'Peitoral': 'chest', 'Costas': 'lats', 'Bíceps': 'arms', 'Tríceps': 'arms', 'Core': 'core', 'Glúteos': 'glutes', 'Quadríceps': 'quads', 'Pernas': 'quads', 'Posterior': 'hams', 'Panturrilhas': 'calves' };
 const zonesOf = groups => { const z = new Set(); groups.forEach(g => { const k = ZONE_MAP[g]; if (k) z.add(k) }); return z };
 
+/* Mapa muscular: figura realista (assets) + brilho dinâmico projetado por grupo. */
+const BODY_FIG = {
+  front: { img: 'assets/body-front.webp', w: 500, h: 1484, zones: {
+    shoulders: [[97, 237, 42, 32], [403, 237, 42, 32]],
+    chest: [[153, 306, 51, 42], [348, 306, 51, 42]],
+    arms: [[70, 390, 28, 56], [431, 390, 28, 56]],
+    core: [[250, 650, 65, 120], [130, 640, 26, 65], [371, 640, 26, 65]],
+    quads: [[121, 816, 39, 120], [380, 816, 39, 120], [200, 807, 19, 102], [301, 807, 19, 102]],
+    calves: [[139, 1123, 26, 79], [362, 1123, 26, 79]]
+  } },
+  back: { img: 'assets/body-back.webp', w: 500, h: 1495, zones: {
+    shoulders: [[250, 174, 81, 46], [87, 249, 44, 35], [412, 249, 44, 35]],
+    lats: [[110, 383, 37, 104], [389, 383, 37, 104]],
+    arms: [[64, 441, 30, 75], [435, 441, 30, 75]],
+    core: [[250, 545, 52, 52]],
+    glutes: [[174, 650, 64, 58], [325, 650, 64, 58]],
+    hams: [[157, 882, 52, 128], [342, 882, 52, 128]],
+    calves: [[157, 1172, 35, 93], [342, 1172, 35, 93]]
+  } }
+};
 function muscleFigure(view, P, S, uid) {
-  const f = key => P.has(key) ? `url(#mgP${uid})` : S.has(key) ? `url(#mgS${uid})` : '#1e1e1e';
-  const defs = `<defs><radialGradient id="mgP${uid}" cx="50%" cy="45%" r="70%"><stop offset="0%" stop-color="#ffb020"/><stop offset="55%" stop-color="#ff6a00"/><stop offset="100%" stop-color="#8a3000"/></radialGradient><radialGradient id="mgS${uid}" cx="50%" cy="45%" r="70%"><stop offset="0%" stop-color="#c07a3a"/><stop offset="100%" stop-color="#5a3a20"/></radialGradient></defs>`;
-  const outline = `<path d="M50 25 C41 25 33 28 28 33 C18 41 13 55 12 75 C11 95 14 108 18 116 C20 122 24 122 25 116 C28 106 29 95 30 84 C31 92 32 100 33 108 C30 122 28 140 30 156 C32 172 34 188 36 200 L42 200 C42 188 43 172 46 158 C48 150 52 150 54 158 C57 172 58 188 58 200 L64 200 C66 188 68 172 70 156 C72 140 70 122 67 108 C68 100 69 92 70 84 C71 95 72 106 75 116 C76 122 80 122 82 116 C86 108 89 95 88 75 C87 55 82 41 72 33 C67 28 59 25 50 25 Z" fill="#141414" stroke="#3a3a3a" stroke-width="1.5"/>`;
-  const head = `<ellipse cx="50" cy="14" rx="9" ry="11" fill="#141414" stroke="#3a3a3a" stroke-width="1.5"/>`;
-  const st = 'stroke="#0d0d0d" stroke-width="1"';
-  const zones = view === 'front' ? `<ellipse cx="24" cy="36" rx="8" ry="7" fill="${f('shoulders')}" ${st}/><ellipse cx="76" cy="36" rx="8" ry="7" fill="${f('shoulders')}" ${st}/><ellipse cx="42" cy="45" rx="9" ry="7" fill="${f('chest')}" ${st}/><ellipse cx="58" cy="45" rx="9" ry="7" fill="${f('chest')}" ${st}/><ellipse cx="20" cy="66" rx="6" ry="14" fill="${f('arms')}" ${st}/><ellipse cx="80" cy="66" rx="6" ry="14" fill="${f('arms')}" ${st}/><ellipse cx="50" cy="74" rx="10" ry="14" fill="${f('core')}" ${st}/><ellipse cx="38" cy="128" rx="9" ry="24" fill="${f('quads')}" ${st}/><ellipse cx="62" cy="128" rx="9" ry="24" fill="${f('quads')}" ${st}/><ellipse cx="40" cy="172" rx="7" ry="16" fill="${f('calves')}" ${st}/><ellipse cx="60" cy="172" rx="7" ry="16" fill="${f('calves')}" ${st}/>`
-    : `<ellipse cx="50" cy="32" rx="12" ry="6" fill="${f('shoulders')}" ${st}/><ellipse cx="24" cy="38" rx="8" ry="7" fill="${f('shoulders')}" ${st}/><ellipse cx="76" cy="38" rx="8" ry="7" fill="${f('shoulders')}" ${st}/><ellipse cx="20" cy="66" rx="6" ry="14" fill="${f('arms')}" ${st}/><ellipse cx="80" cy="66" rx="6" ry="14" fill="${f('arms')}" ${st}/><ellipse cx="32" cy="60" rx="6" ry="18" fill="${f('lats')}" ${st}/><ellipse cx="68" cy="60" rx="6" ry="18" fill="${f('lats')}" ${st}/><ellipse cx="50" cy="86" rx="8" ry="10" fill="${f('core')}" ${st}/><ellipse cx="42" cy="104" rx="10" ry="10" fill="${f('glutes')}" ${st}/><ellipse cx="58" cy="104" rx="10" ry="10" fill="${f('glutes')}" ${st}/><ellipse cx="38" cy="136" rx="9" ry="22" fill="${f('hams')}" ${st}/><ellipse cx="62" cy="136" rx="9" ry="22" fill="${f('hams')}" ${st}/><ellipse cx="40" cy="174" rx="7" ry="15" fill="${f('calves')}" ${st}/><ellipse cx="60" cy="174" rx="7" ry="15" fill="${f('calves')}" ${st}/>`;
-  return `<svg viewBox="0 0 100 220" style="height:150px" role="img" aria-label="Mapa muscular — ${view === 'front' ? 'frente' : 'costas'}">${defs}${outline}${head}${zones}</svg>`;
+  const cfg = BODY_FIG[view];
+  const defs = `<defs><radialGradient id="mgP${uid}" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ff7a1a" stop-opacity=".95"/><stop offset="60%" stop-color="#ff5a00" stop-opacity=".6"/><stop offset="100%" stop-color="#ff5a00" stop-opacity="0"/></radialGradient><radialGradient id="mgS${uid}" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#d98a4a" stop-opacity=".7"/><stop offset="100%" stop-color="#d98a4a" stop-opacity="0"/></radialGradient></defs>`;
+  const zones = Object.entries(cfg.zones).map(([key, shapes]) => {
+    const fill = P.has(key) ? `url(#mgP${uid})` : S.has(key) ? `url(#mgS${uid})` : null;
+    return fill ? shapes.map(([cx, cy, rx, ry]) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${fill}"/>`).join('') : '';
+  }).join('');
+  return `<span style="position:relative;display:inline-block;height:170px"><img src="${cfg.img}" alt="Mapa muscular — ${view === 'front' ? 'frente' : 'costas'}" style="height:170px;display:block" draggable="false"><svg viewBox="0 0 ${cfg.w} ${cfg.h}" style="position:absolute;inset:0;width:100%;height:100%" aria-hidden="true">${defs}${zones}</svg></span>`;
 }
 
 function bodySvg(primary, secondary) {
   const P = zonesOf(primary), S = zonesOf(secondary);
-  return `<div style="display:flex;justify-content:center;gap:10px;align-items:flex-end">${muscleFigure('front', P, S, 'f')}${muscleFigure('back', P, S, 'b')}</div><div style="display:flex;justify-content:center;gap:34px;color:#666;font-size:9px;margin-top:2px"><span>FRENTE</span><span>COSTAS</span></div>`;
+  return `<div style="display:flex;justify-content:center;gap:14px;align-items:flex-end">${muscleFigure('front', P, S, 'f')}${muscleFigure('back', P, S, 'b')}</div><div style="display:flex;justify-content:center;gap:44px;color:#666;font-size:9px;margin-top:2px"><span>FRENTE</span><span>COSTAS</span></div>`;
 }
 
 const stars = (v, max = 5) => { if (v == null) return '—'; const full = Math.max(0, Math.min(5, Math.round(v / (max / 5)))); return `${'★★★★★'.slice(0, full)}${'☆☆☆☆☆'.slice(0, 5 - full)} <span style="color:#888;font-size:11px">${v}/${max}</span>` };
