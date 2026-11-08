@@ -3,13 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#667eea">
+    <meta name="theme-color" content="#f58220">
     <meta name="description" content="Dashboard de Indicadores de Utilização - MAB Training">
     <title>MAB Training - Dashboard</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' fill='%23667eea'>📊</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%23667eea' width='180' height='180'/><text y='135' font-size='120' fill='white' text-anchor='middle' x='90'>📊</text></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23080808' width='100' height='100'/><text y='75' font-size='75' fill='%23f58220'>📊</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%23080808' width='180' height='180'/><text y='135' font-size='120' fill='%23f58220' text-anchor='middle' x='90'>📊</text></svg>">
     <style>
+        :root {
+            --mab-black: #080808;
+            --mab-dark-gray: #171717;
+            --mab-gray: #383838;
+            --mab-light-gray: #aaa;
+            --mab-white: #ffffff;
+            --mab-orange: #f58220;
+            --mab-orange-light: #ffad70;
+            --mab-border: #383838;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -18,8 +31,8 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
+            background: var(--mab-black);
+            color: var(--mab-white);
             min-height: 100vh;
             padding: 1rem;
         }
@@ -30,17 +43,18 @@
         }
 
         header {
-            background: white;
+            background: linear-gradient(145deg, var(--mab-dark-gray), var(--mab-black));
             padding: 2rem;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--mab-border);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             margin-bottom: 2rem;
             text-align: center;
         }
 
         header h1 {
             font-size: 2rem;
-            color: #667eea;
+            color: var(--mab-orange);
             margin-bottom: 0.5rem;
             display: flex;
             align-items: center;
@@ -49,7 +63,7 @@
         }
 
         header p {
-            color: #666;
+            color: var(--mab-light-gray);
             font-size: 0.95rem;
         }
 
@@ -63,7 +77,7 @@
 
         button {
             padding: 0.75rem 1.5rem;
-            border: none;
+            border: 1px solid var(--mab-border);
             border-radius: 8px;
             font-size: 0.95rem;
             cursor: pointer;
@@ -72,23 +86,26 @@
         }
 
         .btn-primary {
-            background: #667eea;
-            color: white;
+            background: var(--mab-orange);
+            color: var(--mab-black);
+            border: 0;
         }
 
         .btn-primary:hover {
-            background: #5568d3;
+            background: var(--mab-orange-light);
             transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 12px rgba(245, 130, 32, 0.4);
         }
 
         .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
+            background: var(--mab-dark-gray);
+            color: var(--mab-white);
+            border: 1px solid var(--mab-border);
         }
 
         .btn-secondary:hover {
-            background: #e0e0e0;
+            background: var(--mab-gray);
+            border-color: var(--mab-orange);
         }
 
         .status {
@@ -97,13 +114,15 @@
             gap: 0.5rem;
             font-size: 0.9rem;
             padding: 0.75rem 1rem;
-            background: #f8f9fa;
+            background: var(--mab-dark-gray);
+            border: 1px solid var(--mab-border);
             border-radius: 8px;
             margin-top: 1rem;
+            color: var(--mab-light-gray);
         }
 
         .status.loading {
-            color: #ff9800;
+            color: var(--mab-orange);
         }
 
         .status.success {
@@ -111,15 +130,15 @@
         }
 
         .status.error {
-            color: #f44336;
+            color: #d84a4a;
         }
 
         .spinner {
             display: inline-block;
             width: 16px;
             height: 16px;
-            border: 2px solid rgba(0, 0, 0, 0.1);
-            border-top-color: currentColor;
+            border: 2px solid var(--mab-border);
+            border-top-color: var(--mab-orange);
             border-radius: 50%;
             animation: spin 0.6s linear infinite;
         }
@@ -136,21 +155,23 @@
         }
 
         .card {
-            background: white;
+            background: linear-gradient(145deg, var(--mab-dark-gray), var(--mab-black));
             padding: 1.5rem;
+            border: 1px solid var(--mab-border);
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
         .card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 8px 12px rgba(245, 130, 32, 0.2);
+            border-color: var(--mab-orange);
         }
 
         .card h2 {
             font-size: 0.95rem;
-            color: #666;
+            color: var(--mab-light-gray);
             margin-bottom: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -159,21 +180,22 @@
         .metric-value {
             font-size: 2.5rem;
             font-weight: bold;
-            color: #667eea;
+            color: var(--mab-orange);
             margin-bottom: 0.5rem;
         }
 
         .metric-label {
             font-size: 0.85rem;
-            color: #999;
+            color: var(--mab-light-gray);
         }
 
         .activity-item {
             padding: 1rem;
-            border-left: 3px solid #667eea;
+            border-left: 3px solid var(--mab-orange);
             margin-bottom: 0.75rem;
-            background: #f8f9fa;
+            background: var(--mab-dark-gray);
             border-radius: 4px;
+            border: 1px solid var(--mab-border);
         }
 
         .activity-item:last-child {
@@ -182,13 +204,13 @@
 
         .activity-title {
             font-weight: 600;
-            color: #333;
+            color: var(--mab-white);
             margin-bottom: 0.25rem;
         }
 
         .activity-time {
             font-size: 0.8rem;
-            color: #999;
+            color: var(--mab-light-gray);
         }
 
         .chart-container {
@@ -211,19 +233,19 @@
         }
 
         .trend.up {
-            background: #c8e6c9;
-            color: #2e7d32;
+            background: rgba(245, 130, 32, 0.2);
+            color: var(--mab-orange-light);
         }
 
         .trend.down {
-            background: #ffcdd2;
-            color: #c62828;
+            background: rgba(216, 74, 74, 0.2);
+            color: #ff9999;
         }
 
         .offline-banner {
             display: none;
-            background: #ff9800;
-            color: white;
+            background: var(--mab-orange);
+            color: var(--mab-black);
             padding: 1rem;
             border-radius: 8px;
             margin-bottom: 1rem;
@@ -238,12 +260,12 @@
         .footer {
             text-align: center;
             padding: 2rem;
-            color: white;
+            color: var(--mab-light-gray);
             font-size: 0.9rem;
         }
 
         .loading-skeleton {
-            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background: linear-gradient(90deg, var(--mab-dark-gray) 25%, var(--mab-gray) 50%, var(--mab-dark-gray) 75%);
             background-size: 200% 100%;
             animation: loading 1.5s infinite;
             height: 50px;
@@ -257,12 +279,13 @@
         }
 
         .repo-link {
-            color: #667eea;
+            color: var(--mab-orange);
             text-decoration: none;
             font-weight: 600;
         }
 
         .repo-link:hover {
+            color: var(--mab-orange-light);
             text-decoration: underline;
         }
 
@@ -285,13 +308,15 @@
         }
 
         .install-prompt {
-            background: white;
+            background: linear-gradient(145deg, var(--mab-dark-gray), var(--mab-black));
             padding: 1.5rem;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--mab-border);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             margin-bottom: 2rem;
             text-align: center;
             display: none;
+            color: var(--mab-white);
         }
 
         .install-prompt.show {
