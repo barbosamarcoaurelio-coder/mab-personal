@@ -420,5 +420,5 @@ function observeUi(){
 }
 
 observeUi();
-window.MAB306={version:'4.1.0',versionName:'Performance & Recovery',toCsv};
+window.MAB306={version:'4.1.1',versionName:'Performance & Recovery',toCsv};
 export {toCsv};
