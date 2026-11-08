@@ -53,8 +53,10 @@ function escapeHtml(value) {
 
 function insertVideoLink(context) {
   const ex = context.exercises.find(e => e.id === context.item.exerciseId);
-  document.querySelector('#mabExerciseVideo')?.remove();
-  if (!ex?.videoUrl) return;
+  const existing = document.querySelector('#mabExerciseVideo');
+  if (!ex?.videoUrl) { existing?.remove(); return }
+  if (existing && existing.getAttribute('href') === ex.videoUrl) return;
+  existing?.remove();
   const h2 = [...document.querySelectorAll('h2')].find(x => x.textContent.trim() === ex.name);
   if (!h2) return;
   const a = document.createElement('a');
@@ -117,17 +119,22 @@ async function enhanceWorkout() {
     const reps = row.querySelector('[data-set="reps"]');
     const rir = row.querySelector('[data-set="rir"]');
     [kg, reps, rir].forEach(input => {
-      if (input) input.style.fontSize = '16px';
+      if (input && input.style.fontSize !== '16px') input.style.fontSize = '16px';
     });
     row.querySelector('.mab-load-reference')?.remove();
-    row.querySelector('.mab-previous-row')?.remove();
-    if (prior) {
-      const ref = document.createElement('div');
-      ref.className = 'mab-previous-row';
-      ref.setAttribute('aria-label', `Execução anterior da série ${seriesNumber}`);
-      ref.innerHTML = `<span class="mab-label">Anterior</span><span class="mab-value">${escapeHtml(prior.reps??'-')}</span><span class="mab-value">${escapeHtml(prior.weight??'-')}</span><span class="mab-value">${escapeHtml(prior.rir??'-')}</span><span></span>`;
-      row.appendChild(ref);
-    }
+    const priorHtml = prior ? `<span class="mab-label">Anterior</span><span class="mab-value">${escapeHtml(prior.reps??'-')}</span><span class="mab-value">${escapeHtml(prior.weight??'-')}</span><span class="mab-value">${escapeHtml(prior.rir??'-')}</span><span></span>` : null;
+    const existingRef = row.querySelector('.mab-previous-row');
+    if (priorHtml) {
+      if (!existingRef || existingRef.dataset.content !== priorHtml) {
+        existingRef?.remove();
+        const ref = document.createElement('div');
+        ref.className = 'mab-previous-row';
+        ref.dataset.content = priorHtml;
+        ref.setAttribute('aria-label', `Execução anterior da série ${seriesNumber}`);
+        ref.innerHTML = priorHtml;
+        row.appendChild(ref);
+      }
+    } else existingRef?.remove();
     if (alreadySaved) row.classList.add('mab-series-saved');
     else row.classList.remove('mab-series-saved');
   });
@@ -136,18 +143,19 @@ async function enhanceWorkout() {
   const isLast = index >= items.length - 1;
   const info = ensureInfoArea(nextButton);
   if (isLast) {
-    nextButton.hidden = true;
-    info.hidden = true;
-    info.innerHTML = '';
+    if (!nextButton.hidden) nextButton.hidden = true;
+    if (!info.hidden) info.hidden = true;
+    if (info.innerHTML !== '') info.innerHTML = '';
   } else {
-    nextButton.hidden = false;
-    info.hidden = false;
+    if (nextButton.hidden) nextButton.hidden = false;
+    if (info.hidden) info.hidden = false;
+    if (nextButton.disabled) nextButton.disabled = false;
+    if (nextButton.textContent !== 'Próximo →') nextButton.textContent = 'Próximo →';
+    if (nextButton.hasAttribute('aria-disabled')) nextButton.removeAttribute('aria-disabled');
     const nextItem = items[index + 1];
     const nextExercise = exercises.find(e => e.id === nextItem?.exerciseId);
-    nextButton.disabled = false;
-    nextButton.textContent = 'Próximo →';
-    nextButton.removeAttribute('aria-disabled');
-    info.innerHTML = `<span class="muted">A seguir</span><strong>${escapeHtml(nextExercise?.name||'Próximo exercício')}</strong>`;
+    const infoHtml = `<span class="muted">A seguir</span><strong>${escapeHtml(nextExercise?.name||'Próximo exercício')}</strong>`;
+    if (info.innerHTML !== infoHtml) info.innerHTML = infoHtml;
   }
 }
 
@@ -228,7 +236,7 @@ function fmtShort(total) {
 }
 async function enhanceShortWorkoutHistory() {
   if (!document.querySelector('.dashboard-layout')) return;
-  const sessions = (await repo.all('workoutSessions')).filter(x => x.status === 'completed' && sessionSeconds(x) < SHORT_WORKOUT_SECONDS).sort((a, b) => (b.startedAt || '').localeCompare(a.startedAt || ''));
+  const sessions = (await repo.all('workoutSessions')).filter(x => x.status === 'completed').sort((a, b) => (b.startedAt || '').localeCompare(a.startedAt || ''));
   const rows = [...document.querySelectorAll('.dashboard-layout .exercise-item')];
   for (const row of rows) {
     if (row.querySelector('.mab-delete-short')) continue;
@@ -239,7 +247,6 @@ async function enhanceShortWorkoutHistory() {
     const duration = (detail.match(/(\d{2}):(\d{2})/) || []);
     if (!group || !date || !duration) continue;
     const seconds = Number(duration[1]) * 60 + Number(duration[2]);
-    if (seconds >= SHORT_WORKOUT_SECONDS) continue;
     const session = sessions.find(x => x.groupCode === group.toUpperCase() && (x.startedAt || '').slice(0, 10) === date && Math.abs(sessionSeconds(x) - seconds) <= 1);
     if (!session) continue;
     row.querySelector('.orange')?.remove();
@@ -273,6 +280,7 @@ shortHistoryObserver.observe(document.querySelector('#app') || document.body, {
   childList: true,
   subtree: true
 });
+window.addEventListener('routechange', () => [120, 450, 1100].forEach(ms => setTimeout(() => enhanceShortWorkoutHistory().catch(console.error), ms)));
 setTimeout(() => enhanceShortWorkoutHistory().catch(console.error), 150);
 
 // v2.10.0 - fechamento inteligente, perfil e calorias editaveis
@@ -540,7 +548,8 @@ async function enhanceNextWorkoutFocus() {
   const group = (start.dataset.group || (h2.textContent.match(/Treino\s+([A-D])/i) || [])[1] || '').toUpperCase();
   if (!group) return;
   const focus = await workoutFocusLabel(group);
-  h2.textContent = focus ? `Treino ${group} · ${focus}` : `Treino ${group}`;
+  const nextText = focus ? `Treino ${group} · ${focus}` : `Treino ${group}`;
+  if (h2.textContent !== nextText) h2.textContent = nextText;
 }
 const focusObserver = new MutationObserver(() => {
   clearTimeout(window.__mabFocusTimer);

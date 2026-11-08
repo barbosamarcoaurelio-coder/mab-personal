@@ -174,34 +174,18 @@ async function finishLive() {
 const ZONE_MAP = { 'Ombros': 'shoulders', 'Peitoral': 'chest', 'Costas': 'lats', 'Bíceps': 'arms', 'Tríceps': 'arms', 'Core': 'core', 'Glúteos': 'glutes', 'Quadríceps': 'quads', 'Pernas': 'quads', 'Posterior': 'hams', 'Panturrilhas': 'calves' };
 const zonesOf = groups => { const z = new Set(); groups.forEach(g => { const k = ZONE_MAP[g]; if (k) z.add(k) }); return z };
 
-/* Mapa muscular: figura realista (assets) + brilho dinâmico projetado por grupo. */
+/* Mapa muscular: figuras reais (assets) + overlays com o formato exato de cada músculo (assets/zones). */
 const BODY_FIG = {
-  front: { img: 'assets/body-front.webp', w: 500, h: 1484, zones: {
-    shoulders: [[97, 237, 42, 32], [403, 237, 42, 32]],
-    chest: [[153, 306, 51, 42], [348, 306, 51, 42]],
-    arms: [[70, 390, 28, 56], [431, 390, 28, 56]],
-    core: [[250, 650, 65, 120], [130, 640, 26, 65], [371, 640, 26, 65]],
-    quads: [[121, 816, 39, 120], [380, 816, 39, 120], [200, 807, 19, 102], [301, 807, 19, 102]],
-    calves: [[139, 1123, 26, 79], [362, 1123, 26, 79]]
-  } },
-  back: { img: 'assets/body-back.webp', w: 500, h: 1495, zones: {
-    shoulders: [[250, 174, 81, 46], [87, 249, 44, 35], [412, 249, 44, 35]],
-    lats: [[110, 383, 37, 104], [389, 383, 37, 104]],
-    arms: [[64, 441, 30, 75], [435, 441, 30, 75]],
-    core: [[250, 545, 52, 52]],
-    glutes: [[174, 650, 64, 58], [325, 650, 64, 58]],
-    hams: [[157, 882, 52, 128], [342, 882, 52, 128]],
-    calves: [[157, 1172, 35, 93], [342, 1172, 35, 93]]
-  } }
+  front: { img: 'assets/body-front.webp', zones: ['shoulders', 'chest', 'arms', 'core', 'quads', 'calves'] },
+  back: { img: 'assets/body-back.webp', zones: ['shoulders', 'lats', 'arms', 'core', 'glutes', 'hams', 'calves'] }
 };
 function muscleFigure(view, P, S, uid) {
   const cfg = BODY_FIG[view];
-  const defs = `<defs><radialGradient id="mgP${uid}" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ff7a1a" stop-opacity=".95"/><stop offset="60%" stop-color="#ff5a00" stop-opacity=".6"/><stop offset="100%" stop-color="#ff5a00" stop-opacity="0"/></radialGradient><radialGradient id="mgS${uid}" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#d98a4a" stop-opacity=".7"/><stop offset="100%" stop-color="#d98a4a" stop-opacity="0"/></radialGradient></defs>`;
-  const zones = Object.entries(cfg.zones).map(([key, shapes]) => {
-    const fill = P.has(key) ? `url(#mgP${uid})` : S.has(key) ? `url(#mgS${uid})` : null;
-    return fill ? shapes.map(([cx, cy, rx, ry]) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${fill}"/>`).join('') : '';
+  const layers = cfg.zones.map(key => {
+    const op = P.has(key) ? 1 : S.has(key) ? .55 : 0;
+    return op ? `<img src="assets/zones/${view}-${key}.webp" alt="" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;opacity:${op}" draggable="false">` : '';
   }).join('');
-  return `<span style="position:relative;display:inline-block;height:170px"><img src="${cfg.img}" alt="Mapa muscular — ${view === 'front' ? 'frente' : 'costas'}" style="height:170px;display:block" draggable="false"><svg viewBox="0 0 ${cfg.w} ${cfg.h}" style="position:absolute;inset:0;width:100%;height:100%" aria-hidden="true">${defs}${zones}</svg></span>`;
+  return `<span style="position:relative;display:inline-block;height:170px"><img src="${cfg.img}" alt="Mapa muscular — ${view === 'front' ? 'frente' : 'costas'}" style="height:170px;display:block" draggable="false">${layers}</span>`;
 }
 
 function bodySvg(primary, secondary) {
@@ -232,7 +216,7 @@ async function openDetail(kind, id) {
     const exIds = [...new Set(sets.map(x => x.exerciseId))];
     const avgPerEx = exIds.length ? Math.round(totalSec / exIds.length) : null;
     const primary = new Set(), secondary = new Set();
-    exIds.forEach(eid => { const ex = exercises.find(e => e.id === eid); if (ex?.primaryMuscleGroup) primary.add(ex.primaryMuscleGroup); (ex?.secondaryMuscleGroups || []).forEach(g => secondary.add(g)) });
+    exIds.forEach(eid => { const ex = exercises.find(e => e.id === eid); const primaries = ex?.primaryMuscleGroups?.length ? ex.primaryMuscleGroups : (ex?.primaryMuscleGroup ? [ex.primaryMuscleGroup] : []); primaries.forEach(g => primary.add(g)); (ex?.secondaryMuscleGroups || []).forEach(g => secondary.add(g)) });
     primary.forEach(g => secondary.delete(g));
     const legend = primary.size || secondary.size ? `${[...primary].join(', ')}${secondary.size ? ` <span style="color:#888">· apoio: ${[...secondary].join(', ')}</span>` : ''}` : 'Classifique os exercícios na Biblioteca para ver o mapa muscular.';
     detailShell(`Treino ${s.groupCode || ''}${groupDesc ? ' · ' + groupDesc : ''}`, (s.startedAt || '').slice(0, 10), `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${metric('Tempo total', fmt(totalSec))}${metric('Média por exercício', avgPerEx != null ? fmt(avgPerEx) : '—')}${metric('Calorias', s.calories != null ? `${s.calories} kcal` : '—')}${metric('Esforço (RPE)', stars(s.sessionRpe, 10))}${metric('Fadiga', stars(s.fatigueAfter, 5))}${metric('Grupo', `Treino ${s.groupCode || '—'}`)}</div><div style="margin-top:10px">${bodySvg(primary, secondary)}</div><div class="muted" style="font-size:11px;text-align:center;margin-top:4px">${legend}</div>`);
@@ -344,4 +328,4 @@ document.addEventListener('click', e => {
   askDetail(row.dataset.detailKind, row.dataset.detailId);
 }, true);
 
-window.MABLive = { version: '4.1.2' };
+window.MABLive = { version: '4.2.0' };

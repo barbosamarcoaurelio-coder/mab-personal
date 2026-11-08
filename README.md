@@ -8,6 +8,13 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
   - Fase 1: Chat UI no app + proxy seguro (Cloudflare Worker gratuito, chave fora do código) + contexto automático do aluno (peso, treino ativo, cargas recentes, sono, RPE) + avaliação de resultados e sugestões em texto.
   - Fase 2: IA propondo criação/ajuste de treinos com tela de confirmação antes de gravar no plano A/B/C/D.
 
+## Versão 4.2.0 — Toque confiável, apagar treino e mapa muscular real
+
+- Crítico: corrigido o redesenho contínuo da tela de treino que fazia os campos de série exigirem vários toques; agora respondem de primeira.
+- Apagar disponível em qualquer treino concluído do histórico (antes só em treinos curtos).
+- Classificação muscular: múltiplos grupos principais e secundários por exercício (o primeiro principal conta nas métricas).
+- Mapa muscular usa o formato real de cada músculo sobre as figuras de frente/costas.
+
 ## Versão 4.1.2 — Mapa dentro do detalhe
 
 - A rota abre em uma área delimitada dentro do popup de detalhe da atividade, sem sobrepor o app.

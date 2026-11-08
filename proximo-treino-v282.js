@@ -33,14 +33,15 @@
       if (heading) {
         const current = heading.textContent || '';
         const suffix = current.includes('·') ? current.slice(current.indexOf('·')) : '';
-        heading.textContent = `Treino ${code}${suffix ? ` ${suffix}` : ''}`;
+        const nextText = `Treino ${code}${suffix ? ` ${suffix}` : ''}`;
+        if (current !== nextText) heading.textContent = nextText;
       }
-      if (start) {
+      if (start && start.dataset.group !== code) {
         start.dataset.group = code;
         start.setAttribute('aria-label', `Iniciar Treino ${code}`);
       }
-      card.dataset.nextWorkout = code;
-      document.documentElement.dataset.mabVersion = '2.8.2';
+      if (card.dataset.nextWorkout !== code) card.dataset.nextWorkout = code;
+      if (document.documentElement.dataset.mabVersion !== '2.8.2') document.documentElement.dataset.mabVersion = '2.8.2';
     } finally {
       applying = false;
     }

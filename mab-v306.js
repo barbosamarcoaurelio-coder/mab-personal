@@ -279,10 +279,11 @@ function renderRecoveryForm(existing=null){
 }
 
 function renderMuscleClassifier(exercise){
-  const primary=exercise.primaryMuscleGroup||exercise.muscleGroup||'';
-  showModal(`<form id="mabV306MuscleForm" class="stack"><div class="row"><h2>Grupos musculares</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">${esc(exercise.name)} · classificação analítica; não altera o plano.</p><label class="field">Grupo principal<select name="primary" required>${MUSCLE_GROUPS.map(group=>`<option ${group===primary?'selected':''}>${group}</option>`).join('')}</select></label><fieldset class="stack"><legend>Grupos secundários · marque os aplicáveis</legend>${MUSCLE_GROUPS.map(group=>`<label class="row"><span>${group}</span><input type="checkbox" name="secondary" value="${group}" ${(exercise.secondaryMuscleGroups||[]).includes(group)?'checked':''}></label>`).join('')}</fieldset><div class="row"><button type="button" class="ghost" data-close>Cancelar</button><button class="primary">Salvar classificação</button></div></form>`);
+  const primaries=exercise.primaryMuscleGroups?.length?exercise.primaryMuscleGroups:(exercise.primaryMuscleGroup||exercise.muscleGroup?[exercise.primaryMuscleGroup||exercise.muscleGroup]:[]);
+  const checkboxGroup=(name,checked)=>MUSCLE_GROUPS.map(group=>`<label class="row"><span>${group}</span><input type="checkbox" name="${name}" value="${group}" ${checked.includes(group)?'checked':''}></label>`).join('');
+  showModal(`<form id="mabV306MuscleForm" class="stack"><div class="row"><h2>Grupos musculares</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">${esc(exercise.name)} · classificação analítica; não altera o plano.</p><fieldset class="stack"><legend>Grupos principais · marque 1 ou mais (o 1º marcado conta como principal nas métricas)</legend>${checkboxGroup('primary',primaries)}</fieldset><fieldset class="stack"><legend>Grupos secundários · marque os aplicáveis</legend>${checkboxGroup('secondary',exercise.secondaryMuscleGroups||[])}</fieldset><div class="row"><button type="button" class="ghost" data-close>Cancelar</button><button class="primary">Salvar classificação</button></div></form>`);
   modalContent().querySelectorAll('[data-close]').forEach(button=>button.onclick=closeModal);
-  modalContent().querySelector('form').onsubmit=async event=>{event.preventDefault();const form=new FormData(event.currentTarget),primaryMuscleGroup=form.get('primary');await repo.put('exercises',{...exercise,primaryMuscleGroup,secondaryMuscleGroups:form.getAll('secondary').filter(group=>group!==primaryMuscleGroup),updatedAt:new Date().toISOString()});closeModal();navigate('exercises')}
+  modalContent().querySelector('form').onsubmit=async event=>{event.preventDefault();const form=new FormData(event.currentTarget);const chosen=form.getAll('primary');if(!chosen.length){toast('Marque ao menos um grupo principal.');return}await repo.put('exercises',{...exercise,primaryMuscleGroup:chosen[0],primaryMuscleGroups:chosen,secondaryMuscleGroups:form.getAll('secondary').filter(group=>!chosen.includes(group)),updatedAt:new Date().toISOString()});closeModal();navigate('exercises')}
 }
 
 function download(content,filename,type){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
@@ -420,5 +421,5 @@ function observeUi(){
 }
 
 observeUi();
-window.MAB306={version:'4.1.2',versionName:'Performance & Recovery',toCsv};
+window.MAB306={version:'4.2.0',versionName:'Performance & Recovery',toCsv};
 export {toCsv};
