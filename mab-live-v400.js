@@ -11,8 +11,8 @@ const showModal = html => { const c = modalContent(), m = modal(); if (!c || !m)
 const closeModal = () => modal()?.close();
 const today = () => new Date().toISOString().slice(0, 10);
 
-const METS = { 'Caminhada': 3.5, 'Esteira': 5.5, 'Corrida': 8, 'Bicicleta': 7.5, 'Pilates': 3, 'Jiu Jitsu': 9, 'TRX': 6, 'Outra': 5 };
-const GPS_MODALITIES = ['Caminhada', 'Corrida', 'Bicicleta'];
+const METS = { 'Caminhada/Corrida': 3.5, 'Esteira': 5.5, 'Bicicleta': 7.5, 'Pilates': 3, 'Jiu Jitsu': 9, 'TRX': 6, 'Outra': 5 };
+const GPS_MODALITIES = ['Caminhada/Corrida', 'Bicicleta'];
 const PAIN_REGIONS = ['Ombro', 'Cotovelo', 'Punho', 'Peitoral', 'Costas', 'Lombar', 'Quadril', 'Joelho', 'Tornozelo', 'Bíceps', 'Tríceps', 'Coxa', 'Panturrilha', 'Outra'];
 
 async function currentWeight() {
@@ -116,7 +116,8 @@ async function finishLive() {
   document.querySelector('#mabLiveOverlay')?.remove();
   liveState = null;
   const weight = await currentWeight();
-  const met = METS[st.modality] ?? 5;
+  let met = METS[st.modality] ?? 5;
+  if (st.modality === 'Caminhada/Corrida' && avgSpeedKmh != null) met = avgSpeedKmh >= 6 ? 8 : 3.5;
   const estimated = weight ? Math.round(met * weight * (seconds / 3600)) : null;
   const overlay = document.createElement('div');
   overlay.id = 'mabLiveSummary';
@@ -141,6 +142,7 @@ async function finishLive() {
       distanceKm,
       avgSpeedKmh,
       gpsTracked: distanceKm != null,
+      route: st.points.length > 1 ? (st.points.length > 1200 ? st.points.filter((_, i) => i % Math.ceil(st.points.length / 1200) === 0) : st.points).map(p => [+p.latitude.toFixed(5), +p.longitude.toFixed(5)]) : null,
       met,
       estimatedCalories: estimated,
       calories: num('#mabLiveCalories'),
@@ -230,7 +232,8 @@ async function openDetail(kind, id) {
   const a = await repo.get('activityDiary', id);
   if (!a) return;
   const sec = a.durationSeconds ?? Math.round(Number(a.durationMinutes || 0) * 60);
-  detailShell(a.modality || 'Atividade', a.date || '', `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${metric('Duração', fmt(sec))}${metric('Distância', a.distanceKm != null ? `${a.distanceKm} km` : '—')}${metric('Velocidade média', a.avgSpeedKmh != null ? `${a.avgSpeedKmh} km/h` : '—')}${metric('Calorias', a.calories != null ? `${a.calories} kcal` : '—')}${metric('Esforço (RPE)', stars(a.sessionRpe, 10))}${metric('Fadiga', stars(a.fatigueAfter, 5))}</div>${a.intensity ? `<div class="muted" style="font-size:12px;margin-top:8px">Intensidade: ${esc(a.intensity)}</div>` : ''}${a.notes ? `<div class="muted" style="font-size:12px;margin-top:4px">Obs.: ${esc(a.notes)}</div>` : ''}`);
+  detailShell(a.modality || 'Atividade', a.date || '', `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${metric('Duração', fmt(sec))}${metric('Distância', a.distanceKm != null ? `${a.distanceKm} km` : '—')}${metric('Velocidade média', a.avgSpeedKmh != null ? `${a.avgSpeedKmh} km/h` : '—')}${metric('Calorias', a.calories != null ? `${a.calories} kcal` : '—')}${metric('Esforço (RPE)', stars(a.sessionRpe, 10))}${metric('Fadiga', stars(a.fatigueAfter, 5))}</div>${a.intensity ? `<div class="muted" style="font-size:12px;margin-top:8px">Intensidade: ${esc(a.intensity)}</div>` : ''}${a.notes ? `<div class="muted" style="font-size:12px;margin-top:4px">Obs.: ${esc(a.notes)}</div>` : ''}${a.route?.length > 1 ? `<button class="secondary" id="mabRouteMapBtn" style="width:100%;margin-top:8px">🗺 Ver rota no mapa</button>` : ''}`);
+  modalContent()?.querySelector('#mabRouteMapBtn')?.addEventListener('click', () => openRouteMap(a));
   } catch (e) {
     showModal(`<div class="stack"><div class="row"><strong>Não foi possível abrir o detalhe</strong><button type="button" class="ghost" data-close>✕</button></div><p class="muted">${esc(e.message)}</p></div>`);
     modalContent()?.querySelector('[data-close]')?.addEventListener('click', closeModal);
@@ -241,6 +244,67 @@ function askDetail(kind, id) {
   showModal(`<div class="stack"><div class="row"><h2 style="font-size:18px">Atividade recente</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Ver detalhe desta execução?</p><div class="row"><button type="button" class="ghost" data-close>Agora não</button><button class="primary" id="mabDetailYes">Ver detalhes</button></div></div>`);
   modalContent().querySelectorAll('[data-close]').forEach(b => b.onclick = closeModal);
   modalContent().querySelector('#mabDetailYes').onclick = ev => { ev.currentTarget.disabled = true; openDetail(kind, id).catch(e => { ev.currentTarget.disabled = false; toast(e.message) }) };
+}
+
+/* ---------- Rota no mapa (OpenStreetMap, grátis, sem chave) ---------- */
+let leafletReady = null;
+function loadLeaflet() {
+  if (window.L) return Promise.resolve();
+  if (leafletReady) return leafletReady;
+  leafletReady = new Promise((res, rej) => {
+    const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = 'vendor/leaflet/leaflet.css'; document.head.appendChild(link);
+    const s = document.createElement('script'); s.src = 'vendor/leaflet/leaflet.js'; s.onload = () => res(); s.onerror = () => rej(new Error('mapa indisponível')); document.head.appendChild(s);
+  });
+  return leafletReady;
+}
+
+function drawRouteCanvas(host, pts, note) {
+  host.style.position = 'relative';
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'width:100%;height:100%;display:block';
+  host.appendChild(canvas);
+  const rect = host.getBoundingClientRect();
+  canvas.width = rect.width * 2; canvas.height = rect.height * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  const lats = pts.map(p => p[0]), lngs = pts.map(p => p[1]);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats), minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+  const pad = 20, w = rect.width - pad * 2, h = rect.height - pad * 2;
+  const sc = Math.min(w / ((maxLng - minLng) || 1e-9), h / ((maxLat - minLat) || 1e-9));
+  const xy = p => [pad + (p[1] - minLng) * sc + (w - (maxLng - minLng) * sc) / 2, pad + (maxLat - p[0]) * sc + (h - (maxLat - minLat) * sc) / 2];
+  ctx.strokeStyle = '#ff851b'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.beginPath();
+  pts.forEach((p, i) => { const [x, y] = xy(p); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y) });
+  ctx.stroke();
+  const [sx, sy] = xy(pts[0]); ctx.fillStyle = '#30d158'; ctx.beginPath(); ctx.arc(sx, sy, 6, 0, 7); ctx.fill();
+  const [ex, ey] = xy(pts[pts.length - 1]); ctx.fillStyle = '#ff453a'; ctx.beginPath(); ctx.arc(ex, ey, 6, 0, 7); ctx.fill();
+  if (note) { const n = document.createElement('div'); n.style.cssText = 'position:absolute;left:0;right:0;bottom:8px;text-align:center;color:#888;font-size:11px'; n.textContent = note; host.appendChild(n) }
+}
+
+async function openRouteMap(a) {
+  const overlay = document.createElement('div');
+  overlay.id = 'mabRouteOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#080808;display:flex;flex-direction:column';
+  overlay.innerHTML = `<div style="padding:14px 16px;display:flex;align-items:center;gap:10px;color:#fff"><strong style="flex:1">${esc(a.modality)} · rota</strong><button id="mabRouteClose" style="background:#222;color:#fff;border:1px solid #444;border-radius:10px;padding:8px 14px">Fechar</button></div><div id="mabRouteMap" style="flex:1;background:#0d0d0d"></div><div style="padding:10px 16px;color:#aaa;font-size:12px">${a.distanceKm != null ? a.distanceKm + ' km' : ''}${a.avgSpeedKmh != null ? ' · ' + a.avgSpeedKmh + ' km/h' : ''} · dados do mapa © OpenStreetMap</div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#mabRouteClose').onclick = () => overlay.remove();
+  const pts = a.route.map(p => [p[0], p[1]]);
+  const host = overlay.querySelector('#mabRouteMap');
+  if (!navigator.onLine) { drawRouteCanvas(host, pts, 'Sem conexão — trajeto sem o fundo do mapa'); return }
+  try {
+    await loadLeaflet();
+    const map = L.map(host, { attributionControl: false });
+    let tileOk = false;
+    const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, crossOrigin: true });
+    tiles.on('load', () => tileOk = true);
+    tiles.addTo(map);
+    const line = L.polyline(pts, { color: '#ff851b', weight: 5, opacity: .92 }).addTo(map);
+    L.circleMarker(pts[0], { radius: 7, color: '#30d158', fillOpacity: 1 }).addTo(map);
+    L.circleMarker(pts[pts.length - 1], { radius: 7, color: '#ff453a', fillOpacity: 1 }).addTo(map);
+    map.fitBounds(line.getBounds(), { padding: [24, 24] });
+    setTimeout(() => { if (!tileOk && document.body.contains(overlay)) { map.remove(); host.innerHTML = ''; drawRouteCanvas(host, pts, 'Mapa indisponível no momento — trajeto sem o fundo') } }, 8000);
+  } catch (e) {
+    drawRouteCanvas(host, pts, 'Mapa indisponível — trajeto sem o fundo do mapa');
+  }
 }
 
 /* ---------- Ouvintes ---------- */

@@ -8,6 +8,11 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
   - Fase 1: Chat UI no app + proxy seguro (Cloudflare Worker gratuito, chave fora do código) + contexto automático do aluno (peso, treino ativo, cargas recentes, sono, RPE) + avaliação de resultados e sugestões em texto.
   - Fase 2: IA propondo criação/ajuste de treinos com tela de confirmação antes de gravar no plano A/B/C/D.
 
+## Versão 4.1.0 — Rota no mapa
+
+- Atividades com GPS (Caminhada/Corrida, Bicicleta) gravam o trajeto e exibem a rota no mapa (OpenStreetMap, sem custo e sem chave), com marcadores de início e fim; sem internet, mostra a linha do trajeto sem o fundo do mapa.
+- Velocidade média exibida durante e após a atividade; a modalidade Caminhada passa a ser Caminhada/Corrida, com MET estimado pela velocidade média quando há GPS.
+
 ## Versão 4.0.0 — Atividades ao vivo e detalhe da execução
 
 - "+ Registrar outra atividade" oferece Iniciar agora (cronômetro) ou Registrar atividade passada.
