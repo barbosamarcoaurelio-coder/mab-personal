@@ -8,6 +8,11 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
   - Fase 1: Chat UI no app + proxy seguro (Cloudflare Worker gratuito, chave fora do código) + contexto automático do aluno (peso, treino ativo, cargas recentes, sono, RPE) + avaliação de resultados e sugestões em texto.
   - Fase 2: IA propondo criação/ajuste de treinos com tela de confirmação antes de gravar no plano A/B/C/D.
 
+## Versão 4.1.2 — Mapa dentro do detalhe
+
+- A rota abre em uma área delimitada dentro do popup de detalhe da atividade, sem sobrepor o app.
+- Atividades paradas (sem deslocamento GPS) não gravam trajeto vazio nem exibem o botão de rota.
+
 ## Versão 4.1.1 — Correções do mapa e velocidade ao vivo
 
 - O mapa da rota abre por cima do popup de detalhe (antes ficava escondido atrás dele).

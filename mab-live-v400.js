@@ -151,7 +151,7 @@ async function finishLive() {
       avgSpeedKmh,
       maxSpeedKmh: st.maxSpeedKmh ?? null,
       gpsTracked: distanceKm != null,
-      route: st.points.length > 1 ? (st.points.length > 1200 ? st.points.filter((_, i) => i % Math.ceil(st.points.length / 1200) === 0) : st.points).map(p => [+p.latitude.toFixed(5), +p.longitude.toFixed(5)]) : null,
+      route: distanceKm != null && st.points.length > 1 ? (st.points.length > 1200 ? st.points.filter((_, i) => i % Math.ceil(st.points.length / 1200) === 0) : st.points).map(p => [+p.latitude.toFixed(5), +p.longitude.toFixed(5)]) : null,
       met,
       estimatedCalories: estimated,
       calories: num('#mabLiveCalories'),
@@ -242,7 +242,20 @@ async function openDetail(kind, id) {
   if (!a) return;
   const sec = a.durationSeconds ?? Math.round(Number(a.durationMinutes || 0) * 60);
   detailShell(a.modality || 'Atividade', a.date || '', `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${metric('Duração', fmt(sec))}${metric('Distância', a.distanceKm != null ? `${a.distanceKm} km` : '—')}${metric('Velocidade média', a.avgSpeedKmh != null ? `${a.avgSpeedKmh} km/h` : '—')}${metric('Vel. máxima', a.maxSpeedKmh != null ? `${a.maxSpeedKmh} km/h` : '—')}${metric('Calorias', a.calories != null ? `${a.calories} kcal` : '—')}${metric('Esforço (RPE)', stars(a.sessionRpe, 10))}${metric('Fadiga', stars(a.fatigueAfter, 5))}</div>${a.intensity ? `<div class="muted" style="font-size:12px;margin-top:8px">Intensidade: ${esc(a.intensity)}</div>` : ''}${a.notes ? `<div class="muted" style="font-size:12px;margin-top:4px">Obs.: ${esc(a.notes)}</div>` : ''}${a.route?.length > 1 ? `<button class="secondary" id="mabRouteMapBtn" style="width:100%;margin-top:8px">🗺 Ver rota no mapa</button>` : ''}`);
-  modalContent()?.querySelector('#mabRouteMapBtn')?.addEventListener('click', () => openRouteMap(a));
+  modalContent()?.querySelector('#mabRouteMapBtn')?.addEventListener('click', ev => {
+    const btn = ev.currentTarget;
+    btn.disabled = true;
+    btn.textContent = 'Carregando mapa…';
+    const host = document.createElement('div');
+    host.style.cssText = 'height:230px;border-radius:12px;overflow:hidden;border:1px solid #333;margin-top:8px;background:#0d0d0d';
+    btn.replaceWith(host);
+    const note = document.createElement('div');
+    note.className = 'muted';
+    note.style.cssText = 'font-size:10px;text-align:center;margin-top:4px';
+    note.textContent = `${a.distanceKm != null ? a.distanceKm + ' km' : ''}${a.avgSpeedKmh != null ? ' · ' + a.avgSpeedKmh + ' km/h' : ''} · dados do mapa © OpenStreetMap`;
+    host.after(note);
+    showRouteInline(host, a);
+  });
   } catch (e) {
     showModal(`<div class="stack"><div class="row"><strong>Não foi possível abrir o detalhe</strong><button type="button" class="ghost" data-close>✕</button></div><p class="muted">${esc(e.message)}</p></div>`);
     modalContent()?.querySelector('[data-close]')?.addEventListener('click', closeModal);
@@ -289,29 +302,22 @@ function drawRouteCanvas(host, pts, note) {
   if (note) { const n = document.createElement('div'); n.style.cssText = 'position:absolute;left:0;right:0;bottom:8px;text-align:center;color:#888;font-size:11px'; n.textContent = note; host.appendChild(n) }
 }
 
-async function openRouteMap(a) {
-  const overlay = document.createElement('div');
-  overlay.id = 'mabRouteOverlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#080808;display:flex;flex-direction:column';
-  overlay.innerHTML = `<div style="padding:14px 16px;display:flex;align-items:center;gap:10px;color:#fff"><strong style="flex:1">${esc(a.modality)} · rota</strong><button id="mabRouteClose" style="background:#222;color:#fff;border:1px solid #444;border-radius:10px;padding:8px 14px">Fechar</button></div><div id="mabRouteMap" style="flex:1;background:#0d0d0d"></div><div style="padding:10px 16px;color:#aaa;font-size:12px">${a.distanceKm != null ? a.distanceKm + ' km' : ''}${a.avgSpeedKmh != null ? ' · ' + a.avgSpeedKmh + ' km/h' : ''} · dados do mapa © OpenStreetMap</div>`;
-  closeModal();
-  document.body.appendChild(overlay);
-  overlay.querySelector('#mabRouteClose').onclick = () => overlay.remove();
+async function showRouteInline(host, a) {
   const pts = a.route.map(p => [p[0], p[1]]);
-  const host = overlay.querySelector('#mabRouteMap');
   if (!navigator.onLine) { drawRouteCanvas(host, pts, 'Sem conexão — trajeto sem o fundo do mapa'); return }
   try {
     await loadLeaflet();
     const map = L.map(host, { attributionControl: false });
     let tileOk = false;
-    const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, crossOrigin: true });
+    const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, crossOrigin: 'anonymous' });
     tiles.on('load', () => tileOk = true);
     tiles.addTo(map);
     const line = L.polyline(pts, { color: '#ff851b', weight: 5, opacity: .92 }).addTo(map);
     L.circleMarker(pts[0], { radius: 7, color: '#30d158', fillOpacity: 1 }).addTo(map);
     L.circleMarker(pts[pts.length - 1], { radius: 7, color: '#ff453a', fillOpacity: 1 }).addTo(map);
-    map.fitBounds(line.getBounds(), { padding: [24, 24] });
-    setTimeout(() => { if (!tileOk && document.body.contains(overlay)) { map.remove(); host.innerHTML = ''; drawRouteCanvas(host, pts, 'Mapa indisponível no momento — trajeto sem o fundo') } }, 12000);
+    map.fitBounds(line.getBounds(), { padding: [20, 20] });
+    setTimeout(() => map.invalidateSize(), 250);
+    setTimeout(() => { if (!tileOk && host.isConnected) { map.remove(); host.innerHTML = ''; drawRouteCanvas(host, pts, 'Mapa indisponível no momento — trajeto sem o fundo') } }, 12000);
   } catch (e) {
     drawRouteCanvas(host, pts, 'Mapa indisponível — trajeto sem o fundo do mapa');
   }
@@ -338,4 +344,4 @@ document.addEventListener('click', e => {
   askDetail(row.dataset.detailKind, row.dataset.detailId);
 }, true);
 
-window.MABLive = { version: '4.1.1' };
+window.MABLive = { version: '4.1.2' };
