@@ -4,6 +4,14 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
 
 ## Roadmap
 
+- **Migração para Banco em Nuvem (Cloudflare D1 + Workers - Offline-First)** *(Planejado / Aguardando credenciais)*:
+  - Objetivo: persistência na nuvem sem risco de expiração do IndexedDB no Safari/iOS e sincronização entre múltiplos dispositivos, mantendo o funcionamento 100% offline durante o treino.
+  - Fase 1 (Infraestrutura & D1): setup do `wrangler.toml`, criação do banco D1 e migração do schema SQL relacional (espelhando os stores atuais com campos de controle: `user_id`, `updated_at`, `is_deleted`).
+  - Fase 2 (API Serverless): endpoints no Cloudflare Worker (`/api/sync/push`, `/api/sync/pull` e importador do JSON de backup) com autenticação leve.
+  - Fase 3 (Sync Engine Local): camada de sincronização bidirecional no cliente com estratégia *Last-Write-Wins* ativada ao recuperar conexão (`online`) ou finalizar treinos/avaliações.
+  - Fase 4 (UI/UX): indicador de status de sincronização (nuvem verde/amarela/vermelha) e gerenciamento de conta/sincronização na tela de Configurações.
+  - Fase 5 (Deploy & Validação): testes em modo avião/reconexão e publicação unificada no Cloudflare Pages/Workers.
+
 - **Próximo (avaliação aprovada)**: chat de consultoria com IA focado em musculação, após estabilizar a versão atual com o feedback dos testadores.
   - Fase 1: Chat UI no app + proxy seguro (Cloudflare Worker gratuito, chave fora do código) + contexto automático do aluno (peso, treino ativo, cargas recentes, sono, RPE) + avaliação de resultados e sugestões em texto.
   - Fase 2: IA propondo criação/ajuste de treinos com tela de confirmação antes de gravar no plano A/B/C/D.
@@ -33,6 +41,11 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
        - Total de repetições realizadas.
        - Soma de Kg levantados (Volume Load: soma de repetições × kg).
        - Esforço médio por grupo muscular (RIR médio ou RPE da sessão).
+
+## Versão 4.2.1 — Persistência de medidas corporais e avaliação rápida
+
+- **Preservação de medidas corporais anteriores**: ao registrar apenas o peso corporal pela aba Evolução (`+ Avaliação -> Apenas Peso`), o quadro de "Medidas corporais" mantém as últimas informações de circunferências e membros registradas anteriormente, preservando também a data exata da última medição física.
+- **Fluxo de avaliação rápido e cirúrgico**: seleção clara entre registro rápido de peso corporal e bioimpedância/avaliação corporal completa.
 
 ## Versão 4.1.0 — Rota no mapa
 

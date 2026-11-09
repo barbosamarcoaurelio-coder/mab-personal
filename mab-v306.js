@@ -91,7 +91,9 @@ async function enhanceAssessmentView(){
       row.appendChild(details)
     })
   }
-  const metrics=[['Bíceps E/D',latest?.bicepsLeftCm,latest?.bicepsRightCm],['Antebraço E/D',latest?.forearmLeftCm,latest?.forearmRightCm],['Coxa E/D',latest?.thighLeftCm,latest?.thighRightCm],['Panturrilha E/D',latest?.calfLeftCm,latest?.calfRightCm]];
+  const measureKeys=['bicepsLeftCm','bicepsRightCm','forearmLeftCm','forearmRightCm','thighLeftCm','thighRightCm','calfLeftCm','calfRightCm','abdomenCm','waistCm','waistCircumferenceCm','hipCm'];
+  const latestWithMeasures=assessments.find(a=>measureKeys.some(k=>a[k]!=null&&a[k]!==''));
+  const metrics=[['Bíceps E/D',latestWithMeasures?.bicepsLeftCm,latestWithMeasures?.bicepsRightCm],['Antebraço E/D',latestWithMeasures?.forearmLeftCm,latestWithMeasures?.forearmRightCm],['Coxa E/D',latestWithMeasures?.thighLeftCm,latestWithMeasures?.thighRightCm],['Panturrilha E/D',latestWithMeasures?.calfLeftCm,latestWithMeasures?.calfRightCm]];
   let panel=document.querySelector('#mabV306BodyMeasures');
   if(!panel){
     panel=document.createElement('section');
@@ -99,7 +101,7 @@ async function enhanceAssessmentView(){
     panel.className='card mab-v306-panel';
     composition.insertAdjacentElement('afterend',panel)
   }
-  panel.innerHTML=`<div class="row"><div><h3>Medidas corporais</h3><div class="mab-v306-muted">Avaliação atual · ${esc(latest?.date||'--')}</div></div></div><div class="mab-v306-grid" style="margin-top:10px">${metrics.map(([label,left,right])=>`<div class="mab-v306-metric"><span>${label}</span><strong>${displayValue(left)} / ${displayValue(right)} cm</strong></div>`).join('')}</div><div class="mab-v306-controls"><span class="mab-v306-muted">Abdômen: ${displayValue(latest?.abdomenCm??latest?.waistCm,' cm')}</span><span class="mab-v306-muted">Cintura: ${displayValue(latest?.waistCircumferenceCm,' cm')}</span><span class="mab-v306-muted">Quadril: ${displayValue(latest?.hipCm,' cm')}</span></div>`;
+  panel.innerHTML=`<div class="row"><div><h3>Medidas corporais</h3><div class="mab-v306-muted">Avaliação atual · ${esc(latestWithMeasures?.date||'--')}</div></div></div><div class="mab-v306-grid" style="margin-top:10px">${metrics.map(([label,left,right])=>`<div class="mab-v306-metric"><span>${label}</span><strong>${displayValue(left)} / ${displayValue(right)} cm</strong></div>`).join('')}</div><div class="mab-v306-controls"><span class="mab-v306-muted">Abdômen: ${displayValue(latestWithMeasures?.abdomenCm??latestWithMeasures?.waistCm,' cm')}</span><span class="mab-v306-muted">Cintura: ${displayValue(latestWithMeasures?.waistCircumferenceCm,' cm')}</span><span class="mab-v306-muted">Quadril: ${displayValue(latestWithMeasures?.hipCm,' cm')}</span></div>`;
   const select=document.querySelector('#bodyChartMetric');
   if(select){
     const bodyFatOption=select.querySelector('option[value="bodyFat"]');
@@ -613,5 +615,5 @@ function observeUi(){
 }
 
 observeUi();
-window.MAB306={version:'4.1.2',versionName:'Performance & Recovery',toCsv};
+window.MAB306={version:'4.2.1',versionName:'Performance & Recovery',toCsv};
 export {toCsv};
