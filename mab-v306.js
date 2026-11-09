@@ -122,7 +122,7 @@ async function enhanceDashboardWeight(){
 async function recoveryRows(){return (await repo.all('dailyRecovery')).sort((a,b)=>(b.date||'').localeCompare(a.date||''))}
 async function enhanceRecoveryCard(){
   if(!document.querySelector('#bodyChart')||document.querySelector('#mabV306Recovery'))return;
-  const otherActivities=getCardByHeading('Outras atividades');
+  const otherActivities=getCardByHeading('Atividades registradas')||getCardByHeading('Outras atividades')||getCardByHeading('Exportar para análise');
   if(!otherActivities)return;
   const entries=(await recoveryRows()).slice(0,7);
   const last7=entries.slice(0,7);
@@ -167,31 +167,209 @@ async function enhanceExerciseRows(){
   }
 }
 
-async function weeklyMuscleCounts(){
-  const now=new Date(),start=new Date(now);start.setDate(now.getDate()-6);start.setHours(0,0,0,0);
-  const sessions=(await repo.all('workoutSessions')).filter(s=>s.status==='completed'&&new Date(s.startedAt)>=start);
+let mabMusclePeriod='7d';
+let mabMuscleMetric='sets';
+
+async function getMuscleVolumeData(period='7d'){
+  let sessions;
+  if(period==='month'){
+    const currentMonth=new Date().toISOString().slice(0,7);
+    sessions=(await repo.all('workoutSessions')).filter(s=>s.status==='completed'&&(s.startedAt||'').startsWith(currentMonth));
+  }else{
+    const start=new Date();start.setDate(start.getDate()-6);start.setHours(0,0,0,0);
+    sessions=(await repo.all('workoutSessions')).filter(s=>s.status==='completed'&&new Date(s.startedAt)>=start);
+  }
   const sessionMap=new Map(sessions.map(s=>[s.id,s]));
   const exercises=await repo.all('exercises');
-  const primary={},secondary={};
-  for(const set of await repo.all('executedSets')){
+  const exMap=new Map(exercises.map(e=>[e.id,e]));
+  const allSets=await repo.all('executedSets');
+
+  const primary={};
+  const secondary={};
+  const sessionsWorked={};
+  const totalReps={};
+  const totalLoad={};
+
+  for(const set of allSets){
     if(set.completed!==true||!sessionMap.has(set.sessionId))continue;
-    const exercise=exercises.find(x=>x.id===set.exerciseId);if(!exercise)continue;
-    const main=exercise.primaryMuscleGroup||exercise.muscleGroup||'Sem classificação';
+    const ex=exMap.get(set.exerciseId);
+    if(!ex)continue;
+    const main=ex.primaryMuscleGroup||ex.muscleGroup||'Sem classificação';
+    const reps=Number(set.reps)||0;
+    const weight=Number(set.weight)||0;
+    const load=reps*weight;
+
     primary[main]=(primary[main]||0)+1;
-    for(const group of exercise.secondaryMuscleGroups||[])secondary[group]=(secondary[group]||0)+1
+    totalReps[main]=(totalReps[main]||0)+reps;
+    totalLoad[main]=(totalLoad[main]||0)+load;
+
+    if(!sessionsWorked[main])sessionsWorked[main]=new Set();
+    sessionsWorked[main].add(set.sessionId);
+
+    for(const sec of(ex.secondaryMuscleGroups||[])){
+      secondary[sec]=(secondary[sec]||0)+1;
+      if(!sessionsWorked[sec])sessionsWorked[sec]=new Set();
+      sessionsWorked[sec].add(set.sessionId);
+    }
   }
-  return {primary,secondary}
+
+  const allGroups=[...new Set([...Object.keys(primary),...Object.keys(secondary),...Object.keys(sessionsWorked)])];
+  return {
+    sessions,
+    primary,
+    secondary,
+    sessionsWorked,
+    totalReps,
+    totalLoad,
+    groups:allGroups
+  };
+}
+
+async function renderMuscleChartContent(){
+  const container=document.querySelector('#mabMuscleChartBody');
+  if(!container)return;
+  const data=await getMuscleVolumeData(mabMusclePeriod);
+  const {groups,primary,secondary,sessionsWorked,totalReps,totalLoad}=data;
+
+  if(!groups.length){
+    const periodLabel=mabMusclePeriod==='month'?'neste mês':'nos últimos 7 dias';
+    container.innerHTML=`<div class="empty">Nenhum treino de musculação ${periodLabel}.</div>`;
+    return;
+  }
+
+  if(mabMuscleMetric==='sets'){
+    const items=groups.map(g=>{
+      const p=primary[g]||0;
+      const s=secondary[g]||0;
+      return {group:g,primary:p,secondary:s,total:p+s};
+    }).sort((a,b)=>b.primary-a.primary||b.total-a.total||a.group.localeCompare(b.group,'pt-BR'));
+
+    const maxTotal=Math.max(...items.map(i=>i.total),1);
+
+    container.innerHTML=`
+      <div style="display:flex;gap:14px;font-size:11px;color:#aaa;margin-bottom:12px">
+        <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:10px;height:10px;background:#ff851b;border-radius:2px;display:inline-block"></i>Séries principais</span>
+        <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:10px;height:10px;background:#ffad70;border-radius:2px;display:inline-block"></i>Estímulos secundários</span>
+      </div>
+      <div class="stack" style="gap:12px">
+        ${items.map(item=>{
+          const barWidth=Math.max(5,Math.round((item.total/maxTotal)*100));
+          const priPct=item.total>0?(item.primary/item.total)*100:0;
+          const secPct=item.total>0?(item.secondary/item.total)*100:0;
+          return `
+            <div>
+              <div class="row" style="margin-bottom:4px;font-size:13px">
+                <strong>${esc(item.group)}</strong>
+                <span class="muted">${item.primary} princ.${item.secondary?` · ${item.secondary} sec.`:''}</span>
+              </div>
+              <div style="background:#222;height:10px;border-radius:5px;overflow:hidden;width:100%">
+                <div style="width:${barWidth}%;height:100%;display:flex">
+                  <div style="width:${priPct}%;background:#ff851b;height:100%" title="${item.primary} séries principais"></div>
+                  <div style="width:${secPct}%;background:#ffad70;height:100%" title="${item.secondary} estímulos secundários"></div>
+                </div>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+    `;
+    return;
+  }
+
+  if(mabMuscleMetric==='sessions'){
+    const items=groups.map(g=>({
+      group:g,
+      count:sessionsWorked[g]?.size||0
+    })).filter(i=>i.count>0).sort((a,b)=>b.count-a.count||a.group.localeCompare(b.group,'pt-BR'));
+
+    const maxCount=Math.max(...items.map(i=>i.count),1);
+
+    container.innerHTML=`
+      <div class="stack" style="gap:12px">
+        ${items.map(item=>{
+          const pct=Math.max(5,Math.round((item.count/maxCount)*100));
+          return `
+            <div>
+              <div class="row" style="margin-bottom:4px;font-size:13px">
+                <strong>${esc(item.group)}</strong>
+                <span class="muted">${item.count} ${item.count===1?'treino':'treinos'}</span>
+              </div>
+              <div style="background:#222;height:10px;border-radius:5px;overflow:hidden">
+                <div style="width:${pct}%;background:#ff851b;height:100%"></div>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+    `;
+    return;
+  }
+
+  if(mabMuscleMetric==='reps'){
+    const items=groups.map(g=>({
+      group:g,
+      reps:totalReps[g]||0
+    })).filter(i=>i.reps>0).sort((a,b)=>b.reps-a.reps||a.group.localeCompare(b.group,'pt-BR'));
+
+    const maxReps=Math.max(...items.map(i=>i.reps),1);
+
+    container.innerHTML=`
+      <div class="stack" style="gap:12px">
+        ${items.map(item=>{
+          const pct=Math.max(5,Math.round((item.reps/maxReps)*100));
+          return `
+            <div>
+              <div class="row" style="margin-bottom:4px;font-size:13px">
+                <strong>${esc(item.group)}</strong>
+                <span class="muted">${item.reps.toLocaleString('pt-BR')} reps</span>
+              </div>
+              <div style="background:#222;height:10px;border-radius:5px;overflow:hidden">
+                <div style="width:${pct}%;background:#ff851b;height:100%"></div>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+    `;
+    return;
+  }
+
+  if(mabMuscleMetric==='load'){
+    const items=groups.map(g=>({
+      group:g,
+      load:totalLoad[g]||0
+    })).filter(i=>i.load>0).sort((a,b)=>b.load-a.load||a.group.localeCompare(b.group,'pt-BR'));
+
+    const maxLoad=Math.max(...items.map(i=>i.load),1);
+
+    container.innerHTML=`
+      <div class="stack" style="gap:12px">
+        ${items.map(item=>{
+          const pct=Math.max(5,Math.round((item.load/maxLoad)*100));
+          return `
+            <div>
+              <div class="row" style="margin-bottom:4px;font-size:13px">
+                <strong>${esc(item.group)}</strong>
+                <span class="muted">${Math.round(item.load).toLocaleString('pt-BR')} kg</span>
+              </div>
+              <div style="background:#222;height:10px;border-radius:5px;overflow:hidden">
+                <div style="width:${pct}%;background:#ff851b;height:100%"></div>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+    `;
+    return;
+  }
 }
 
 async function enhanceMuscleVolume(){
-  if(!document.querySelector('#bodyChart')||document.querySelector('#mabV306MuscleVolume'))return;
+  if(!document.querySelector('#bodyChart'))return;
   const history=getCardByHeading('Histórico corporal');if(!history)return;
-  const counts=await weeklyMuscleCounts();
-  const groups=[...new Set([...Object.keys(counts.primary),...Object.keys(counts.secondary)])].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  const card=document.createElement('section');card.id='mabV306MuscleVolume';card.className='card mab-v306-panel';
-  card.innerHTML=`<h3>Séries concluídas por grupo muscular</h3><p class="mab-v306-muted">Últimos 7 dias · não soma exposições secundárias ao volume principal.</p>${groups.length?`<table class="mab-v306-table"><thead><tr><th>Grupo</th><th>Séries principais</th><th>Estímulos secundários</th></tr></thead><tbody>${groups.map(group=>`<tr><td>${esc(group)}</td><td>${counts.primary[group]||0}</td><td>${counts.secondary[group]||0}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Sem séries concluídas nesta semana.</div>'}`;
-  if(document.querySelector('#mabV306MuscleVolume'))return;
-  history.insertAdjacentElement('beforebegin',card)
+  let card=document.querySelector('#mabV306MuscleVolume');
+  if(!card){
+    card=document.createElement('section');card.id='mabV306MuscleVolume';card.className='card mab-v306-panel';
+    card.innerHTML=`<div class="row"><h3>Séries concluídas por grupo muscular</h3></div><div class="chips" style="margin:10px 0 10px"><button type="button" class="chip ${mabMusclePeriod==='7d'?'active':''}" data-mab-muscle-period="7d">Últimos 7 dias</button><button type="button" class="chip ${mabMusclePeriod==='month'?'active':''}" data-mab-muscle-period="month">Mês atual</button></div><label class="field" style="margin-bottom:12px;gap:4px"><span class="mab-v306-muted">Métrica do gráfico</span><select id="mabMuscleMetric" aria-label="Métrica do estímulo muscular" style="background:#0e0e0e;color:#fff;border:1px solid #383838;border-radius:10px;padding:10px;width:100%"><option value="sets" ${mabMuscleMetric==='sets'?'selected':''}>Volume de séries concluídas (principais/secundárias)</option><option value="sessions" ${mabMuscleMetric==='sessions'?'selected':''}>Quantidade de treinos/sessões</option><option value="reps" ${mabMuscleMetric==='reps'?'selected':''}>Total de repetições</option><option value="load" ${mabMuscleMetric==='load'?'selected':''}>Soma de Kg levantados (Volume Load: reps × peso)</option></select></label><div id="mabMuscleChartBody"></div>`;
+    history.insertAdjacentElement('beforebegin',card);
+  }
+  await renderMuscleChartContent();
 }
 
 function showWarmup(session){
@@ -279,11 +457,10 @@ function renderRecoveryForm(existing=null){
 }
 
 function renderMuscleClassifier(exercise){
-  const primaries=exercise.primaryMuscleGroups?.length?exercise.primaryMuscleGroups:(exercise.primaryMuscleGroup||exercise.muscleGroup?[exercise.primaryMuscleGroup||exercise.muscleGroup]:[]);
-  const checkboxGroup=(name,checked)=>MUSCLE_GROUPS.map(group=>`<label class="row"><span>${group}</span><input type="checkbox" name="${name}" value="${group}" ${checked.includes(group)?'checked':''}></label>`).join('');
-  showModal(`<form id="mabV306MuscleForm" class="stack"><div class="row"><h2>Grupos musculares</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">${esc(exercise.name)} · classificação analítica; não altera o plano.</p><fieldset class="stack"><legend>Grupos principais · marque 1 ou mais (o 1º marcado conta como principal nas métricas)</legend>${checkboxGroup('primary',primaries)}</fieldset><fieldset class="stack"><legend>Grupos secundários · marque os aplicáveis</legend>${checkboxGroup('secondary',exercise.secondaryMuscleGroups||[])}</fieldset><div class="row"><button type="button" class="ghost" data-close>Cancelar</button><button class="primary">Salvar classificação</button></div></form>`);
+  const primary=exercise.primaryMuscleGroup||exercise.muscleGroup||'';
+  showModal(`<form id="mabV306MuscleForm" class="stack"><div class="row"><h2>Grupos musculares</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">${esc(exercise.name)} · classificação analítica; não altera o plano.</p><label class="field">Grupo principal<select name="primary" required>${MUSCLE_GROUPS.map(group=>`<option ${group===primary?'selected':''}>${group}</option>`).join('')}</select></label><fieldset class="stack"><legend>Grupos secundários · marque os aplicáveis</legend>${MUSCLE_GROUPS.map(group=>`<label class="row"><span>${group}</span><input type="checkbox" name="secondary" value="${group}" ${(exercise.secondaryMuscleGroups||[]).includes(group)?'checked':''}></label>`).join('')}</fieldset><div class="row"><button type="button" class="ghost" data-close>Cancelar</button><button class="primary">Salvar classificação</button></div></form>`);
   modalContent().querySelectorAll('[data-close]').forEach(button=>button.onclick=closeModal);
-  modalContent().querySelector('form').onsubmit=async event=>{event.preventDefault();const form=new FormData(event.currentTarget);const chosen=form.getAll('primary');if(!chosen.length){toast('Marque ao menos um grupo principal.');return}await repo.put('exercises',{...exercise,primaryMuscleGroup:chosen[0],primaryMuscleGroups:chosen,secondaryMuscleGroups:form.getAll('secondary').filter(group=>!chosen.includes(group)),updatedAt:new Date().toISOString()});closeModal();navigate('exercises')}
+  modalContent().querySelector('form').onsubmit=async event=>{event.preventDefault();const form=new FormData(event.currentTarget),primaryMuscleGroup=form.get('primary');await repo.put('exercises',{...exercise,primaryMuscleGroup,secondaryMuscleGroups:form.getAll('secondary').filter(group=>group!==primaryMuscleGroup),updatedAt:new Date().toISOString()});closeModal();navigate('exercises')}
 }
 
 function download(content,filename,type){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
@@ -391,6 +568,15 @@ function enhanceExportForm(){
 function openRecoveryFromButton(button){const id=button.dataset.v306RecoveryEdit;repo.get('dailyRecovery',id).then(record=>renderRecoveryForm(record)).catch(error=>toast(error.message))}
 function handleClick(event){
   const element=event.target instanceof Element?event.target:null;if(!element)return;
+  const periodBtn=element.closest('[data-mab-muscle-period]');
+  if(periodBtn){
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    mabMusclePeriod=periodBtn.dataset.mabMusclePeriod;
+    document.querySelectorAll('[data-mab-muscle-period]').forEach(b=>b.classList.toggle('active',b.dataset.mabMusclePeriod===mabMusclePeriod));
+    renderMuscleChartContent().catch(error=>toast(error.message));
+    return
+  }
   const startButton=element.closest('button[data-action="start"]');
   if(startButton){event.preventDefault();event.stopImmediatePropagation();startSessionWithCheckin(startButton.dataset.group).catch(error=>toast(error.message));return}
   const add=element.closest('[data-v306-recovery-add]');if(add){event.preventDefault();event.stopImmediatePropagation();renderRecoveryForm();return}
@@ -400,7 +586,13 @@ function handleClick(event){
 
 function handleBodyChartChange(event){
   const select=event.target;
-  if(!(select instanceof HTMLSelectElement)||select.id!=='bodyChartMetric')return;
+  if(!(select instanceof HTMLSelectElement))return;
+  if(select.id==='mabMuscleMetric'){
+    mabMuscleMetric=select.value;
+    renderMuscleChartContent().catch(error=>toast(error.message));
+    return
+  }
+  if(select.id!=='bodyChartMetric')return;
   const metric=select.value==='waistCm'?'abdomenCm':select.value;
   if(!['abdomenCm','waistCircumferenceCm','hipCm','bicepsLeftCm','bicepsRightCm','forearmLeftCm','forearmRightCm','thighLeftCm','thighRightCm','calfLeftCm','calfRightCm'].includes(metric))return;
   event.stopImmediatePropagation();renderAdditionalChart(metric).catch(error=>toast(error.message))
@@ -421,5 +613,5 @@ function observeUi(){
 }
 
 observeUi();
-window.MAB306={version:'4.2.0',versionName:'Performance & Recovery',toCsv};
+window.MAB306={version:'4.1.0',versionName:'Performance & Recovery',toCsv};
 export {toCsv};

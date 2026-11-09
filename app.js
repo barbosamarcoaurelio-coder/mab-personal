@@ -81,8 +81,8 @@ async function dashboard() {
     sortDate: x.date || '',
     title: x.modality,
     detail: `${x.durationMinutes||0} min${x.distanceKm!=null?` · ${x.distanceKm} km`:''}`
-  }))].sort((a, b) => b.sortDate.localeCompare(a.sortDate)).slice(0, 6);
-  return `<section class="grid dashboard-layout"><div class="stack"><div class="card"><div class="muted">PRÓXIMO TREINO</div><h2>Treino A · Superiores</h2><p class="muted">${cycle?esc(cycle.name):'Nenhum ciclo ativo'}</p><div class="stack"><button class="primary" data-action="start" data-group="A">▶ Iniciar musculação</button><button class="secondary" data-action="new-activity">+ Registrar outra atividade</button></div></div><div class="grid two"><div class="card metric"><span class="muted">Peso atual</span><strong>${assessments[0]?.weight??'--'} kg</strong></div><div class="card metric"><span class="muted">Musculações no mês</span><strong>${monthly.length}</strong></div><div class="card metric"><span class="muted">Outras atividades</span><strong>${monthlyActivities.length}</strong></div><div class="card metric"><span class="muted">Tempo ativo</span><strong>${fmt(total+activityMinutes*60)}</strong></div></div></div><div class="card"><h3>Atividades recentes</h3>${recent.map(a=>`<div class="exercise-item" data-detail-kind="${a.type}" data-detail-id="${a.id||''}" style="cursor:pointer"><div><strong>${esc(a.title)}</strong><div class="muted">${esc(a.date)} · ${esc(a.detail)}</div></div>${a.type==='activity'?`<button class="ghost" data-action="edit-activity" data-id="${a.id}">Editar</button>`:'<span class="orange">Concluído</span>'}</div>`).join('')||'<div class="empty">Nenhuma atividade concluída ainda.</div>'}<div class="stack"><button class="ghost" data-route="plan">Editar plano A/B/C/D</button><button class="ghost" data-route="exercises">Biblioteca de exercícios</button><button class="ghost" data-route="evolution">Evolução e histórico</button></div></div></section>`
+  }))].sort((a, b) => b.sortDate.localeCompare(a.sortDate)).slice(0, 10);
+  return `<section class="grid dashboard-layout"><div class="stack"><div class="card"><div class="muted">PRÓXIMO TREINO</div><h2>Treino A · Superiores</h2><p class="muted">${cycle?esc(cycle.name):'Nenhum ciclo ativo'}</p><div class="stack"><button class="primary" data-action="start" data-group="A">▶ Iniciar musculação</button><button class="secondary" data-action="new-activity">+ Registrar outra atividade</button></div></div><div class="grid two"><div class="card metric"><span class="muted">Peso atual</span><strong>${assessments[0]?.weight??'--'} kg</strong></div><div class="card metric"><span class="muted">Musculações no mês</span><strong>${monthly.length}</strong></div><div class="card metric"><span class="muted">Outras atividades</span><strong>${monthlyActivities.length}</strong></div><div class="card metric"><span class="muted">Tempo ativo</span><strong>${fmt(total+activityMinutes*60)}</strong></div></div></div><div class="card"><h3>Atividades recentes</h3><div class="recent-activities-list">${recent.map(a=>`<div class="exercise-item" data-detail-kind="${a.type}" data-detail-id="${a.id||''}" style="cursor:pointer"><div><strong>${esc(a.title)}</strong><div class="muted">${esc(a.date)} · ${esc(a.detail)}</div></div>${a.type==='activity'?`<button class="ghost" data-action="edit-activity" data-id="${a.id}">Editar</button>`:'<span class="orange">Concluído</span>'}</div>`).join('')||'<div class="empty">Nenhuma atividade concluída ainda.</div>'}</div><div class="stack" style="margin-top:12px"><button class="ghost" data-route="plan">Editar plano A/B/C/D</button><button class="ghost" data-route="exercises">Biblioteca de exercícios</button><button class="ghost" data-route="evolution">Evolução e histórico</button></div></div></section>`
 }
 
 async function workout() {
@@ -139,7 +139,7 @@ async function evolution() {
     const d = Number(latest[key]) - Number(previous[key]);
     return `<div class="muted">${d>0?'+':''}${d.toFixed(1)}${u} vs anterior</div>`
   };
-  return `<div class="stack"><div class="row"><h2>Evolução</h2><button class="primary" data-action="new-assessment">+ Avaliação</button></div><div class="card"><h3>Composição corporal atual</h3><div class="grid two"><div class="metric"><span class="muted">Peso</span><strong>${fmtMetric(latest?.weight,' kg')}</strong>${delta('weight',' kg')}</div><div class="metric"><span class="muted">Massa magra</span><strong>${fmtMetric(latest?.leanMass,' kg')}</strong>${delta('leanMass',' kg')}</div><div class="metric"><span class="muted">Massa gorda</span><strong>${fmtMetric(latest?.fatMass,' kg')}</strong>${delta('fatMass',' kg')}</div><div class="metric"><span class="muted">Gordura corporal</span><strong>${fmtMetric(latest?.bodyFat,'%')}</strong>${delta('bodyFat',' p.p.')}</div><div class="metric"><span class="muted">Circunferência abdominal</span><strong>${fmtMetric(latest?.waistCm,' cm')}</strong>${delta('waistCm',' cm')}</div><div class="metric"><span class="muted">Data da avaliação</span><strong>${latest?.date||'--'}</strong></div></div></div><div class="card"><div class="row"><h3>Evolução corporal</h3><select id="bodyChartMetric" aria-label="Indicador do gráfico" style="background:#0e0e0e;color:#fff;border:1px solid #383838;border-radius:10px;padding:10px"><option value="weight">Peso</option><option value="leanMass">Massa magra</option><option value="fatMass">Massa gorda</option><option value="bodyFat">% gordura</option><option value="waistCm">Circunferência</option></select></div><div id="bodyChart"></div></div><div class="card"><h3>Histórico corporal</h3>${[...list].reverse().map(x=>`<div class="exercise-item"><div><strong>${x.weight!=null?`${x.weight} kg`:'— kg'}</strong><div class="muted">${esc(x.date)}</div><div class="muted">Magra: ${fmtMetric(x.leanMass,' kg')} · Gorda: ${fmtMetric(x.fatMass,' kg')} · Abdômen: ${fmtMetric(x.waistCm,' cm')}</div></div><span>${fmtMetric(x.bodyFat,'% gordura')}</span></div>`).join('')||'<div class="empty">Sem avaliações.</div>'}</div><div class="card"><div class="row"><h3>Outras atividades</h3><button class="primary" data-action="new-activity">+ Registrar</button></div>${activities.map(a=>`<div class="exercise-item"><div><strong>${esc(a.modality)}</strong><div class="muted">${esc(a.date)} · ${a.durationMinutes||0} min${a.distanceKm!=null?` · ${a.distanceKm} km`:''}</div></div><button class="ghost" data-action="edit-activity" data-id="${a.id}">Editar</button></div>`).join('')||'<div class="empty">Nenhuma atividade registrada.</div>'}</div><div class="card"><h3>Exportar para análise</h3><p class="muted">Gere um arquivo de texto com exercícios, séries, cargas e atividades por intervalo de datas.</p><button class="secondary" data-action="export-period">Exportar treinos por período</button></div></div>`
+  return `<div class="stack"><div class="row"><h2>Evolução</h2><button class="primary" data-action="new-assessment">+ Avaliação</button></div><div class="card"><h3>Composição corporal atual</h3><div class="grid two"><div class="metric"><span class="muted">Peso</span><strong>${fmtMetric(latest?.weight,' kg')}</strong>${delta('weight',' kg')}</div><div class="metric"><span class="muted">Massa magra</span><strong>${fmtMetric(latest?.leanMass,' kg')}</strong>${delta('leanMass',' kg')}</div><div class="metric"><span class="muted">Massa gorda</span><strong>${fmtMetric(latest?.fatMass,' kg')}</strong>${delta('fatMass',' kg')}</div><div class="metric"><span class="muted">Gordura corporal</span><strong>${fmtMetric(latest?.bodyFat,'%')}</strong>${delta('bodyFat',' p.p.')}</div><div class="metric"><span class="muted">Circunferência abdominal</span><strong>${fmtMetric(latest?.waistCm,' cm')}</strong>${delta('waistCm',' cm')}</div><div class="metric"><span class="muted">Data da avaliação</span><strong>${latest?.date||'--'}</strong></div></div></div><div class="card"><div class="row"><h3>Evolução corporal</h3><select id="bodyChartMetric" aria-label="Indicador do gráfico" style="background:#0e0e0e;color:#fff;border:1px solid #383838;border-radius:10px;padding:10px"><option value="weight">Peso</option><option value="leanMass">Massa magra</option><option value="fatMass">Massa gorda</option><option value="bodyFat">% gordura</option><option value="waistCm">Circunferência</option></select></div><div id="bodyChart"></div></div><div class="card"><h3>Histórico corporal</h3>${[...list].reverse().map(x=>`<div class="exercise-item"><div><strong>${x.weight!=null?`${x.weight} kg`:'— kg'}</strong><div class="muted">${esc(x.date)}</div><div class="muted">Magra: ${fmtMetric(x.leanMass,' kg')} · Gorda: ${fmtMetric(x.fatMass,' kg')} · Abdômen: ${fmtMetric(x.waistCm,' cm')}</div></div><span>${fmtMetric(x.bodyFat,'% gordura')}</span></div>`).join('')||'<div class="empty">Sem avaliações.</div>'}</div><div class="card"><div class="row"><h3>Atividades registradas</h3><select id="activityChartMetric" aria-label="Indicador do gráfico de atividades" style="background:#0e0e0e;color:#fff;border:1px solid #383838;border-radius:10px;padding:10px"><option value="duration">Tempo ativo (minutos)</option><option value="calories">Calorias (kcal)</option><option value="distance">Distância (km)</option><option value="frequency">Frequência por modalidade</option></select></div><div id="activityChart"></div></div><div class="card"><h3>Exportar para análise</h3><p class="muted">Gere um arquivo de texto com exercícios, séries, cargas e atividades por intervalo de datas.</p><button class="secondary" data-action="export-period">Exportar treinos por período</button></div></div>`
 }
 
 function renderBodyChart(metric = 'weight') {
@@ -171,6 +171,127 @@ function renderBodyChart(metric = 'weight') {
     target.innerHTML = '<div class="empty">Não foi possível carregar o gráfico.</div>'
   })
 }
+
+async function renderActivityChart(metric = 'duration') {
+  const target = document.querySelector('#activityChart');
+  if (!target) return;
+  try {
+    const sessions = (await repo.all('workoutSessions')).filter(s => s.status === 'completed');
+    const activities = await repo.all('activityDiary');
+
+    const strengthItems = sessions.map(s => {
+      const durSec = elapsed(s.startedAt, s.finishedAt);
+      const minutes = Math.round((durSec > 0 ? durSec : (Number(s.durationSeconds) || 0)) / 60);
+      return {
+        date: (s.startedAt || '').slice(0, 10),
+        modality: 'Musculação',
+        durationMinutes: minutes,
+        calories: s.calories != null ? Number(s.calories) : null,
+        distanceKm: null
+      };
+    });
+
+    const otherItems = activities.map(a => ({
+      date: a.date || '',
+      modality: a.modality || 'Outra',
+      durationMinutes: Number(a.durationMinutes || 0),
+      calories: a.calories != null ? Number(a.calories) : null,
+      distanceKm: a.distanceKm != null ? Number(a.distanceKm) : null
+    }));
+
+    const all = [...strengthItems, ...otherItems].filter(x => x.date);
+
+    if (!all.length) {
+      target.innerHTML = '<div class="empty">Nenhuma atividade registrada ainda.</div>';
+      return;
+    }
+
+    if (metric === 'frequency') {
+      const counts = {};
+      for (const item of all) {
+        const mod = item.modality;
+        counts[mod] = (counts[mod] || 0) + 1;
+      }
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'));
+      const total = all.length;
+      target.innerHTML = `<div class="stack" style="margin-top:14px;gap:12px">
+        ${sorted.map(([mod, cnt]) => {
+          const pct = Math.round((cnt / total) * 100);
+          return `<div>
+            <div class="row" style="margin-bottom:4px;font-size:13px">
+              <strong>${esc(mod)}</strong>
+              <span class="muted">${cnt} ${cnt === 1 ? 'atividade' : 'atividades'} (${pct}%)</span>
+            </div>
+            <div class="progress" style="height:9px"><i style="width:${pct}%"></i></div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="row muted" style="margin-top:12px;font-size:12px">
+        <span>${sorted.length} modalidades</span>
+        <strong>Total: ${total} atividades</strong>
+      </div>`;
+      return;
+    }
+
+    const byDate = new Map();
+    for (const item of all) {
+      const d = item.date;
+      if (!byDate.has(d)) {
+        byDate.set(d, { duration: 0, calories: 0, distance: 0, hasCalories: false, hasDistance: false });
+      }
+      const rec = byDate.get(d);
+      rec.duration += item.durationMinutes;
+      if (item.calories != null) {
+        rec.calories += item.calories;
+        rec.hasCalories = true;
+      }
+      if (item.distanceKm != null) {
+        rec.distance += item.distanceKm;
+        rec.hasDistance = true;
+      }
+    }
+
+    const sortedDates = [...byDate.keys()].sort();
+    const meta = {
+      duration: ['Tempo ativo', 'min', v => `${Math.round(v)} min`],
+      calories: ['Calorias', 'kcal', v => `${Math.round(v)} kcal`],
+      distance: ['Distância', 'km', v => `${Number(v.toFixed(1))} km`]
+    }[metric];
+
+    let points = [];
+    if (metric === 'duration') {
+      points = sortedDates.map(d => ({ date: d, value: byDate.get(d).duration })).filter(p => p.value > 0);
+    } else if (metric === 'calories') {
+      points = sortedDates.map(d => ({ date: d, value: byDate.get(d).calories, has: byDate.get(d).hasCalories })).filter(p => p.has && p.value > 0);
+    } else if (metric === 'distance') {
+      points = sortedDates.map(d => ({ date: d, value: byDate.get(d).distance, has: byDate.get(d).hasDistance })).filter(p => p.has && p.value > 0);
+    }
+
+    if (!points.length) {
+      target.innerHTML = `<div class="empty">Sem dados suficientes para ${meta[0].toLowerCase()}.</div>`;
+      return;
+    }
+
+    const displayPoints = points.length > 20 ? points.slice(-20) : points;
+    const values = displayPoints.map(p => p.value);
+    const max = Math.max(...values);
+    const totalVal = points.map(p => p.value).reduce((s, v) => s + v, 0);
+    const fmtD = d => d.slice(8, 10) + '/' + d.slice(5, 7);
+
+    target.innerHTML = `<div class="chart">${displayPoints.map(p => {
+      const h = max > 0 ? Math.max(8, Math.round(100 * (p.value / max))) : 20;
+      return `<i class="bar" title="${fmtD(p.date)}: ${meta[2](p.value)}" style="height:${h}%"></i>`;
+    }).join('')}</div>
+    <div class="row muted" style="margin-top:6px;font-size:12px">
+      <span>${fmtD(displayPoints[0].date)}</span>
+      <strong>${meta[0]}: ${meta[2](totalVal)}</strong>
+      <span>${fmtD(displayPoints.at(-1).date)}</span>
+    </div>`;
+  } catch (err) {
+    target.innerHTML = '<div class="empty">Não foi possível carregar o gráfico.</div>';
+  }
+}
+
 async function render() {
   clearInterval(tick);
   setNav();
@@ -205,7 +326,9 @@ async function render() {
   bindDynamic();
   if (route() === 'evolution') {
     renderBodyChart('weight');
-    document.querySelector('#bodyChartMetric')?.addEventListener('change', e => renderBodyChart(e.target.value))
+    document.querySelector('#bodyChartMetric')?.addEventListener('change', e => renderBodyChart(e.target.value));
+    renderActivityChart('duration');
+    document.querySelector('#activityChartMetric')?.addEventListener('change', e => renderActivityChart(e.target.value));
   }
 }
 
@@ -430,6 +553,68 @@ function planItemForm(existing = null) {
       render()
     }
   }).catch(e => showToast(e.message))
+}
+
+function assessmentChoiceDialog() {
+  modalContent.innerHTML = `<div class="stack">
+    <div class="row"><h2>Nova avaliação</h2><button type="button" class="ghost" data-close>✕</button></div>
+    <p class="muted">Escolha o formato da avaliação corporal:</p>
+    <div class="stack" style="gap:10px;margin-top:6px">
+      <button class="secondary" id="btnWeightOnly" type="button" style="text-align:left;display:flex;flex-direction:column;gap:4px;padding:14px 16px">
+        <strong>⚖ Apenas Peso</strong>
+        <span class="muted" style="font-size:12px">Formulário enxuto contendo apenas data e peso corporal (kg).</span>
+      </button>
+      <button class="primary" id="btnFullAssessment" type="button" style="text-align:left;display:flex;flex-direction:column;gap:4px;padding:14px 16px">
+        <strong>📊 Bioimpedância Completa</strong>
+        <span style="font-size:12px;opacity:.9">Formulário completo com peso, composição corporal e circunferências.</span>
+      </button>
+    </div>
+  </div>`;
+  modal.showModal();
+  modalContent.querySelector('[data-close]').onclick = () => modal.close();
+  modalContent.querySelector('#btnWeightOnly').onclick = () => weightOnlyForm();
+  modalContent.querySelector('#btnFullAssessment').onclick = () => assessmentForm();
+}
+
+function weightOnlyForm() {
+  modalContent.innerHTML = `<form id="weightOnlyForm" class="stack">
+    <div class="row"><h2>Registrar peso</h2><button type="button" class="ghost" data-close>✕</button></div>
+    <label class="field">Data<input name="date" type="date" required value="${new Date().toISOString().slice(0,10)}"></label>
+    <label class="field">Peso corporal (kg)<input name="weight" type="number" min="0" max="1000" step="0.1" inputmode="decimal" placeholder="Ex.: 75.5" required autofocus></label>
+    <button class="primary">Salvar peso</button>
+  </form>`;
+  modal.showModal();
+  modalContent.querySelector('[data-close]').onclick = () => modal.close();
+  modalContent.querySelector('form').onsubmit = async ev => {
+    ev.preventDefault();
+    const f = new FormData(ev.target);
+    const raw = String(f.get('weight') ?? '').trim().replace(',', '.');
+    const weightVal = raw === '' ? null : number(raw, 0, 1000);
+    await repo.put('bodyAssessments', {
+      id: repo.uuid(),
+      date: f.get('date'),
+      weight: weightVal,
+      leanMass: null,
+      fatMass: null,
+      bodyFat: null,
+      abdomenCm: null,
+      waistCm: null,
+      waistCircumferenceCm: null,
+      hipCm: null,
+      bicepsLeftCm: null,
+      bicepsRightCm: null,
+      forearmLeftCm: null,
+      forearmRightCm: null,
+      thighLeftCm: null,
+      thighRightCm: null,
+      calfLeftCm: null,
+      calfRightCm: null,
+      createdAt: new Date().toISOString()
+    });
+    modal.close();
+    showToast('Peso salvo com sucesso');
+    render();
+  };
 }
 
 function assessmentForm() {
@@ -716,7 +901,7 @@ document.addEventListener('click', async e => {
   if (a === 'edit-plan-item') planItemForm(await repo.get('planItems', b.dataset.id));
   if (a === 'new-exercise') exerciseForm();
   if (a === 'edit-exercise') exerciseForm(await repo.get('exercises', b.dataset.id));
-  if (a === 'new-assessment') assessmentForm();
+  if (a === 'new-assessment') assessmentChoiceDialog();
   if (a === 'new-activity') activityForm();
   if (a === 'edit-activity') activityForm(await repo.get('activityDiary', b.dataset.id));
   if (a === 'export-period') exportPeriodForm()

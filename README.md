@@ -8,23 +8,31 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
   - Fase 1: Chat UI no app + proxy seguro (Cloudflare Worker gratuito, chave fora do código) + contexto automático do aluno (peso, treino ativo, cargas recentes, sono, RPE) + avaliação de resultados e sugestões em texto.
   - Fase 2: IA propondo criação/ajuste de treinos com tela de confirmação antes de gravar no plano A/B/C/D.
 
-## Versão 4.2.0 — Toque confiável, apagar treino e mapa muscular real
-
-- Crítico: corrigido o redesenho contínuo da tela de treino que fazia os campos de série exigirem vários toques; agora respondem de primeira.
-- Apagar disponível em qualquer treino concluído do histórico (antes só em treinos curtos).
-- Classificação muscular: múltiplos grupos principais e secundários por exercício (o primeiro principal conta nas métricas).
-- Mapa muscular usa o formato real de cada músculo sobre as figuras de frente/costas.
-
-## Versão 4.1.2 — Mapa dentro do detalhe
-
-- A rota abre em uma área delimitada dentro do popup de detalhe da atividade, sem sobrepor o app.
-- Atividades paradas (sem deslocamento GPS) não gravam trajeto vazio nem exibem o botão de rota.
-
-## Versão 4.1.1 — Correções do mapa e velocidade ao vivo
-
-- O mapa da rota abre por cima do popup de detalhe (antes ficava escondido atrás dele).
-- Atividade ao vivo com GPS mostra velocidade atual e média em tempo real; a velocidade máxima também é registrada (ajuda a distinguir caminhada/corrida de trajeto de carro).
-- Maior tolerância ao carregar o fundo do mapa em conexões lentas.
+- **Melhorias de Interface e Análise (Evolução & Início)** *(Aguardando solicitação para execução)*:
+  1. **Seleção de tipo de avaliação corporal (+Avaliação na aba Evolução)**:
+     - Ao clicar em "+ Avaliação", exibir diálogo inicial para escolha entre "Apenas Peso" ou "Bioimpedância Completa".
+     - Opção "Apenas Peso": formulário simplificado apenas com data e peso corporal (kg).
+     - Opção "Bioimpedância Completa": formulário completo contendo peso, composição corporal (% gordura, massa magra, massa gorda) e circunferências corporais (tronco e membros).
+  2. **Gráfico de atividades registradas na aba Evolução (Substituição de 'Outras atividades')**:
+     - Remover o quadro estático de listagem e botão "+ Registrar" de outras atividades da aba Evolução (mantendo o registro centralizado na aba Início).
+     - Incluir gráfico consolidado de atividades registradas (semelhante ao gráfico de evolução corporal), com seletor de métricas:
+       - Tempo ativo total (minutos por dia/semana).
+       - Calorias estimadas/gastas (kcal).
+       - Distância percorrida (km).
+       - Frequência por modalidade (Musculação vs. Cardio/Outras).
+       - Carga de treino (Duração × RPE).
+  3. **Quadro de atividades recentes com rolagem na aba Início**:
+     - Manter o histórico carregando as últimas 10 atividades executadas (musculação e outras atividades).
+     - Limitar a altura visível em tela para exibir aproximadamente 5 itens simultâneos, adicionando rolagem vertical interna (`overflow-y: auto`) para navegar pelas 10 atividades sem ocupar a tela inteira.
+  4. **Gráfico de estímulo muscular na aba Evolução (Substituição de 'Séries concluídas por grupo muscular')**:
+     - Substituir a tabela textual por um gráfico visual limpo e intuitivo de barras (horizontais ou verticais).
+     - Adicionar filtro de período selecionável: "Últimos 7 dias" ou "Mês atual / 30 dias".
+     - Métricas do gráfico selecionáveis ou combinadas:
+       - Volume de séries concluídas (séries principais vs. estímulos secundários).
+       - Quantidade de treinos/sessões em que o músculo foi trabalhado.
+       - Total de repetições realizadas.
+       - Soma de Kg levantados (Volume Load: soma de repetições × kg).
+       - Esforço médio por grupo muscular (RIR médio ou RPE da sessão).
 
 ## Versão 4.1.0 — Rota no mapa
 
