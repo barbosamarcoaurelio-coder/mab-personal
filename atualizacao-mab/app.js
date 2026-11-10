@@ -955,11 +955,13 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('button');
   if (!b) return;
   if (b.dataset.actPeriod) {
+    b.parentElement?.querySelectorAll('[data-act-period]').forEach(chip => chip.classList.toggle('active', chip === b));
     actChartPeriod = b.dataset.actPeriod;
     renderActivityChart(document.querySelector('#activityChartMetric')?.value || 'frequency');
     return;
   }
   if (b.dataset.actSubview) {
+    b.parentElement?.querySelectorAll('[data-act-subview]').forEach(chip => chip.classList.toggle('active', chip === b));
     actChartSubView = b.dataset.actSubview;
     const sel = document.querySelector('#activityChartMetric');
     if (sel && sel.value.startsWith('frequency')) {

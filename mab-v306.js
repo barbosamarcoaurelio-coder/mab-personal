@@ -23,6 +23,7 @@ function addStyles(){
   const style=document.createElement('style');
   style.id='mabV306Styles';
   style.textContent=`
+    .chips .chip{touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent}
     .mab-v306-panel{margin-top:12px}
     .mab-v306-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
     .mab-v306-metric{padding:10px;border:1px solid #333;border-radius:10px;background:#101010}
@@ -53,6 +54,7 @@ async function enhanceAssessmentView(){
   const app=document.querySelector('#app');
   const composition=getCardByHeading('Composição corporal atual');
   if(!app||!composition)return;
+  if(document.querySelector('#mabV306BodyMeasures'))return;
   const assessments=(await repo.all('bodyAssessments')).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const latest=assessments[0];
   composition.querySelectorAll('.metric .muted').forEach(label=>{if(label.textContent.trim()==='Gordura corporal')label.textContent='% Gordura'});
@@ -94,16 +96,11 @@ async function enhanceAssessmentView(){
   const measureKeys=['bicepsLeftCm','bicepsRightCm','forearmLeftCm','forearmRightCm','thighLeftCm','thighRightCm','calfLeftCm','calfRightCm','abdomenCm','waistCm','waistCircumferenceCm','hipCm'];
   const latestWithMeasures=assessments.find(a=>measureKeys.some(k=>a[k]!=null&&a[k]!==''));
   const metrics=[['Bíceps E/D',latestWithMeasures?.bicepsLeftCm,latestWithMeasures?.bicepsRightCm],['Antebraço E/D',latestWithMeasures?.forearmLeftCm,latestWithMeasures?.forearmRightCm],['Coxa E/D',latestWithMeasures?.thighLeftCm,latestWithMeasures?.thighRightCm],['Panturrilha E/D',latestWithMeasures?.calfLeftCm,latestWithMeasures?.calfRightCm]];
-  let panel=document.querySelector('#mabV306BodyMeasures');
-  if(!panel){
-    panel=document.createElement('section');
-    panel.id='mabV306BodyMeasures';
-    panel.className='card mab-v306-panel';
-  }
-  if(composition.nextElementSibling!==panel){
-    composition.insertAdjacentElement('afterend',panel)
-  }
+  const panel=document.createElement('section');
+  panel.id='mabV306BodyMeasures';
+  panel.className='card mab-v306-panel';
   panel.innerHTML=`<div class="row"><div><h3>Medidas corporais</h3><div class="mab-v306-muted">Avaliação atual · ${esc(latestWithMeasures?.date||'--')}</div></div></div><div class="mab-v306-grid" style="margin-top:10px">${metrics.map(([label,left,right])=>`<div class="mab-v306-metric"><span>${label}</span><strong>${displayValue(left)} / ${displayValue(right)} cm</strong></div>`).join('')}</div><div class="mab-v306-controls"><span class="mab-v306-muted">Abdômen: ${displayValue(latestWithMeasures?.abdomenCm??latestWithMeasures?.waistCm,' cm')}</span><span class="mab-v306-muted">Cintura: ${displayValue(latestWithMeasures?.waistCircumferenceCm,' cm')}</span><span class="mab-v306-muted">Quadril: ${displayValue(latestWithMeasures?.hipCm,' cm')}</span></div>`;
+  composition.insertAdjacentElement('afterend',panel);
   const select=document.querySelector('#bodyChartMetric');
   if(select){
     const bodyFatOption=select.querySelector('option[value="bodyFat"]');
@@ -125,29 +122,26 @@ async function enhanceDashboardWeight(){
 
 async function recoveryRows(){return (await repo.all('dailyRecovery')).sort((a,b)=>(b.date||'').localeCompare(a.date||''))}
 async function enhanceRecoveryCard(){
-  if(!document.querySelector('#bodyChart'))return;
+  if(!document.querySelector('#bodyChart')||document.querySelector('#mabV306Recovery'))return;
   const exportCard=getCardByHeading('Exportar para análise');
   const historyCard=getCardByHeading('Histórico corporal');
   if(!exportCard&&!historyCard)return;
   const entries=(await recoveryRows()).slice(0,7);
   const last7=entries.slice(0,7);
   const avg=key=>{const values=last7.map(x=>x[key]).filter(value=>value!=null&&value!=='').map(Number).filter(Number.isFinite);return values.length?values.reduce((a,b)=>a+b,0)/values.length:null};
-  let card=document.querySelector('#mabV306Recovery');
-  if(!card){
-    card=document.createElement('section');
-    card.id='mabV306Recovery';
-    card.className='card mab-v306-panel';
-  }
+  const card=document.createElement('section');
+  card.id='mabV306Recovery';
+  card.className='card mab-v306-panel';
   card.innerHTML=`<div class="row"><div><h3>Sono e recuperação</h3><div class="mab-v306-muted">Registro diário opcional</div></div><button class="primary" data-v306-recovery-add>+ Registrar</button></div><div class="mab-v306-grid" style="margin-top:12px"><div class="mab-v306-metric"><span>Sono médio · últimos 7 registros</span><strong>${avg('sleepHours')==null?'—':fmtSleepHM(avg('sleepHours'))}</strong></div><div class="mab-v306-metric"><span>Qualidade média</span><strong>${avg('sleepQuality')==null?'—':`${fmtNumber(avg('sleepQuality'))}/5`}</strong></div><div class="mab-v306-metric"><span>Recuperação média</span><strong>${avg('morningRecovery')==null?'—':`${fmtNumber(avg('morningRecovery'))}/5`}</strong></div></div><div>${entries.slice(0,3).map(row=>`<div class="exercise-item"><div><strong>${esc(row.date)}</strong><div class="muted">Sono: ${fmtSleepHM(row.sleepHours)} · Qualidade: ${displayValue(row.sleepQuality,'/5')} · Recuperação: ${displayValue(row.morningRecovery,'/5')}</div></div><button class="ghost" data-v306-recovery-edit="${esc(row.id)}">Editar</button></div>`).join('')||'<div class="empty">Sem registros de sono e recuperação.</div>'}</div>`;
   if(exportCard){
-    if(exportCard.previousElementSibling!==card)exportCard.insertAdjacentElement('beforebegin',card)
+    exportCard.insertAdjacentElement('beforebegin',card)
   }else if(historyCard){
-    if(historyCard.nextElementSibling!==card)historyCard.insertAdjacentElement('afterend',card)
+    historyCard.insertAdjacentElement('afterend',card)
   }
 }
 
 async function enhanceTrainingSummary(){
-  if(!document.querySelector('#bodyChart'))return;
+  if(!document.querySelector('#bodyChart')||document.querySelector('#mabV306TrainingSummary'))return;
   const activityCard=getCardByHeading('Atividades registradas');
   const header=document.querySelector('#app .stack > .row');
   if(!activityCard&&!header)return;
@@ -156,15 +150,12 @@ async function enhanceTrainingSummary(){
   const activities=(await repo.all('activityDiary')).filter(activity=>new Date(`${activity.date}T00:00:00`)>=start);
   const durations=sessions.map(formatSessionDuration);
   const durationTotal=durations.reduce((sum,value)=>sum+value,0);
-  let card=document.querySelector('#mabV306TrainingSummary');
-  if(!card){
-    card=document.createElement('section');card.id='mabV306TrainingSummary';card.className='card mab-v306-panel';
-  }
+  const card=document.createElement('section');card.id='mabV306TrainingSummary';card.className='card mab-v306-panel';
   card.innerHTML=`<h3>Treinos e Atividades · últimos 7 dias</h3><div class="mab-v306-grid" style="margin-top:10px"><div class="mab-v306-metric"><span>Musculações</span><strong>${sessions.length}</strong></div><div class="mab-v306-metric"><span>Outras atividades</span><strong>${activities.length}</strong></div><div class="mab-v306-metric"><span>Duração de musculação</span><strong>${fmt(durationTotal)}</strong></div><div class="mab-v306-metric"><span>Duração média</span><strong>${durations.length?fmt(Math.round(average(durations))):'—'}</strong></div><div class="mab-v306-metric"><span>Esforço médio (RPE)</span><strong>${average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null))==null?'—':`${fmtNumber(average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null)))}/10`}</strong></div></div>`;
   if(activityCard){
-    if(activityCard.previousElementSibling!==card)activityCard.insertAdjacentElement('beforebegin',card)
+    activityCard.insertAdjacentElement('beforebegin',card)
   }else if(header){
-    if(header.nextElementSibling!==card)header.insertAdjacentElement('afterend',card)
+    header.insertAdjacentElement('afterend',card)
   }
 }
 
@@ -249,12 +240,20 @@ async function renderAdditionalChart(metric){
   target.innerHTML=`<div class="chart">${points.map(point=>`<i class="bar" title="${esc(point.date)}: ${point.value} ${config[1]}" style="height:${25+75*((point.value-min)/range)}%"></i>`).join('')}</div><div class="row muted"><span>${esc(points[0].date)}</span><strong>${config[0]}</strong><span>${esc(points.at(-1).date)}</span></div>`
 }
 
+let isEnhancingEvolution=false;
 async function enhanceEvolution(){
   if(route()!=='evolution')return;
-  document.querySelector('#mabV306MuscleVolume')?.remove();
-  await enhanceTrainingSummary();
-  await enhanceAssessmentView();
-  await enhanceRecoveryCard();
+  if(isEnhancingEvolution)return;
+  if(document.querySelector('#mabV306TrainingSummary')&&document.querySelector('#mabV306BodyMeasures')&&document.querySelector('#mabV306Recovery'))return;
+  isEnhancingEvolution=true;
+  try{
+    document.querySelector('#mabV306MuscleVolume')?.remove();
+    await enhanceTrainingSummary();
+    await enhanceAssessmentView();
+    await enhanceRecoveryCard();
+  }finally{
+    isEnhancingEvolution=false;
+  }
 }
 
 function renderRecoveryForm(existing=null){
@@ -401,7 +400,19 @@ function handleBodyChartChange(event){
 function observeUi(){
   addStyles();
   const app=document.querySelector('#app'),modal=document.querySelector('#modalContent');
-  if(app)new MutationObserver(()=>{clearTimeout(window.__mabV306UiTimer);window.__mabV306UiTimer=setTimeout(()=>{enhanceEvolution().catch(error=>console.error(error));enhanceExerciseRows().catch(error=>console.error(error));enhanceDashboardWeight().catch(error=>console.error(error))},80)}).observe(app,{childList:true,subtree:true});
+  if(app)new MutationObserver(()=>{
+    if(route()==='evolution'){
+      if(document.querySelector('#mabV306TrainingSummary')&&document.querySelector('#mabV306BodyMeasures')&&document.querySelector('#mabV306Recovery'))return;
+      clearTimeout(window.__mabV306UiTimer);
+      window.__mabV306UiTimer=setTimeout(()=>{enhanceEvolution().catch(error=>console.error(error))},80);
+      return;
+    }
+    clearTimeout(window.__mabV306UiTimer);
+    window.__mabV306UiTimer=setTimeout(()=>{
+      enhanceExerciseRows().catch(error=>console.error(error));
+      enhanceDashboardWeight().catch(error=>console.error(error))
+    },80);
+  }).observe(app,{childList:true,subtree:true});
   if(modal)new MutationObserver(()=>{enhanceExportForm()}).observe(modal,{childList:true,subtree:true});
   document.addEventListener('click',handleClick,true);
   document.addEventListener('change',handleBodyChartChange,true);
@@ -413,5 +424,5 @@ function observeUi(){
 }
 
 observeUi();
-window.MAB306={version:'4.2.1',versionName:'Performance & Recovery',toCsv};
+window.MAB306={version:'4.2.2',versionName:'Performance & Recovery',toCsv};
 export {toCsv};
