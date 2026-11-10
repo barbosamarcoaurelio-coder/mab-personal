@@ -3,4 +3,6 @@
 .recent-activities-list{max-height:290px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:4px}
 .recent-activities-list::-webkit-scrollbar{width:4px}
 .recent-activities-list::-webkit-scrollbar-thumb{background:#383838;border-radius:4px}
+.grid.two > * { min-width: 0; }
+.field input[type="date"] { min-width: 0; width: 100%; box-sizing: border-box; }
 

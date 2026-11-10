@@ -155,7 +155,8 @@ async function enhanceTrainingSummary(){
   const durations=sessions.map(formatSessionDuration);
   const durationTotal=durations.reduce((sum,value)=>sum+value,0);
   const card=document.createElement('section');card.id='mabV306TrainingSummary';card.className='card mab-v306-panel';
-  card.innerHTML=`<h3>Treinos e Atividades · últimos 7 dias</h3><div class="mab-v306-grid" style="margin-top:10px"><div class="mab-v306-metric"><span>Musculações</span><strong>${sessions.length}</strong></div><div class="mab-v306-metric"><span>Outras atividades</span><strong>${activities.length}</strong></div><div class="mab-v306-metric"><span>Duração de musculação</span><strong>${fmt(durationTotal)}</strong></div><div class="mab-v306-metric"><span>Duração média</span><strong>${durations.length?fmt(Math.round(average(durations))):'—'}</strong></div><div class="mab-v306-metric"><span>Esforço médio (RPE)</span><strong>${average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null))==null?'—':`${fmtNumber(average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null)))}/10`}</strong></div></div>`;
+  const allRpes=[...sessions.map(session=>session.sessionRpe),...activities.map(activity=>activity.sessionRpe)].filter(value=>value!=null);
+  card.innerHTML=`<h3>Treinos e Atividades · últimos 7 dias</h3><div class="mab-v306-grid" style="margin-top:10px"><div class="mab-v306-metric"><span>Musculações</span><strong>${sessions.length}</strong></div><div class="mab-v306-metric"><span>Outras atividades</span><strong>${activities.length}</strong></div><div class="mab-v306-metric"><span>Duração de musculação</span><strong>${fmt(durationTotal)}</strong></div><div class="mab-v306-metric"><span>Duração média</span><strong>${durations.length?fmt(Math.round(average(durations))):'—'}</strong></div><div class="mab-v306-metric"><span>Esforço médio (RPE)</span><strong>${average(allRpes)==null?'—':`${fmtNumber(average(allRpes))}/10`}</strong></div></div>`;
   if(recoveryCard){
     recoveryCard.insertAdjacentElement('afterend',card)
   }else if(activityCard){
@@ -318,7 +319,7 @@ async function generateTxt(start,end,scope){
   const weekly=new Map();
   const weekRow=key=>{const row=weekly.get(key)||{strength:0,seconds:0,activities:0,activitySeconds:0,rpe:[],readiness:[],fatigue:[],sleep:[]};weekly.set(key,row);return row};
   for(const session of data.sessions){const row=weekRow(weekKey(parseDate(session.startedAt)));row.strength++;row.seconds+=formatSessionDuration(session);if(session.sessionRpe!=null)row.rpe.push(Number(session.sessionRpe));if(session.readinessBefore!=null)row.readiness.push(Number(session.readinessBefore));if(session.fatigueAfter!=null)row.fatigue.push(Number(session.fatigueAfter));if(session.sleepHoursBefore!=null)row.sleep.push(Number(session.sleepHoursBefore))}
-  if(scope!=='strength')for(const activity of data.activities){const row=weekRow(weekKey(activity.date));row.activities++;row.activitySeconds+=Number(activity.durationMinutes||0)*60}
+  if(scope!=='strength')for(const activity of data.activities){const row=weekRow(weekKey(activity.date));row.activities++;row.activitySeconds+=Number(activity.durationMinutes||0)*60;if(activity.sessionRpe!=null)row.rpe.push(Number(activity.sessionRpe));if(activity.fatigueAfter!=null)row.fatigue.push(Number(activity.fatigueAfter))}
   if(scope!=='activities'){
     output+='## Resumo semanal\n';
     if(!weekly.size)output+='Nenhuma sessão no período.\n';
@@ -366,7 +367,7 @@ async function generateTxt(start,end,scope){
   }
   if(scope!=='strength'){
     output+='## Outras atividades\n';
-    output+=data.activities.length?data.activities.map(a=>`- ${a.date}: ${a.modality}, ${a.durationMinutes??'duração não informada'}${a.durationMinutes!=null?' min':''}${a.distanceKm!=null?`, ${a.distanceKm} km`:''}${a.calories!=null?`, ${a.calories} kcal`:''}, intensidade ${a.intensity||'não informada'}${a.notes?`. Observações: ${a.notes}`:''}`).join('\n')+'\n\n':'Nenhuma atividade registrada no período.\n\n';
+    output+=data.activities.length?data.activities.map(a=>`- ${a.date}: ${a.modality}, ${a.durationMinutes??'duração não informada'}${a.durationMinutes!=null?' min':''}${a.distanceKm!=null?`, ${a.distanceKm} km`:''}${a.calories!=null?`, ${a.calories} kcal`:''}, intensidade ${a.intensity||'não informada'}${a.sessionRpe!=null?`, esforço (RPE) ${a.sessionRpe}/10`:''}${a.fatigueAfter!=null?`, fadiga ${a.fatigueAfter}/5`:''}${a.notes?`. Observações: ${a.notes}`:''}`).join('\n')+'\n\n':'Nenhuma atividade registrada no período.\n\n';
   }
   output+='## Solicitação sugerida para análise\nAnalise consistência, evolução de cargas/repetições/RIR, volume muscular, descanso e relação entre treino, sono e recuperação. Não invente dados ausentes.\n';
   download(output,`mab-treinos-${start}-a-${end}.txt`,'text/plain;charset=utf-8')
@@ -383,7 +384,7 @@ function toCsv(data){
   for(const session of data.sessions)for(const discomfort of session.discomforts||[])rows.push({record_type:'discomfort',record_id:`${session.id}:${discomfort.region||''}`,date:parseDate(session.startedAt),session_id:session.id,group_code:session.groupCode,discomfort_region:discomfort.region,discomfort_intensity:discomfort.intensity,discomfort_notes:discomfort.notes});
   for(const timer of data.restTimers){const session=sessions.get(timer.sessionId);if(!session)continue;const exercise=exercises.get(timer.exerciseId);rows.push({record_type:'rest',record_id:timer.id,date:parseDate(session.startedAt),session_id:session.id,group_code:session.groupCode,exercise_id:timer.exerciseId,exercise_name:exercise?.name,rest_seconds:formatRestSeconds(timer)})}
   }
-  if(data.scope!=='strength')for(const activity of data.activities)rows.push({record_type:'activity',record_id:activity.id,date:activity.date,activity:activity.modality,activity_duration_minutes:activity.durationMinutes,distance_km:activity.distanceKm,calories:activity.calories,intensity:activity.intensity,notes:activity.notes});
+  if(data.scope!=='strength')for(const activity of data.activities)rows.push({record_type:'activity',record_id:activity.id,date:activity.date,activity:activity.modality,activity_duration_minutes:activity.durationMinutes,distance_km:activity.distanceKm,calories:activity.calories,intensity:activity.intensity,session_rpe:activity.sessionRpe,fatigue_after:activity.fatigueAfter,notes:activity.notes});
   return '\uFEFF'+[headers,...rows.map(row=>headers.map(header=>csvCell(row[header]??'')))].map(row=>row.join(',')).join('\r\n')+'\r\n'
 }
 
@@ -442,5 +443,5 @@ function observeUi(){
 }
 
 observeUi();
-window.MAB306={version:'4.2.3',versionName:'Performance & Recovery',toCsv};
+window.MAB306={version:'4.2.4',versionName:'Performance & Recovery',toCsv,generateCsv:exportCsv};
 export {toCsv};
