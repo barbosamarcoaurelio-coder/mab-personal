@@ -196,9 +196,34 @@ function bodySvg(primary, secondary) {
 const stars = (v, max = 5) => { if (v == null) return '—'; const full = Math.max(0, Math.min(5, Math.round(v / (max / 5)))); return `${'★★★★★'.slice(0, full)}${'☆☆☆☆☆'.slice(0, 5 - full)} <span style="color:#888;font-size:11px">${v}/${max}</span>` };
 const metric = (label, value) => `<div style="background:#0d0d0d;border:1px solid #2a2a2a;border-radius:10px;padding:8px"><div style="color:#888;font-size:10px">${label}</div><div style="color:#fff;font-weight:700;font-size:13px;margin-top:2px">${value}</div></div>`;
 
-function detailShell(title, subtitle, bodyHtml) {
-  showModal(`<div class="stack" style="gap:10px"><div class="row" style="align-items:center"><img src="mab-logo.svg" alt="MAB Training" style="width:30px;height:30px"><div style="flex:1"><div style="font-weight:800;font-size:13px;letter-spacing:.04em">MAB TRAINING</div><div style="color:#888;font-size:9px;letter-spacing:.18em">TREINO · ATIVIDADE · EVOLUÇÃO</div></div><button type="button" class="ghost" data-close>✕</button></div><div><strong style="font-size:16px">${esc(title)}</strong><div class="muted" style="font-size:12px">${esc(subtitle)}</div></div>${bodyHtml}</div>`);
-  modalContent().querySelector('[data-close]').onclick = closeModal;
+function detailShell(title, subtitle, bodyHtml, footerHtml = '') {
+  showModal(`<div class="stack" style="gap:10px"><div class="row" style="align-items:center"><img src="mab-logo.svg" alt="MAB Training" style="width:30px;height:30px"><div style="flex:1"><div style="font-weight:800;font-size:13px;letter-spacing:.04em">MAB TRAINING</div><div style="color:#888;font-size:9px;letter-spacing:.18em">TREINO · ATIVIDADE · EVOLUÇÃO</div></div><button type="button" class="ghost" data-close>✕</button></div><div><strong style="font-size:16px">${esc(title)}</strong><div class="muted" style="font-size:12px">${esc(subtitle)}</div></div>${bodyHtml}${footerHtml ? `<div class="row" style="gap:8px;margin-top:12px">${footerHtml}</div>` : ''}</div>`);
+  modalContent().querySelectorAll('[data-close]').forEach(b => b.onclick = closeModal);
+}
+
+function editWorkoutSessionForm(session) {
+  showModal(`<form id="mabEditSessionForm" class="stack"><div class="row"><h2>Editar Treino ${esc(session.groupCode || '')}</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Ajuste o esforço, calorias, fadiga e observações desta sessão de musculação.</p><label class="field">Esforço geral da sessão (RPE · 1–10)<select name="sessionRpe"><option value="">Não informado</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(session.sessionRpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></label><label class="field">Calorias (kcal)<input name="calories" type="number" inputmode="numeric" min="0" max="10000" value="${session.calories??''}" placeholder="Ex.: 320"></label><label class="field">Fadiga após o treino · 1–5<select name="fatigueAfter"><option value="">Não informado</option>${Array.from({length:5},(_,i)=>`<option value="${i+1}" ${Number(session.fatigueAfter)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></label><label class="field">Observações<textarea name="notes" rows="3" placeholder="Opcional">${esc(session.notes||'')}</textarea></label><div class="row"><button type="button" class="ghost" data-close>Cancelar</button><button class="primary">Salvar alterações</button></div></form>`);
+  modalContent().querySelectorAll('[data-close]').forEach(b => b.onclick = () => openDetail('strength', session.id));
+  const form = modalContent().querySelector('#mabEditSessionForm');
+  form.onsubmit = async ev => {
+    ev.preventDefault();
+    const f = new FormData(form);
+    const rpeVal = f.get('sessionRpe');
+    const calVal = f.get('calories')?.trim();
+    const fatigueVal = f.get('fatigueAfter');
+    const notesVal = f.get('notes')?.trim();
+
+    session.sessionRpe = rpeVal ? Number(rpeVal) : null;
+    session.calories = calVal ? Number(calVal) : null;
+    session.fatigueAfter = fatigueVal ? Number(fatigueVal) : null;
+    session.notes = notesVal || '';
+    session.updatedAt = new Date().toISOString();
+
+    await repo.put('workoutSessions', session);
+    closeModal();
+    toast('Treino atualizado com sucesso');
+    window.dispatchEvent(new Event('routechange'));
+  };
 }
 
 async function openDetail(kind, id) {
@@ -219,13 +244,37 @@ async function openDetail(kind, id) {
     exIds.forEach(eid => { const ex = exercises.find(e => e.id === eid); const primaries = ex?.primaryMuscleGroups?.length ? ex.primaryMuscleGroups : (ex?.primaryMuscleGroup ? [ex.primaryMuscleGroup] : []); primaries.forEach(g => primary.add(g)); (ex?.secondaryMuscleGroups || []).forEach(g => secondary.add(g)) });
     primary.forEach(g => secondary.delete(g));
     const legend = primary.size || secondary.size ? `${[...primary].join(', ')}${secondary.size ? ` <span style="color:#888">· apoio: ${[...secondary].join(', ')}</span>` : ''}` : 'Classifique os exercícios na Biblioteca para ver o mapa muscular.';
-    detailShell(`Treino ${s.groupCode || ''}${groupDesc ? ' · ' + groupDesc : ''}`, (s.startedAt || '').slice(0, 10), `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${metric('Tempo total', fmt(totalSec))}${metric('Média por exercício', avgPerEx != null ? fmt(avgPerEx) : '—')}${metric('Calorias', s.calories != null ? `${s.calories} kcal` : '—')}${metric('Esforço (RPE)', stars(s.sessionRpe, 10))}${metric('Fadiga', stars(s.fatigueAfter, 5))}${metric('Grupo', `Treino ${s.groupCode || '—'}`)}</div><div style="margin-top:10px">${bodySvg(primary, secondary)}</div><div class="muted" style="font-size:11px;text-align:center;margin-top:4px">${legend}</div>`);
+    const footer = `<button type="button" class="secondary" id="mabDetailEdit" style="flex:1">Editar</button><button type="button" class="danger" id="mabDetailDelete" style="flex:1">Excluir</button>`;
+    detailShell(
+      `Treino ${s.groupCode || ''}${groupDesc ? ' · ' + groupDesc : ''}`,
+      (s.startedAt || '').slice(0, 10),
+      `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${metric('Tempo total', fmt(totalSec))}${metric('Média por exercício', avgPerEx != null ? fmt(avgPerEx) : '—')}${metric('Calorias', s.calories != null ? `${s.calories} kcal` : '—')}${metric('Esforço (RPE)', stars(s.sessionRpe, 10))}${metric('Fadiga', stars(s.fatigueAfter, 5))}${metric('Grupo', `Treino ${s.groupCode || '—'}`)}</div><div style="margin-top:10px">${bodySvg(primary, secondary)}</div><div class="muted" style="font-size:11px;text-align:center;margin-top:4px">${legend}</div>${s.notes ? `<div class="muted" style="font-size:12px;margin-top:8px">Obs.: ${esc(s.notes)}</div>` : ''}`,
+      footer
+    );
+    modalContent()?.querySelector('#mabDetailEdit')?.addEventListener('click', () => editWorkoutSessionForm(s));
+    modalContent()?.querySelector('#mabDetailDelete')?.addEventListener('click', async () => {
+      if (!confirm(`Deseja excluir definitivamente este Treino ${s.groupCode || ''}? Todas as séries registradas serão removidas.`)) return;
+      const sets = (await repo.all('executedSets')).filter(x => x.sessionId === s.id);
+      for (const set of sets) await repo.remove('executedSets', set.id);
+      const timers = (await repo.all('restTimers')).filter(x => x.sessionId === s.id);
+      for (const timer of timers) await repo.remove('restTimers', timer.id);
+      await repo.remove('workoutSessions', s.id);
+      closeModal();
+      toast('Treino excluído com sucesso');
+      window.dispatchEvent(new Event('routechange'));
+    });
     return;
   }
   const a = await repo.get('activityDiary', id);
   if (!a) return;
   const sec = a.durationSeconds ?? Math.round(Number(a.durationMinutes || 0) * 60);
-  detailShell(a.modality || 'Atividade', a.date || '', `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${metric('Duração', fmt(sec))}${metric('Distância', a.distanceKm != null ? `${a.distanceKm} km` : '—')}${metric('Velocidade média', a.avgSpeedKmh != null ? `${a.avgSpeedKmh} km/h` : '—')}${metric('Vel. máxima', a.maxSpeedKmh != null ? `${a.maxSpeedKmh} km/h` : '—')}${metric('Calorias', a.calories != null ? `${a.calories} kcal` : '—')}${metric('Esforço (RPE)', stars(a.sessionRpe, 10))}${metric('Fadiga', stars(a.fatigueAfter, 5))}</div>${a.intensity ? `<div class="muted" style="font-size:12px;margin-top:8px">Intensidade: ${esc(a.intensity)}</div>` : ''}${a.notes ? `<div class="muted" style="font-size:12px;margin-top:4px">Obs.: ${esc(a.notes)}</div>` : ''}${a.route?.length > 1 ? `<button class="secondary" id="mabRouteMapBtn" style="width:100%;margin-top:8px">🗺 Ver rota no mapa</button>` : ''}`);
+  const footer = `<button type="button" class="secondary" id="mabDetailEdit" style="flex:1">Editar</button><button type="button" class="danger" id="mabDetailDelete" style="flex:1">Excluir</button>`;
+  detailShell(
+    a.modality || 'Atividade',
+    a.date || '',
+    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${metric('Duração', fmt(sec))}${metric('Distância', a.distanceKm != null ? `${a.distanceKm} km` : '—')}${metric('Velocidade média', a.avgSpeedKmh != null ? `${a.avgSpeedKmh} km/h` : '—')}${metric('Vel. máxima', a.maxSpeedKmh != null ? `${a.maxSpeedKmh} km/h` : '—')}${metric('Calorias', a.calories != null ? `${a.calories} kcal` : '—')}${metric('Esforço (RPE)', stars(a.sessionRpe, 10))}${metric('Fadiga', stars(a.fatigueAfter, 5))}</div>${a.intensity ? `<div class="muted" style="font-size:12px;margin-top:8px">Intensidade: ${esc(a.intensity)}</div>` : ''}${a.notes ? `<div class="muted" style="font-size:12px;margin-top:4px">Obs.: ${esc(a.notes)}</div>` : ''}${a.route?.length > 1 ? `<button class="secondary" id="mabRouteMapBtn" style="width:100%;margin-top:8px">🗺 Ver rota no mapa</button>` : ''}`,
+    footer
+  );
   modalContent()?.querySelector('#mabRouteMapBtn')?.addEventListener('click', ev => {
     const btn = ev.currentTarget;
     btn.disabled = true;
@@ -240,6 +289,19 @@ async function openDetail(kind, id) {
     host.after(note);
     showRouteInline(host, a);
   });
+  modalContent()?.querySelector('#mabDetailEdit')?.addEventListener('click', () => {
+    closeModal();
+    if (typeof window.activityForm === 'function') {
+      window.activityForm(a);
+    }
+  });
+  modalContent()?.querySelector('#mabDetailDelete')?.addEventListener('click', async () => {
+    if (!confirm(`Deseja excluir definitivamente esta atividade (${a.modality || 'Atividade'})?`)) return;
+    await repo.remove('activityDiary', a.id);
+    closeModal();
+    toast('Atividade excluída com sucesso');
+    window.dispatchEvent(new Event('routechange'));
+  });
   } catch (e) {
     showModal(`<div class="stack"><div class="row"><strong>Não foi possível abrir o detalhe</strong><button type="button" class="ghost" data-close>✕</button></div><p class="muted">${esc(e.message)}</p></div>`);
     modalContent()?.querySelector('[data-close]')?.addEventListener('click', closeModal);
@@ -247,9 +309,7 @@ async function openDetail(kind, id) {
 }
 
 function askDetail(kind, id) {
-  showModal(`<div class="stack"><div class="row"><h2 style="font-size:18px">Atividade recente</h2><button type="button" class="ghost" data-close>✕</button></div><p class="muted">Ver detalhe desta execução?</p><div class="row"><button type="button" class="ghost" data-close>Agora não</button><button class="primary" id="mabDetailYes">Ver detalhes</button></div></div>`);
-  modalContent().querySelectorAll('[data-close]').forEach(b => b.onclick = closeModal);
-  modalContent().querySelector('#mabDetailYes').onclick = ev => { ev.currentTarget.disabled = true; openDetail(kind, id).catch(e => { ev.currentTarget.disabled = false; toast(e.message) }) };
+  openDetail(kind, id);
 }
 
 /* ---------- Rota no mapa (OpenStreetMap, grátis, sem chave) ---------- */
@@ -317,15 +377,22 @@ document.addEventListener('click', e => {
     chooseActivityMode();
     return;
   }
-}, true);
-
-document.addEventListener('click', e => {
+  const viewDetailBtn = e.target.closest('[data-action="view-detail"]');
+  if (viewDetailBtn) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const kind = viewDetailBtn.dataset.kind || viewDetailBtn.getAttribute('data-kind');
+    const id = viewDetailBtn.dataset.id || viewDetailBtn.getAttribute('data-id');
+    if (kind && id) openDetail(kind, id);
+    return;
+  }
   if (e.target.closest('button, a, input, select, textarea')) return;
   const row = e.target.closest('[data-detail-id]');
   if (!row || !row.dataset.detailId) return;
   e.preventDefault();
   e.stopImmediatePropagation();
-  askDetail(row.dataset.detailKind, row.dataset.detailId);
+  openDetail(row.dataset.detailKind, row.dataset.detailId);
 }, true);
 
-window.MABLive = { version: '4.2.0' };
+window.openDetail = openDetail;
+window.MABLive = { version: '4.2.3', openDetail, chooseActivityMode };

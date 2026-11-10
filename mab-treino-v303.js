@@ -235,28 +235,8 @@ function fmtShort(total) {
   return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 async function enhanceShortWorkoutHistory() {
-  if (!document.querySelector('.dashboard-layout')) return;
-  const sessions = (await repo.all('workoutSessions')).filter(x => x.status === 'completed').sort((a, b) => (b.startedAt || '').localeCompare(a.startedAt || ''));
-  const rows = [...document.querySelectorAll('.dashboard-layout .exercise-item')];
-  for (const row of rows) {
-    if (row.querySelector('.mab-delete-short')) continue;
-    const title = row.querySelector('strong')?.textContent || '';
-    const detail = row.querySelector('.muted')?.textContent || '';
-    const group = (title.match(/Treino\s+([A-D])/i) || [])[1];
-    const date = (detail.match(/\d{4}-\d{2}-\d{2}/) || [])[0];
-    const duration = (detail.match(/(\d{2}):(\d{2})/) || []);
-    if (!group || !date || !duration) continue;
-    const seconds = Number(duration[1]) * 60 + Number(duration[2]);
-    const session = sessions.find(x => x.groupCode === group.toUpperCase() && (x.startedAt || '').slice(0, 10) === date && Math.abs(sessionSeconds(x) - seconds) <= 1);
-    if (!session) continue;
-    row.querySelector('.orange')?.remove();
-    const button = document.createElement('button');
-    button.className = 'ghost mab-delete-short';
-    button.textContent = 'Apagar';
-    button.dataset.sessionId = session.id;
-    button.setAttribute('aria-label', `Apagar Treino ${group} de ${date}`);
-    row.appendChild(button);
-  }
+  // Desativado: o botão unificado 'Ver detalhes' provê opções completas de edição e exclusão no modal
+  return;
 }
 // v2.10.1: listener antigo desativado; finalizacao e tratada pelo resumo pos-treino
 // document.addEventListener('click',handleShortWorkoutFinish,true);

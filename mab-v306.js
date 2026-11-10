@@ -123,9 +123,10 @@ async function enhanceDashboardWeight(){
 async function recoveryRows(){return (await repo.all('dailyRecovery')).sort((a,b)=>(b.date||'').localeCompare(a.date||''))}
 async function enhanceRecoveryCard(){
   if(!document.querySelector('#bodyChart')||document.querySelector('#mabV306Recovery'))return;
-  const exportCard=getCardByHeading('Exportar para análise');
-  const historyCard=getCardByHeading('Histórico corporal');
-  if(!exportCard&&!historyCard)return;
+  const header=document.querySelector('#app .stack > .row')||document.querySelector('#app h2')?.closest('.row');
+  const trainingSummary=document.querySelector('#mabV306TrainingSummary');
+  const activityCard=getCardByHeading('Atividades registradas');
+  if(!header&&!trainingSummary&&!activityCard)return;
   const entries=(await recoveryRows()).slice(0,7);
   const last7=entries.slice(0,7);
   const avg=key=>{const values=last7.map(x=>x[key]).filter(value=>value!=null&&value!=='').map(Number).filter(Number.isFinite);return values.length?values.reduce((a,b)=>a+b,0)/values.length:null};
@@ -133,18 +134,21 @@ async function enhanceRecoveryCard(){
   card.id='mabV306Recovery';
   card.className='card mab-v306-panel';
   card.innerHTML=`<div class="row"><div><h3>Sono e recuperação</h3><div class="mab-v306-muted">Registro diário opcional</div></div><button class="primary" data-v306-recovery-add>+ Registrar</button></div><div class="mab-v306-grid" style="margin-top:12px"><div class="mab-v306-metric"><span>Sono médio · últimos 7 registros</span><strong>${avg('sleepHours')==null?'—':fmtSleepHM(avg('sleepHours'))}</strong></div><div class="mab-v306-metric"><span>Qualidade média</span><strong>${avg('sleepQuality')==null?'—':`${fmtNumber(avg('sleepQuality'))}/5`}</strong></div><div class="mab-v306-metric"><span>Recuperação média</span><strong>${avg('morningRecovery')==null?'—':`${fmtNumber(avg('morningRecovery'))}/5`}</strong></div></div><div>${entries.slice(0,3).map(row=>`<div class="exercise-item"><div><strong>${esc(row.date)}</strong><div class="muted">Sono: ${fmtSleepHM(row.sleepHours)} · Qualidade: ${displayValue(row.sleepQuality,'/5')} · Recuperação: ${displayValue(row.morningRecovery,'/5')}</div></div><button class="ghost" data-v306-recovery-edit="${esc(row.id)}">Editar</button></div>`).join('')||'<div class="empty">Sem registros de sono e recuperação.</div>'}</div>`;
-  if(exportCard){
-    exportCard.insertAdjacentElement('beforebegin',card)
-  }else if(historyCard){
-    historyCard.insertAdjacentElement('afterend',card)
+  if(header){
+    header.insertAdjacentElement('afterend',card)
+  }else if(trainingSummary){
+    trainingSummary.insertAdjacentElement('beforebegin',card)
+  }else if(activityCard){
+    activityCard.insertAdjacentElement('beforebegin',card)
   }
 }
 
 async function enhanceTrainingSummary(){
   if(!document.querySelector('#bodyChart')||document.querySelector('#mabV306TrainingSummary'))return;
+  const recoveryCard=document.querySelector('#mabV306Recovery');
   const activityCard=getCardByHeading('Atividades registradas');
-  const header=document.querySelector('#app .stack > .row');
-  if(!activityCard&&!header)return;
+  const header=document.querySelector('#app .stack > .row')||document.querySelector('#app h2')?.closest('.row');
+  if(!activityCard&&!header&&!recoveryCard)return;
   const start=new Date();start.setDate(start.getDate()-6);start.setHours(0,0,0,0);
   const sessions=(await repo.all('workoutSessions')).filter(session=>session.status==='completed'&&new Date(session.startedAt)>=start);
   const activities=(await repo.all('activityDiary')).filter(activity=>new Date(`${activity.date}T00:00:00`)>=start);
@@ -152,7 +156,9 @@ async function enhanceTrainingSummary(){
   const durationTotal=durations.reduce((sum,value)=>sum+value,0);
   const card=document.createElement('section');card.id='mabV306TrainingSummary';card.className='card mab-v306-panel';
   card.innerHTML=`<h3>Treinos e Atividades · últimos 7 dias</h3><div class="mab-v306-grid" style="margin-top:10px"><div class="mab-v306-metric"><span>Musculações</span><strong>${sessions.length}</strong></div><div class="mab-v306-metric"><span>Outras atividades</span><strong>${activities.length}</strong></div><div class="mab-v306-metric"><span>Duração de musculação</span><strong>${fmt(durationTotal)}</strong></div><div class="mab-v306-metric"><span>Duração média</span><strong>${durations.length?fmt(Math.round(average(durations))):'—'}</strong></div><div class="mab-v306-metric"><span>Esforço médio (RPE)</span><strong>${average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null))==null?'—':`${fmtNumber(average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null)))}/10`}</strong></div></div>`;
-  if(activityCard){
+  if(recoveryCard){
+    recoveryCard.insertAdjacentElement('afterend',card)
+  }else if(activityCard){
     activityCard.insertAdjacentElement('beforebegin',card)
   }else if(header){
     header.insertAdjacentElement('afterend',card)
@@ -244,13 +250,25 @@ let isEnhancingEvolution=false;
 async function enhanceEvolution(){
   if(route()!=='evolution')return;
   if(isEnhancingEvolution)return;
-  if(document.querySelector('#mabV306TrainingSummary')&&document.querySelector('#mabV306BodyMeasures')&&document.querySelector('#mabV306Recovery'))return;
+  const recEl=document.querySelector('#mabV306Recovery');
+  const sumEl=document.querySelector('#mabV306TrainingSummary');
+  const measEl=document.querySelector('#mabV306BodyMeasures');
+  const header=document.querySelector('#app .stack > .row')||document.querySelector('#app h2')?.closest('.row');
+  if(recEl&&sumEl&&measEl){
+    if(header&&header.nextElementSibling!==recEl){
+      header.insertAdjacentElement('afterend',recEl);
+    }
+    if(recEl.nextElementSibling!==sumEl){
+      recEl.insertAdjacentElement('afterend',sumEl);
+    }
+    return;
+  }
   isEnhancingEvolution=true;
   try{
     document.querySelector('#mabV306MuscleVolume')?.remove();
+    await enhanceRecoveryCard();
     await enhanceTrainingSummary();
     await enhanceAssessmentView();
-    await enhanceRecoveryCard();
   }finally{
     isEnhancingEvolution=false;
   }
@@ -424,5 +442,5 @@ function observeUi(){
 }
 
 observeUi();
-window.MAB306={version:'4.2.2',versionName:'Performance & Recovery',toCsv};
+window.MAB306={version:'4.2.3',versionName:'Performance & Recovery',toCsv};
 export {toCsv};
