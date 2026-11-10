@@ -99,6 +99,8 @@ async function enhanceAssessmentView(){
     panel=document.createElement('section');
     panel.id='mabV306BodyMeasures';
     panel.className='card mab-v306-panel';
+  }
+  if(composition.nextElementSibling!==panel){
     composition.insertAdjacentElement('afterend',panel)
   }
   panel.innerHTML=`<div class="row"><div><h3>Medidas corporais</h3><div class="mab-v306-muted">Avaliação atual · ${esc(latestWithMeasures?.date||'--')}</div></div></div><div class="mab-v306-grid" style="margin-top:10px">${metrics.map(([label,left,right])=>`<div class="mab-v306-metric"><span>${label}</span><strong>${displayValue(left)} / ${displayValue(right)} cm</strong></div>`).join('')}</div><div class="mab-v306-controls"><span class="mab-v306-muted">Abdômen: ${displayValue(latestWithMeasures?.abdomenCm??latestWithMeasures?.waistCm,' cm')}</span><span class="mab-v306-muted">Cintura: ${displayValue(latestWithMeasures?.waistCircumferenceCm,' cm')}</span><span class="mab-v306-muted">Quadril: ${displayValue(latestWithMeasures?.hipCm,' cm')}</span></div>`;
@@ -123,32 +125,47 @@ async function enhanceDashboardWeight(){
 
 async function recoveryRows(){return (await repo.all('dailyRecovery')).sort((a,b)=>(b.date||'').localeCompare(a.date||''))}
 async function enhanceRecoveryCard(){
-  if(!document.querySelector('#bodyChart')||document.querySelector('#mabV306Recovery'))return;
-  const otherActivities=getCardByHeading('Atividades registradas')||getCardByHeading('Outras atividades')||getCardByHeading('Exportar para análise');
-  if(!otherActivities)return;
+  if(!document.querySelector('#bodyChart'))return;
+  const exportCard=getCardByHeading('Exportar para análise');
+  const historyCard=getCardByHeading('Histórico corporal');
+  if(!exportCard&&!historyCard)return;
   const entries=(await recoveryRows()).slice(0,7);
   const last7=entries.slice(0,7);
-    const avg=key=>{const values=last7.map(x=>x[key]).filter(value=>value!=null&&value!=='').map(Number).filter(Number.isFinite);return values.length?values.reduce((a,b)=>a+b,0)/values.length:null};
-  const card=document.createElement('section');
-  card.id='mabV306Recovery';
-  card.className='card mab-v306-panel';
+  const avg=key=>{const values=last7.map(x=>x[key]).filter(value=>value!=null&&value!=='').map(Number).filter(Number.isFinite);return values.length?values.reduce((a,b)=>a+b,0)/values.length:null};
+  let card=document.querySelector('#mabV306Recovery');
+  if(!card){
+    card=document.createElement('section');
+    card.id='mabV306Recovery';
+    card.className='card mab-v306-panel';
+  }
   card.innerHTML=`<div class="row"><div><h3>Sono e recuperação</h3><div class="mab-v306-muted">Registro diário opcional</div></div><button class="primary" data-v306-recovery-add>+ Registrar</button></div><div class="mab-v306-grid" style="margin-top:12px"><div class="mab-v306-metric"><span>Sono médio · últimos 7 registros</span><strong>${avg('sleepHours')==null?'—':fmtSleepHM(avg('sleepHours'))}</strong></div><div class="mab-v306-metric"><span>Qualidade média</span><strong>${avg('sleepQuality')==null?'—':`${fmtNumber(avg('sleepQuality'))}/5`}</strong></div><div class="mab-v306-metric"><span>Recuperação média</span><strong>${avg('morningRecovery')==null?'—':`${fmtNumber(avg('morningRecovery'))}/5`}</strong></div></div><div>${entries.slice(0,3).map(row=>`<div class="exercise-item"><div><strong>${esc(row.date)}</strong><div class="muted">Sono: ${fmtSleepHM(row.sleepHours)} · Qualidade: ${displayValue(row.sleepQuality,'/5')} · Recuperação: ${displayValue(row.morningRecovery,'/5')}</div></div><button class="ghost" data-v306-recovery-edit="${esc(row.id)}">Editar</button></div>`).join('')||'<div class="empty">Sem registros de sono e recuperação.</div>'}</div>`;
-  if(document.querySelector('#mabV306Recovery'))return;
-  otherActivities.insertAdjacentElement('beforebegin',card)
+  if(exportCard){
+    if(exportCard.previousElementSibling!==card)exportCard.insertAdjacentElement('beforebegin',card)
+  }else if(historyCard){
+    if(historyCard.nextElementSibling!==card)historyCard.insertAdjacentElement('afterend',card)
+  }
 }
 
 async function enhanceTrainingSummary(){
-  if(!document.querySelector('#bodyChart')||document.querySelector('#mabV306TrainingSummary'))return;
-  const chartCard=getCardByHeading('Evolução corporal');if(!chartCard)return;
+  if(!document.querySelector('#bodyChart'))return;
+  const activityCard=getCardByHeading('Atividades registradas');
+  const header=document.querySelector('#app .stack > .row');
+  if(!activityCard&&!header)return;
   const start=new Date();start.setDate(start.getDate()-6);start.setHours(0,0,0,0);
   const sessions=(await repo.all('workoutSessions')).filter(session=>session.status==='completed'&&new Date(session.startedAt)>=start);
   const activities=(await repo.all('activityDiary')).filter(activity=>new Date(`${activity.date}T00:00:00`)>=start);
   const durations=sessions.map(formatSessionDuration);
   const durationTotal=durations.reduce((sum,value)=>sum+value,0);
-  const card=document.createElement('section');card.id='mabV306TrainingSummary';card.className='card mab-v306-panel';
-  card.innerHTML=`<h3>Treinos · últimos 7 dias</h3><div class="mab-v306-grid" style="margin-top:10px"><div class="mab-v306-metric"><span>Musculações</span><strong>${sessions.length}</strong></div><div class="mab-v306-metric"><span>Outras atividades</span><strong>${activities.length}</strong></div><div class="mab-v306-metric"><span>Duração de musculação</span><strong>${fmt(durationTotal)}</strong></div><div class="mab-v306-metric"><span>Duração média</span><strong>${durations.length?fmt(Math.round(average(durations))):'—'}</strong></div><div class="mab-v306-metric"><span>Esforço médio (RPE)</span><strong>${average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null))==null?'—':`${fmtNumber(average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null)))}/10`}</strong></div></div>`;
-  if(document.querySelector('#mabV306TrainingSummary'))return;
-  chartCard.insertAdjacentElement('beforebegin',card)
+  let card=document.querySelector('#mabV306TrainingSummary');
+  if(!card){
+    card=document.createElement('section');card.id='mabV306TrainingSummary';card.className='card mab-v306-panel';
+  }
+  card.innerHTML=`<h3>Treinos e Atividades · últimos 7 dias</h3><div class="mab-v306-grid" style="margin-top:10px"><div class="mab-v306-metric"><span>Musculações</span><strong>${sessions.length}</strong></div><div class="mab-v306-metric"><span>Outras atividades</span><strong>${activities.length}</strong></div><div class="mab-v306-metric"><span>Duração de musculação</span><strong>${fmt(durationTotal)}</strong></div><div class="mab-v306-metric"><span>Duração média</span><strong>${durations.length?fmt(Math.round(average(durations))):'—'}</strong></div><div class="mab-v306-metric"><span>Esforço médio (RPE)</span><strong>${average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null))==null?'—':`${fmtNumber(average(sessions.map(session=>session.sessionRpe).filter(value=>value!=null)))}/10`}</strong></div></div>`;
+  if(activityCard){
+    if(activityCard.previousElementSibling!==card)activityCard.insertAdjacentElement('beforebegin',card)
+  }else if(header){
+    if(header.nextElementSibling!==card)header.insertAdjacentElement('afterend',card)
+  }
 }
 
 async function enhanceExerciseRows(){
@@ -167,211 +184,6 @@ async function enhanceExerciseRows(){
     const main=exercise.primaryMuscleGroup||exercise.muscleGroup||'Sem classificação';
     if(!row.querySelector('.mab-v306-muscles')){const meta=document.createElement('div');meta.className='muted mab-v306-muscles';meta.textContent=`Principal: ${main}${exercise.secondaryMuscleGroups?.length?` · Secundários: ${exercise.secondaryMuscleGroups.join(', ')}`:''}`;row.firstElementChild?.appendChild(meta)}
   }
-}
-
-let mabMusclePeriod='7d';
-let mabMuscleMetric='sets';
-
-async function getMuscleVolumeData(period='7d'){
-  let sessions;
-  if(period==='month'){
-    const currentMonth=new Date().toISOString().slice(0,7);
-    sessions=(await repo.all('workoutSessions')).filter(s=>s.status==='completed'&&(s.startedAt||'').startsWith(currentMonth));
-  }else{
-    const start=new Date();start.setDate(start.getDate()-6);start.setHours(0,0,0,0);
-    sessions=(await repo.all('workoutSessions')).filter(s=>s.status==='completed'&&new Date(s.startedAt)>=start);
-  }
-  const sessionMap=new Map(sessions.map(s=>[s.id,s]));
-  const exercises=await repo.all('exercises');
-  const exMap=new Map(exercises.map(e=>[e.id,e]));
-  const allSets=await repo.all('executedSets');
-
-  const primary={};
-  const secondary={};
-  const sessionsWorked={};
-  const totalReps={};
-  const totalLoad={};
-
-  for(const set of allSets){
-    if(set.completed!==true||!sessionMap.has(set.sessionId))continue;
-    const ex=exMap.get(set.exerciseId);
-    if(!ex)continue;
-    const main=ex.primaryMuscleGroup||ex.muscleGroup||'Sem classificação';
-    const reps=Number(set.reps)||0;
-    const weight=Number(set.weight)||0;
-    const load=reps*weight;
-
-    primary[main]=(primary[main]||0)+1;
-    totalReps[main]=(totalReps[main]||0)+reps;
-    totalLoad[main]=(totalLoad[main]||0)+load;
-
-    if(!sessionsWorked[main])sessionsWorked[main]=new Set();
-    sessionsWorked[main].add(set.sessionId);
-
-    for(const sec of(ex.secondaryMuscleGroups||[])){
-      secondary[sec]=(secondary[sec]||0)+1;
-      if(!sessionsWorked[sec])sessionsWorked[sec]=new Set();
-      sessionsWorked[sec].add(set.sessionId);
-    }
-  }
-
-  const allGroups=[...new Set([...Object.keys(primary),...Object.keys(secondary),...Object.keys(sessionsWorked)])];
-  return {
-    sessions,
-    primary,
-    secondary,
-    sessionsWorked,
-    totalReps,
-    totalLoad,
-    groups:allGroups
-  };
-}
-
-async function renderMuscleChartContent(){
-  const container=document.querySelector('#mabMuscleChartBody');
-  if(!container)return;
-  const data=await getMuscleVolumeData(mabMusclePeriod);
-  const {groups,primary,secondary,sessionsWorked,totalReps,totalLoad}=data;
-
-  if(!groups.length){
-    const periodLabel=mabMusclePeriod==='month'?'neste mês':'nos últimos 7 dias';
-    container.innerHTML=`<div class="empty">Nenhum treino de musculação ${periodLabel}.</div>`;
-    return;
-  }
-
-  if(mabMuscleMetric==='sets'){
-    const items=groups.map(g=>{
-      const p=primary[g]||0;
-      const s=secondary[g]||0;
-      return {group:g,primary:p,secondary:s,total:p+s};
-    }).sort((a,b)=>b.primary-a.primary||b.total-a.total||a.group.localeCompare(b.group,'pt-BR'));
-
-    const maxTotal=Math.max(...items.map(i=>i.total),1);
-
-    container.innerHTML=`
-      <div style="display:flex;gap:14px;font-size:11px;color:#aaa;margin-bottom:12px">
-        <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:10px;height:10px;background:#ff851b;border-radius:2px;display:inline-block"></i>Séries principais</span>
-        <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:10px;height:10px;background:#ffad70;border-radius:2px;display:inline-block"></i>Estímulos secundários</span>
-      </div>
-      <div class="stack" style="gap:12px">
-        ${items.map(item=>{
-          const barWidth=Math.max(5,Math.round((item.total/maxTotal)*100));
-          const priPct=item.total>0?(item.primary/item.total)*100:0;
-          const secPct=item.total>0?(item.secondary/item.total)*100:0;
-          return `
-            <div>
-              <div class="row" style="margin-bottom:4px;font-size:13px">
-                <strong>${esc(item.group)}</strong>
-                <span class="muted">${item.primary} princ.${item.secondary?` · ${item.secondary} sec.`:''}</span>
-              </div>
-              <div style="background:#222;height:10px;border-radius:5px;overflow:hidden;width:100%">
-                <div style="width:${barWidth}%;height:100%;display:flex">
-                  <div style="width:${priPct}%;background:#ff851b;height:100%" title="${item.primary} séries principais"></div>
-                  <div style="width:${secPct}%;background:#ffad70;height:100%" title="${item.secondary} estímulos secundários"></div>
-                </div>
-              </div>
-            </div>`;
-        }).join('')}
-      </div>
-    `;
-    return;
-  }
-
-  if(mabMuscleMetric==='sessions'){
-    const items=groups.map(g=>({
-      group:g,
-      count:sessionsWorked[g]?.size||0
-    })).filter(i=>i.count>0).sort((a,b)=>b.count-a.count||a.group.localeCompare(b.group,'pt-BR'));
-
-    const maxCount=Math.max(...items.map(i=>i.count),1);
-
-    container.innerHTML=`
-      <div class="stack" style="gap:12px">
-        ${items.map(item=>{
-          const pct=Math.max(5,Math.round((item.count/maxCount)*100));
-          return `
-            <div>
-              <div class="row" style="margin-bottom:4px;font-size:13px">
-                <strong>${esc(item.group)}</strong>
-                <span class="muted">${item.count} ${item.count===1?'treino':'treinos'}</span>
-              </div>
-              <div style="background:#222;height:10px;border-radius:5px;overflow:hidden">
-                <div style="width:${pct}%;background:#ff851b;height:100%"></div>
-              </div>
-            </div>`;
-        }).join('')}
-      </div>
-    `;
-    return;
-  }
-
-  if(mabMuscleMetric==='reps'){
-    const items=groups.map(g=>({
-      group:g,
-      reps:totalReps[g]||0
-    })).filter(i=>i.reps>0).sort((a,b)=>b.reps-a.reps||a.group.localeCompare(b.group,'pt-BR'));
-
-    const maxReps=Math.max(...items.map(i=>i.reps),1);
-
-    container.innerHTML=`
-      <div class="stack" style="gap:12px">
-        ${items.map(item=>{
-          const pct=Math.max(5,Math.round((item.reps/maxReps)*100));
-          return `
-            <div>
-              <div class="row" style="margin-bottom:4px;font-size:13px">
-                <strong>${esc(item.group)}</strong>
-                <span class="muted">${item.reps.toLocaleString('pt-BR')} reps</span>
-              </div>
-              <div style="background:#222;height:10px;border-radius:5px;overflow:hidden">
-                <div style="width:${pct}%;background:#ff851b;height:100%"></div>
-              </div>
-            </div>`;
-        }).join('')}
-      </div>
-    `;
-    return;
-  }
-
-  if(mabMuscleMetric==='load'){
-    const items=groups.map(g=>({
-      group:g,
-      load:totalLoad[g]||0
-    })).filter(i=>i.load>0).sort((a,b)=>b.load-a.load||a.group.localeCompare(b.group,'pt-BR'));
-
-    const maxLoad=Math.max(...items.map(i=>i.load),1);
-
-    container.innerHTML=`
-      <div class="stack" style="gap:12px">
-        ${items.map(item=>{
-          const pct=Math.max(5,Math.round((item.load/maxLoad)*100));
-          return `
-            <div>
-              <div class="row" style="margin-bottom:4px;font-size:13px">
-                <strong>${esc(item.group)}</strong>
-                <span class="muted">${Math.round(item.load).toLocaleString('pt-BR')} kg</span>
-              </div>
-              <div style="background:#222;height:10px;border-radius:5px;overflow:hidden">
-                <div style="width:${pct}%;background:#ff851b;height:100%"></div>
-              </div>
-            </div>`;
-        }).join('')}
-      </div>
-    `;
-    return;
-  }
-}
-
-async function enhanceMuscleVolume(){
-  if(!document.querySelector('#bodyChart'))return;
-  const history=getCardByHeading('Histórico corporal');if(!history)return;
-  let card=document.querySelector('#mabV306MuscleVolume');
-  if(!card){
-    card=document.createElement('section');card.id='mabV306MuscleVolume';card.className='card mab-v306-panel';
-    card.innerHTML=`<div class="row"><h3>Séries concluídas por grupo muscular</h3></div><div class="chips" style="margin:10px 0 10px"><button type="button" class="chip ${mabMusclePeriod==='7d'?'active':''}" data-mab-muscle-period="7d">Últimos 7 dias</button><button type="button" class="chip ${mabMusclePeriod==='month'?'active':''}" data-mab-muscle-period="month">Mês atual</button></div><label class="field" style="margin-bottom:12px;gap:4px"><span class="mab-v306-muted">Métrica do gráfico</span><select id="mabMuscleMetric" aria-label="Métrica do estímulo muscular" style="background:#0e0e0e;color:#fff;border:1px solid #383838;border-radius:10px;padding:10px;width:100%"><option value="sets" ${mabMuscleMetric==='sets'?'selected':''}>Volume de séries concluídas (principais/secundárias)</option><option value="sessions" ${mabMuscleMetric==='sessions'?'selected':''}>Quantidade de treinos/sessões</option><option value="reps" ${mabMuscleMetric==='reps'?'selected':''}>Total de repetições</option><option value="load" ${mabMuscleMetric==='load'?'selected':''}>Soma de Kg levantados (Volume Load: reps × peso)</option></select></label><div id="mabMuscleChartBody"></div>`;
-    history.insertAdjacentElement('beforebegin',card);
-  }
-  await renderMuscleChartContent();
 }
 
 function showWarmup(session){
@@ -439,10 +251,10 @@ async function renderAdditionalChart(metric){
 
 async function enhanceEvolution(){
   if(route()!=='evolution')return;
-  await enhanceAssessmentView();
+  document.querySelector('#mabV306MuscleVolume')?.remove();
   await enhanceTrainingSummary();
+  await enhanceAssessmentView();
   await enhanceRecoveryCard();
-  await enhanceMuscleVolume()
 }
 
 function renderRecoveryForm(existing=null){
@@ -570,15 +382,6 @@ function enhanceExportForm(){
 function openRecoveryFromButton(button){const id=button.dataset.v306RecoveryEdit;repo.get('dailyRecovery',id).then(record=>renderRecoveryForm(record)).catch(error=>toast(error.message))}
 function handleClick(event){
   const element=event.target instanceof Element?event.target:null;if(!element)return;
-  const periodBtn=element.closest('[data-mab-muscle-period]');
-  if(periodBtn){
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    mabMusclePeriod=periodBtn.dataset.mabMusclePeriod;
-    document.querySelectorAll('[data-mab-muscle-period]').forEach(b=>b.classList.toggle('active',b.dataset.mabMusclePeriod===mabMusclePeriod));
-    renderMuscleChartContent().catch(error=>toast(error.message));
-    return
-  }
   const startButton=element.closest('button[data-action="start"]');
   if(startButton){event.preventDefault();event.stopImmediatePropagation();startSessionWithCheckin(startButton.dataset.group).catch(error=>toast(error.message));return}
   const add=element.closest('[data-v306-recovery-add]');if(add){event.preventDefault();event.stopImmediatePropagation();renderRecoveryForm();return}
@@ -589,11 +392,6 @@ function handleClick(event){
 function handleBodyChartChange(event){
   const select=event.target;
   if(!(select instanceof HTMLSelectElement))return;
-  if(select.id==='mabMuscleMetric'){
-    mabMuscleMetric=select.value;
-    renderMuscleChartContent().catch(error=>toast(error.message));
-    return
-  }
   if(select.id!=='bodyChartMetric')return;
   const metric=select.value==='waistCm'?'abdomenCm':select.value;
   if(!['abdomenCm','waistCircumferenceCm','hipCm','bicepsLeftCm','bicepsRightCm','forearmLeftCm','forearmRightCm','thighLeftCm','thighRightCm','calfLeftCm','calfRightCm'].includes(metric))return;
