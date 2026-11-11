@@ -1685,48 +1685,45 @@ async function exportExercisesModal() {
     return;
   }
 
-  modalContent.innerHTML = `<div class="stack" style="max-height:86vh;overflow-y:auto">
-    <div class="row">
+  modalContent.innerHTML = `<div class="stack" style="gap:10px">
+    <div class="row" style="margin-bottom:0">
       <div>
         <div class="muted" style="font-size:11px;color:#ff851b;font-weight:700">EXPORTAÇÃO DE EXERCÍCIOS</div>
-        <h2 style="margin:2px 0 0">Exportar base cadastrada</h2>
+        <h2 style="margin:2px 0 0;font-size:18px">Exportar base cadastrada</h2>
       </div>
-      <button type="button" class="ghost" data-close>✕</button>
+      <button type="button" class="ghost" data-close style="padding:4px 10px">✕</button>
     </div>
-    <p class="muted" style="font-size:13px;margin:2px 0 8px">
-      Selecione os exercícios que deseja exportar com todos os campos cadastrados (grupos principal/secundários, equipamento, vídeo e observações):
+    <p class="muted" style="font-size:12px;margin:0 0 2px">
+      Selecione os exercícios para gerar o arquivo TXT com todos os campos cadastrados:
     </p>
 
-    <div class="row" style="gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #282828;flex-wrap:wrap">
-      <button type="button" class="chip active" id="btnToggleAllExercises">Desmarcar todos</button>
-      <span class="muted" id="selectedExercisesCount" style="font-size:12px">Total selecionado: ${exercises.length} de ${exercises.length}</span>
+    <div class="row" style="gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #282828;flex-wrap:wrap">
+      <button type="button" class="chip active" id="btnToggleAllExercises" style="font-size:11px;padding:6px 12px">Desmarcar todos</button>
+      <span class="muted" id="selectedExercisesCount" style="font-size:11px">Total: ${exercises.length} de ${exercises.length}</span>
     </div>
 
-    <input type="text" id="filterExportExercisesInput" placeholder="Filtrar lista de exercícios..." style="width:100%;padding:10px 12px;background:#0a0a0a;border:1px solid #333;border-radius:10px;color:#fff;font-size:13px;box-sizing:border-box">
+    <input type="text" id="filterExportExercisesInput" placeholder="Filtrar exercícios..." style="width:100%;padding:8px 12px;background:#0a0a0a;border:1px solid #333;border-radius:8px;color:#fff;font-size:12px;box-sizing:border-box">
 
-    <div id="exportExercisesList" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;padding-right:4px">
+    <div id="exportExercisesList" style="display:flex;flex-direction:column;gap:6px;height:185px;max-height:185px;overflow-y:auto;padding-right:4px;-webkit-overflow-scrolling:touch">
       ${exercises.map(ex => {
         const primary = ex.primaryMuscleGroup || ex.muscleGroup || 'Peitoral';
         const secondaries = Array.isArray(ex.secondaryMuscleGroups) && ex.secondaryMuscleGroups.length ? ex.secondaryMuscleGroups.join(', ') : 'Nenhum';
-        return `<label class="export-ex-item" data-name="${esc((ex.name || '').toLowerCase())}">
-          <input type="checkbox" name="selectedEx" value="${esc(ex.id)}" checked>
+        return `<label class="export-ex-item" data-name="${esc((ex.name || '').toLowerCase())}" style="padding:8px 10px;gap:8px">
+          <input type="checkbox" name="selectedEx" value="${esc(ex.id)}" checked style="margin-top:2px">
           <div style="flex:1;min-width:0">
-            <strong style="display:block;font-size:14px;color:#fff">${esc(ex.name)}</strong>
-            <div class="muted" style="font-size:11px;margin-top:2px">
+            <strong style="display:block;font-size:13px;color:#fff;line-height:1.25">${esc(ex.name)}</strong>
+            <div class="muted" style="font-size:10px;margin-top:2px">
               Principal: <span style="color:#ddd">${esc(primary)}</span> · Secundários: <span style="color:#bbb">${esc(secondaries)}</span>
             </div>
-            <div class="muted" style="font-size:11px">
-              ${ex.equipment ? `Equipamento: ${esc(ex.equipment)} · ` : ''}${ex.videoUrl ? `▶ Vídeo cadastrado · ` : ''}${ex.active !== false ? 'Ativo' : 'Inativo'}
+            <div class="muted" style="font-size:10px">
+              ${ex.equipment ? `Equipamento: ${esc(ex.equipment)} · ` : ''}${ex.videoUrl ? `▶ Vídeo · ` : ''}${ex.active !== false ? 'Ativo' : 'Inativo'}
             </div>
           </div>
         </label>`;
       }).join('')}
     </div>
 
-    <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
-      <button type="button" class="secondary" id="btnCopySelectedTxt" style="flex:1;min-width:140px;font-size:13px;padding:12px">📋 Copiar texto</button>
-      <button type="button" class="primary" id="btnDownloadSelectedTxt" style="flex:1;min-width:140px;font-size:13px;padding:12px">⬇ Baixar arquivo TXT</button>
-    </div>
+    <button type="button" class="primary" id="btnDownloadSelectedTxt" style="width:100%;padding:13px;font-size:14px;font-weight:800;margin-top:4px">⬇ Baixar arquivo TXT (${exercises.length})</button>
   </div>`;
 
   modal.showModal();
@@ -1736,12 +1733,14 @@ async function exportExercisesModal() {
   const countEl = modalContent.querySelector('#selectedExercisesCount');
   const toggleBtn = modalContent.querySelector('#btnToggleAllExercises');
   const filterInput = modalContent.querySelector('#filterExportExercisesInput');
+  const dlBtn = modalContent.querySelector('#btnDownloadSelectedTxt');
 
   let allSelected = true;
 
   const updateCount = () => {
     const checked = listEl.querySelectorAll('input[type="checkbox"]:checked').length;
-    countEl.textContent = `Total selecionado: ${checked} de ${exercises.length}`;
+    countEl.textContent = `Total: ${checked} de ${exercises.length}`;
+    if (dlBtn) dlBtn.textContent = checked > 0 ? `⬇ Baixar arquivo TXT (${checked})` : '⬇ Baixar arquivo TXT (0 selecionados)';
     if (checked === 0) {
       toggleBtn.textContent = 'Selecionar todos';
       toggleBtn.classList.remove('active');
@@ -1808,18 +1807,7 @@ async function exportExercisesModal() {
     return { txt, count: selected.length };
   };
 
-  modalContent.querySelector('#btnCopySelectedTxt').onclick = async () => {
-    const res = generateTxtExport();
-    if (!res) return;
-    try {
-      await navigator.clipboard.writeText(res.txt);
-      showToast(`${res.count} exercícios copiados para a área de transferência!`);
-    } catch {
-      showToast('Não foi possível copiar automaticamente.');
-    }
-  };
-
-  modalContent.querySelector('#btnDownloadSelectedTxt').onclick = () => {
+  dlBtn.onclick = () => {
     const res = generateTxtExport();
     if (!res) return;
     const dateSlug = new Date().toISOString().slice(0, 10);
