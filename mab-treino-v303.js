@@ -435,8 +435,16 @@ function enhanceSettingsProfile() {
   const block = document.createElement('div');
   block.id = 'mabProfileSection';
   block.className = 'stack';
-  block.innerHTML = `<hr style="border-color:#333;width:100%"><h3>Perfil físico</h3><p class="muted">Usado como base para futuras estimativas. O peso vem da avaliação corporal mais recente.</p><label class="field">Data de nascimento<input id="mabBirthDate" type="date" value="${escapeHtml(p.birthDate||'')}"></label><label class="field">Altura (cm)<input id="mabHeight" type="number" inputmode="numeric" min="100" max="250" value="${escapeHtml(p.heightCm||'')}"></label><label class="field">Sexo para cálculo fisiológico<select id="mabSex"><option value="">Não informado</option><option value="female" ${p.sex==='female'?'selected':''}>Feminino</option><option value="male" ${p.sex==='male'?'selected':''}>Masculino</option></select></label><button class="secondary" id="mabSaveProfile">Salvar perfil</button>`;
-  modal.querySelector('.stack')?.appendChild(block);
+  block.innerHTML = `<div style="padding:10px 0 14px;border-bottom:1px solid #282828"><div class="muted" style="font-size:11px;font-weight:700;color:#ff851b;letter-spacing:.08em;margin-bottom:4px">PERFIL FÍSICO</div><h3 style="margin:2px 0 4px">Dados corporais</h3><p class="muted" style="font-size:12px;margin:0 0 10px">Usado como base para futuras estimativas. O peso vem da avaliação corporal mais recente.</p><label class="field">Data de nascimento<input id="mabBirthDate" type="date" value="${escapeHtml(p.birthDate||'')}"></label><label class="field">Altura (cm)<input id="mabHeight" type="number" inputmode="numeric" min="100" max="250" value="${escapeHtml(p.heightCm||'')}"></label><label class="field">Sexo para cálculo fisiológico<select id="mabSex"><option value="">Não informado</option><option value="female" ${p.sex==='female'?'selected':''}>Feminino</option><option value="male" ${p.sex==='male'?'selected':''}>Masculino</option></select></label><button class="secondary" id="mabSaveProfile" style="width:100%;margin-top:8px">Salvar perfil</button></div>`;
+  const stack = modal.querySelector('.stack');
+  const lastBackup = modal.querySelector('#lastBackupInfo');
+  if (lastBackup && lastBackup.nextElementSibling) {
+    stack.insertBefore(block, lastBackup.nextElementSibling);
+  } else if (stack) {
+    const firstAnchor = modal.querySelector('#exportBtn') || stack.firstElementChild;
+    if (firstAnchor) stack.insertBefore(block, firstAnchor);
+    else stack.appendChild(block);
+  }
   block.querySelector('#mabSaveProfile').onclick = () => {
     savePhysicalProfile({
       birthDate: block.querySelector('#mabBirthDate').value,

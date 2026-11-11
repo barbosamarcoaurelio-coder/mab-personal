@@ -1692,9 +1692,13 @@ async function exportExercisesModal() {
       Selecione os exercícios para gerar o arquivo TXT com todos os campos cadastrados:
     </p>
 
-    <div class="row" style="gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #282828;flex-wrap:wrap">
-      <button type="button" class="chip active" id="btnToggleAllExercises" style="font-size:11px;padding:6px 12px">Desmarcar todos</button>
-      <span class="muted" id="selectedExercisesCount" style="font-size:11px">Total: ${exercises.length} de ${exercises.length}</span>
+    <div class="row" style="gap:8px;align-items:center;padding:4px 0">
+      <button type="button" class="chip active" id="btnToggleAllExercises" style="flex:1;min-height:42px;font-size:12px;padding:8px 10px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:12px">Desmarcar todos</button>
+      <button type="button" class="primary" id="btnDownloadSelectedTxt" style="flex:1;min-height:42px;font-size:12px;font-weight:800;padding:8px 10px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:12px;transition:opacity .15s">⬇ Baixar TXT (${exercises.length})</button>
+    </div>
+
+    <div class="row" style="justify-content:space-between;align-items:center;margin-top:-2px">
+      <span class="muted" id="selectedExercisesCount" style="font-size:11px">Total selecionado: ${exercises.length} de ${exercises.length}</span>
     </div>
 
     <input type="text" id="filterExportExercisesInput" placeholder="Filtrar exercícios..." style="width:100%;padding:8px 12px;background:#0a0a0a;border:1px solid #333;border-radius:8px;color:#fff;font-size:12px;box-sizing:border-box">
@@ -1717,8 +1721,6 @@ async function exportExercisesModal() {
         </label>`;
       }).join('')}
     </div>
-
-    <button type="button" class="primary" id="btnDownloadSelectedTxt" style="width:100%;padding:13px;font-size:14px;font-weight:800;margin-top:4px">⬇ Baixar arquivo TXT (${exercises.length})</button>
   </div>`;
 
   modal.showModal();
@@ -1734,20 +1736,29 @@ async function exportExercisesModal() {
 
   const updateCount = () => {
     const checked = listEl.querySelectorAll('input[type="checkbox"]:checked').length;
-    countEl.textContent = `Total: ${checked} de ${exercises.length}`;
-    if (dlBtn) dlBtn.textContent = checked > 0 ? `⬇ Baixar arquivo TXT (${checked})` : '⬇ Baixar arquivo TXT (0 selecionados)';
+    countEl.textContent = `Total selecionado: ${checked} de ${exercises.length}`;
     if (checked === 0) {
+      dlBtn.disabled = true;
+      dlBtn.style.opacity = '0.38';
+      dlBtn.style.cursor = 'not-allowed';
+      dlBtn.textContent = '⬇ Baixar TXT (0)';
       toggleBtn.textContent = 'Selecionar todos';
       toggleBtn.classList.remove('active');
       allSelected = false;
-    } else if (checked === exercises.length) {
-      toggleBtn.textContent = 'Desmarcar todos';
-      toggleBtn.classList.add('active');
-      allSelected = true;
     } else {
-      toggleBtn.textContent = 'Selecionar todos';
-      toggleBtn.classList.remove('active');
-      allSelected = false;
+      dlBtn.disabled = false;
+      dlBtn.style.opacity = '1';
+      dlBtn.style.cursor = 'pointer';
+      dlBtn.textContent = `⬇ Baixar TXT (${checked})`;
+      if (checked === exercises.length) {
+        toggleBtn.textContent = 'Desmarcar todos';
+        toggleBtn.classList.add('active');
+        allSelected = true;
+      } else {
+        toggleBtn.textContent = 'Selecionar todos';
+        toggleBtn.classList.remove('active');
+        allSelected = false;
+      }
     }
   };
 
