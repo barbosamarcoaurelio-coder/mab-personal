@@ -579,16 +579,42 @@ async function beginRest(sec, s, item) {
   })
 }
 
-const MUSCLE_GROUPS = ['Peitoral', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Pernas', 'Quadríceps', 'Posterior', 'Glúteos', 'Panturrilhas', 'Core'];
+const BASE_MUSCLE_GROUPS = ['Peitoral', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Pernas', 'Quadríceps', 'Posterior', 'Glúteos', 'Panturrilhas', 'Core'];
 
-function exerciseForm(e = {}, addToCurrentPlan = false) {
-  const currentPrimary = e.primaryMuscleGroup || e.muscleGroup || 'Peitoral';
+async function getAvailableMuscleGroups() {
+  const customRecord = await repo.get('settings', 'customMuscleGroups').catch(() => null);
+  const custom = Array.isArray(customRecord?.value) ? customRecord.value : [];
+  const exercises = await repo.all('exercises').catch(() => []);
+  const fromExercises = [];
+  for (const ex of exercises) {
+    if (ex.primaryMuscleGroup) fromExercises.push(ex.primaryMuscleGroup);
+    if (ex.muscleGroup) fromExercises.push(ex.muscleGroup);
+    if (Array.isArray(ex.secondaryMuscleGroups)) fromExercises.push(...ex.secondaryMuscleGroups);
+  }
+  const set = new Set([...BASE_MUSCLE_GROUPS, ...custom, ...fromExercises].map(s => String(s || '').trim()).filter(Boolean));
+  return [...set];
+}
+
+async function addCustomMuscleGroup(name) {
+  const clean = String(name || '').trim();
+  if (!clean) return null;
+  const formatted = clean.charAt(0).toUpperCase() + clean.slice(1);
+  const customRecord = await repo.get('settings', 'customMuscleGroups').catch(() => null);
+  const custom = Array.isArray(customRecord?.value) ? customRecord.value : [];
+  if (!custom.includes(formatted)) {
+    custom.push(formatted);
+    await repo.put('settings', { key: 'customMuscleGroups', value: custom });
+  }
+  return formatted;
+}
+
+async function exerciseForm(e = {}, addToCurrentPlan = false) {
+  const allGroups = await getAvailableMuscleGroups();
+  let currentPrimary = e.primaryMuscleGroup || e.muscleGroup || 'Peitoral';
+  if (!allGroups.includes(currentPrimary)) allGroups.push(currentPrimary);
   const selectedSecondaries = Array.isArray(e.secondaryMuscleGroups)
     ? e.secondaryMuscleGroups.filter(g => g !== currentPrimary)
     : [];
-  const allGroups = MUSCLE_GROUPS.includes(currentPrimary)
-    ? MUSCLE_GROUPS
-    : [currentPrimary, ...MUSCLE_GROUPS];
 
   modalContent.innerHTML = `<form id="exerciseForm" class="stack">
     <div class="row">
@@ -599,20 +625,25 @@ function exerciseForm(e = {}, addToCurrentPlan = false) {
       Nome
       <input name="name" required value="${esc(e.name || '')}">
     </label>
-    <label class="field">
-      Grupo muscular principal
-      <select name="muscleGroup" id="primaryMuscleGroupSelect" required>
-        ${allGroups.map(g => `<option value="${esc(g)}" ${g === currentPrimary ? 'selected' : ''}>${esc(g)}</option>`).join('')}
-      </select>
-    </label>
     <div class="field">
-      <span style="font-weight:600;font-size:13px">Grupos Secundários (toque para marcar/desmarcar)</span>
-      <small class="muted" style="margin-top:-2px">Músculos acionados como sinergistas ou apoio</small>
+      <div class="row" style="margin-bottom:2px">
+        <span style="font-weight:600;font-size:13px">Grupo Muscular Principal (toque para selecionar um)</span>
+        <button type="button" class="ghost" id="btnAddMuscleGroup" style="font-size:11px;padding:4px 9px;border-color:rgba(255,133,27,0.4);color:#ff851b;border-radius:999px">+ Novo grupo</button>
+      </div>
+      <small class="muted" style="margin-top:-2px">Selecione o músculo alvo principal do exercício</small>
+      <div class="mab-muscle-chips" id="primaryChipsContainer">
+        ${allGroups.map(g => `<button type="button" class="mab-muscle-chip mab-primary-chip ${g === currentPrimary ? 'active' : ''}" data-group="${esc(g)}">${esc(g)}</button>`).join('')}
+      </div>
+      <input type="hidden" name="muscleGroup" id="primaryMuscleGroupInput" value="${esc(currentPrimary)}">
+    </div>
+    <div class="field">
+      <span style="font-weight:600;font-size:13px">Grupos Secundários (sinergistas)</span>
+      <small class="muted" style="margin-top:-2px">Toque para marcar/desmarcar músculos acionados como apoio</small>
       <div class="mab-muscle-chips" id="secondaryChipsContainer">
-        ${MUSCLE_GROUPS.map(g => {
+        ${allGroups.map(g => {
           const isPrimary = g === currentPrimary;
           const isActive = selectedSecondaries.includes(g) && !isPrimary;
-          return `<button type="button" class="mab-muscle-chip ${isActive ? 'active' : ''}" data-group="${esc(g)}" ${isPrimary ? 'style="display:none"' : ''}>${esc(g)}</button>`;
+          return `<button type="button" class="mab-muscle-chip mab-secondary-chip ${isActive ? 'active' : ''}" data-group="${esc(g)}" ${isPrimary ? 'style="display:none"' : ''}>${esc(g)}</button>`;
         }).join('')}
       </div>
     </div>
@@ -634,25 +665,85 @@ function exerciseForm(e = {}, addToCurrentPlan = false) {
   modal.showModal();
   modalContent.querySelector('[data-close]').onclick = () => modal.close();
 
-  const primarySelect = modalContent.querySelector('#primaryMuscleGroupSelect');
-  const chipsContainer = modalContent.querySelector('#secondaryChipsContainer');
+  const primaryChipsContainer = modalContent.querySelector('#primaryChipsContainer');
+  const secondaryChipsContainer = modalContent.querySelector('#secondaryChipsContainer');
+  const primaryInput = modalContent.querySelector('#primaryMuscleGroupInput');
+  const btnAddMuscleGroup = modalContent.querySelector('#btnAddMuscleGroup');
 
-  chipsContainer.addEventListener('click', ev => {
-    const chip = ev.target.closest('.mab-muscle-chip');
+  // Seleção única para o grupo principal
+  primaryChipsContainer.addEventListener('click', ev => {
+    const chip = ev.target.closest('.mab-primary-chip');
+    if (!chip) return;
+    const newPrimary = chip.dataset.group;
+    if (!newPrimary) return;
+
+    primaryChipsContainer.querySelectorAll('.mab-primary-chip').forEach(c => {
+      c.classList.toggle('active', c === chip);
+    });
+    primaryInput.value = newPrimary;
+
+    // Atualiza secundários: o grupo principal não pode ser secundário
+    secondaryChipsContainer.querySelectorAll('.mab-secondary-chip').forEach(c => {
+      if (c.dataset.group === newPrimary) {
+        c.classList.remove('active');
+        c.style.display = 'none';
+      } else {
+        c.style.display = '';
+      }
+    });
+  });
+
+  // Marcação múltipla para grupos secundários
+  secondaryChipsContainer.addEventListener('click', ev => {
+    const chip = ev.target.closest('.mab-secondary-chip');
     if (!chip) return;
     chip.classList.toggle('active');
   });
 
-  primarySelect.addEventListener('change', () => {
-    const newPrimary = primarySelect.value;
-    chipsContainer.querySelectorAll('.mab-muscle-chip').forEach(chip => {
-      if (chip.dataset.group === newPrimary) {
-        chip.classList.remove('active');
-        chip.style.display = 'none';
-      } else {
-        chip.style.display = '';
-      }
+  // Cadastro de novo grupo muscular sob demanda
+  btnAddMuscleGroup.addEventListener('click', async () => {
+    const raw = prompt('Nome do novo grupo muscular (ex.: Adutores, Abdutores, Trapézio, Antebraço):');
+    if (!raw) return;
+    const newGroup = await addCustomMuscleGroup(raw);
+    if (!newGroup) return;
+
+    // Adiciona ao container principal
+    let pChip = primaryChipsContainer.querySelector(`[data-group="${CSS.escape(newGroup)}"]`);
+    if (!pChip) {
+      pChip = document.createElement('button');
+      pChip.type = 'button';
+      pChip.className = 'mab-muscle-chip mab-primary-chip';
+      pChip.dataset.group = newGroup;
+      pChip.textContent = newGroup;
+      primaryChipsContainer.appendChild(pChip);
+    }
+    // Seleciona o novo grupo como principal
+    primaryChipsContainer.querySelectorAll('.mab-primary-chip').forEach(c => {
+      c.classList.toggle('active', c === pChip);
     });
+    primaryInput.value = newGroup;
+
+    // Adiciona ao container secundário (oculto de imediato pois agora é o principal)
+    let sChip = secondaryChipsContainer.querySelector(`[data-group="${CSS.escape(newGroup)}"]`);
+    if (!sChip) {
+      sChip = document.createElement('button');
+      sChip.type = 'button';
+      sChip.className = 'mab-muscle-chip mab-secondary-chip';
+      sChip.dataset.group = newGroup;
+      sChip.textContent = newGroup;
+      sChip.style.display = 'none';
+      secondaryChipsContainer.appendChild(sChip);
+    } else {
+      sChip.classList.remove('active');
+      sChip.style.display = 'none';
+    }
+
+    // Exibe os demais secundários
+    secondaryChipsContainer.querySelectorAll('.mab-secondary-chip').forEach(c => {
+      if (c.dataset.group !== newGroup) c.style.display = '';
+    });
+
+    showToast(`Grupo "${newGroup}" adicionado`);
   });
 
   modalContent.querySelector('form').onsubmit = async ev => {
@@ -664,8 +755,8 @@ function exerciseForm(e = {}, addToCurrentPlan = false) {
       showToast('Informe o nome do exercício.');
       return;
     }
-    const primary = fd.get('muscleGroup');
-    const secondary = [...chipsContainer.querySelectorAll('.mab-muscle-chip.active')]
+    const primary = primaryInput.value || 'Peitoral';
+    const secondary = [...secondaryChipsContainer.querySelectorAll('.mab-secondary-chip.active')]
       .map(c => c.dataset.group)
       .filter(g => g && g !== primary);
 
