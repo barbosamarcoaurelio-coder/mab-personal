@@ -5,4 +5,9 @@
 .recent-activities-list::-webkit-scrollbar-thumb{background:#383838;border-radius:4px}
 .grid.two > * { min-width: 0; }
 .field input[type="date"] { min-width: 0; width: 100%; box-sizing: border-box; }
+.mab-video-badge{display:inline-flex;align-items:center;gap:4px;color:#ff851b;background:rgba(255,133,27,.12);border:1px solid rgba(255,133,27,.35);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700;text-decoration:none;letter-spacing:.02em;touch-action:manipulation;white-space:nowrap;transition:background .15s,border-color .15s}
+.mab-video-badge:hover,.mab-video-badge:active{background:rgba(255,133,27,.22);border-color:#ff851b;color:#ff851b}
+.mab-muscle-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.mab-muscle-chip{background:var(--card2);color:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;touch-action:manipulation;transition:all .15s;user-select:none}
+.mab-muscle-chip.active{background:#ff851b;color:#080808;border-color:#ff851b;font-weight:700}
 

@@ -167,21 +167,8 @@ async function enhanceTrainingSummary(){
 }
 
 async function enhanceExerciseRows(){
-  const rows=[...document.querySelectorAll('#exerciseList .exercise-item[data-name]')];
-  if(!rows.length)return;
-  const exercises=await repo.all('exercises');
-  for(const row of rows){
-    if(row.querySelector('[data-v306-classify]'))continue;
-    const name=row.dataset.name;
-    const exercise=exercises.find(x=>(x.nameNormalized||x.name?.toLowerCase())===name);
-    if(!exercise)continue;
-    const controls=row.querySelector('.row')||row;
-    const button=document.createElement('button');
-    button.type='button';button.className='ghost';button.textContent='Grupos';button.dataset.v306Classify=exercise.id;button.setAttribute('aria-label',`Classificar grupos musculares de ${exercise.name}`);
-    controls.appendChild(button);
-    const main=exercise.primaryMuscleGroup||exercise.muscleGroup||'Sem classificação';
-    if(!row.querySelector('.mab-v306-muscles')){const meta=document.createElement('div');meta.className='muted mab-v306-muscles';meta.textContent=`Principal: ${main}${exercise.secondaryMuscleGroups?.length?` · Secundários: ${exercise.secondaryMuscleGroups.join(', ')}`:''}`;row.firstElementChild?.appendChild(meta)}
-  }
+  // v4.3.0: Os grupos musculares primários e secundários, bem como o link direto
+  // do YouTube, são renderizados nativamente por exerciseRow(e) na biblioteca de exercícios.
 }
 
 function showWarmup(session){
@@ -404,7 +391,6 @@ function handleClick(event){
   if(startButton){event.preventDefault();event.stopImmediatePropagation();startSessionWithCheckin(startButton.dataset.group).catch(error=>toast(error.message));return}
   const add=element.closest('[data-v306-recovery-add]');if(add){event.preventDefault();event.stopImmediatePropagation();renderRecoveryForm();return}
   const editRecovery=element.closest('[data-v306-recovery-edit]');if(editRecovery){event.preventDefault();event.stopImmediatePropagation();openRecoveryFromButton(editRecovery);return}
-  const classify=element.closest('[data-v306-classify]');if(classify){event.preventDefault();event.stopImmediatePropagation();repo.get('exercises',classify.dataset.v306Classify).then(exercise=>exercise&&renderMuscleClassifier(exercise)).catch(error=>toast(error.message));return}
 }
 
 function handleBodyChartChange(event){
@@ -443,5 +429,5 @@ function observeUi(){
 }
 
 observeUi();
-window.MAB306={version:'4.2.4',versionName:'Performance & Recovery',toCsv,generateCsv:exportCsv};
+window.MAB306={version:'4.3.0',versionName:'Performance & Recovery',toCsv,generateCsv:exportCsv};
 export {toCsv};

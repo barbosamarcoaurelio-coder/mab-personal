@@ -112,7 +112,7 @@ async function plan() {
     exercises = await repo.all('exercises');
   const group = localStorage.getItem('mab-plan-group') || 'A';
   const list = items.filter(x => x.cycleId === cycle?.id && x.groupCode === group && x.active).sort((a, b) => a.order - b.order);
-  return `<div class="stack"><div class="card"><div class="row"><div><span class="muted">CICLO ATUAL</span><h2>${esc(cycle?.name||'Sem ciclo')}</h2></div><button class="primary" data-action="add-plan-item">+ Adicionar ao treino</button></div><div class="chips">${['A','B','C','D'].map(g=>`<button class="chip ${g===group?'active':''}" data-action="plan-group" data-group="${g}">Treino ${g}</button>`).join('')}</div></div><div class="card"><h3>Treino ${group}</h3>${list.map(i=>{const e=exercises.find(x=>x.id===i.exerciseId);return `<div class="exercise-item"><div><strong>${esc(e?.name)}</strong><div class="muted">${i.sets} séries · ${i.minReps}-${i.maxReps} reps · ${i.restSeconds}s</div></div><div class="row"><button class="ghost" data-action="move-plan-up" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para cima">↑</button><button class="ghost" data-action="move-plan-down" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para baixo">↓</button><button class="ghost" data-action="edit-plan-item" data-id="${i.id}">Editar</button><button class="chip active" data-action="toggle-plan" data-id="${i.id}">Inativar</button></div></div>`}).join('')||'<div class="empty">Nenhum exercício.</div>'}</div></div>`
+  return `<div class="stack"><div class="card"><div class="row"><div><span class="muted">CICLO ATUAL</span><h2>${esc(cycle?.name||'Sem ciclo')}</h2></div><button class="primary" data-action="add-plan-item">+ Adicionar ao treino</button></div><div class="chips">${['A','B','C','D'].map(g=>`<button class="chip ${g===group?'active':''}" data-action="plan-group" data-group="${g}">Treino ${g}</button>`).join('')}</div><div class="row" style="margin-top:12px;padding-top:12px;border-top:1px solid #282828;gap:8px;flex-wrap:wrap"><button type="button" class="ghost" data-action="export-personal-plan" style="font-size:12px;padding:8px 12px">📤 Exportar Treinos Personal (A/B/C/D)</button><button type="button" class="ghost" data-action="import-personal-plan" style="font-size:12px;padding:8px 12px">📥 Importar Treinos Personal</button></div></div><div class="card"><h3>Treino ${group}</h3>${list.map(i=>{const e=exercises.find(x=>x.id===i.exerciseId);return `<div class="exercise-item"><div><strong>${esc(e?.name)}</strong><div class="muted">${i.sets} séries · ${i.minReps}-${i.maxReps} reps · ${i.restSeconds}s</div></div><div class="row"><button class="ghost" data-action="move-plan-up" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para cima">↑</button><button class="ghost" data-action="move-plan-down" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para baixo">↓</button><button class="ghost" data-action="edit-plan-item" data-id="${i.id}">Editar</button><button class="chip active" data-action="toggle-plan" data-id="${i.id}">Inativar</button></div></div>`}).join('')||'<div class="empty">Nenhum exercício.</div>'}</div></div>`
 }
 
 async function exercises() {
@@ -123,7 +123,16 @@ async function exercises() {
 }
 
 function exerciseRow(e) {
-  return `<div class="exercise-item" data-name="${esc(e.name.toLowerCase())}"><div><strong>${esc(e.name)}</strong><div class="muted">${esc(e.muscleGroup)} · ${esc(e.equipment)}</div></div><button class="ghost" data-action="edit-exercise" data-id="${e.id}">Editar</button></div>`
+  const primary = e.primaryMuscleGroup || e.muscleGroup || 'Peitoral';
+  const secondaries = Array.isArray(e.secondaryMuscleGroups) && e.secondaryMuscleGroups.length > 0
+    ? e.secondaryMuscleGroups.filter(g => g !== primary)
+    : [];
+  const muscleText = `Principal: ${esc(primary)}${secondaries.length ? ` · Secundários: ${esc(secondaries.join(', '))}` : ''}`;
+  const videoBadge = e.videoUrl && String(e.videoUrl).trim()
+    ? `<a href="${esc(e.videoUrl)}" target="_blank" rel="noopener noreferrer" class="mab-video-badge" title="Ver execução em vídeo">▶ Execução</a>`
+    : '';
+
+  return `<div class="exercise-item" data-name="${esc(e.name.toLowerCase())}"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><strong>${esc(e.name)}</strong>${videoBadge}</div><div class="muted" style="margin-top:2px">${muscleText}${e.equipment ? ` · ${esc(e.equipment)}` : ''}</div></div><button class="ghost" data-action="edit-exercise" data-id="${e.id}">Editar</button></div>`
 }
 
 async function evolution() {
@@ -570,25 +579,107 @@ async function beginRest(sec, s, item) {
   })
 }
 
+const MUSCLE_GROUPS = ['Peitoral', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Pernas', 'Quadríceps', 'Posterior', 'Glúteos', 'Panturrilhas', 'Core'];
+
 function exerciseForm(e = {}, addToCurrentPlan = false) {
-  modalContent.innerHTML = `<form id="exerciseForm" class="stack"><div class="row"><h2>${e.id?'Editar':'Novo'} exercício</h2><button type="button" class="ghost" data-close>✕</button></div><label class="field">Nome<input name="name" required value="${esc(e.name)}"></label><label class="field">Grupo muscular<input name="muscleGroup" required value="${esc(e.muscleGroup)}"></label><label class="field">Equipamento<input name="equipment" required value="${esc(e.equipment)}"></label><label class="field">Vídeo/link<input name="videoUrl" value="${esc(e.videoUrl)}"></label><label class="field">Observações<textarea name="notes">${esc(e.notes)}</textarea></label><button class="primary">Salvar exercício</button></form>`;
+  const currentPrimary = e.primaryMuscleGroup || e.muscleGroup || 'Peitoral';
+  const selectedSecondaries = Array.isArray(e.secondaryMuscleGroups)
+    ? e.secondaryMuscleGroups.filter(g => g !== currentPrimary)
+    : [];
+  const allGroups = MUSCLE_GROUPS.includes(currentPrimary)
+    ? MUSCLE_GROUPS
+    : [currentPrimary, ...MUSCLE_GROUPS];
+
+  modalContent.innerHTML = `<form id="exerciseForm" class="stack">
+    <div class="row">
+      <h2>${e.id ? 'Editar' : 'Novo'} exercício</h2>
+      <button type="button" class="ghost" data-close>✕</button>
+    </div>
+    <label class="field">
+      Nome
+      <input name="name" required value="${esc(e.name || '')}">
+    </label>
+    <label class="field">
+      Grupo muscular principal
+      <select name="muscleGroup" id="primaryMuscleGroupSelect" required>
+        ${allGroups.map(g => `<option value="${esc(g)}" ${g === currentPrimary ? 'selected' : ''}>${esc(g)}</option>`).join('')}
+      </select>
+    </label>
+    <div class="field">
+      <span style="font-weight:600;font-size:13px">Grupos Secundários (toque para marcar/desmarcar)</span>
+      <small class="muted" style="margin-top:-2px">Músculos acionados como sinergistas ou apoio</small>
+      <div class="mab-muscle-chips" id="secondaryChipsContainer">
+        ${MUSCLE_GROUPS.map(g => {
+          const isPrimary = g === currentPrimary;
+          const isActive = selectedSecondaries.includes(g) && !isPrimary;
+          return `<button type="button" class="mab-muscle-chip ${isActive ? 'active' : ''}" data-group="${esc(g)}" ${isPrimary ? 'style="display:none"' : ''}>${esc(g)}</button>`;
+        }).join('')}
+      </div>
+    </div>
+    <label class="field">
+      Equipamento
+      <input name="equipment" required value="${esc(e.equipment || '')}">
+    </label>
+    <label class="field">
+      Vídeo/link (YouTube ou demonstração)
+      <input name="videoUrl" type="url" placeholder="https://www.youtube.com/watch?v=..." value="${esc(e.videoUrl || '')}">
+    </label>
+    <label class="field">
+      Observações
+      <textarea name="notes">${esc(e.notes || '')}</textarea>
+    </label>
+    <button class="primary">Salvar exercício</button>
+  </form>`;
+
   modal.showModal();
   modalContent.querySelector('[data-close]').onclick = () => modal.close();
+
+  const primarySelect = modalContent.querySelector('#primaryMuscleGroupSelect');
+  const chipsContainer = modalContent.querySelector('#secondaryChipsContainer');
+
+  chipsContainer.addEventListener('click', ev => {
+    const chip = ev.target.closest('.mab-muscle-chip');
+    if (!chip) return;
+    chip.classList.toggle('active');
+  });
+
+  primarySelect.addEventListener('change', () => {
+    const newPrimary = primarySelect.value;
+    chipsContainer.querySelectorAll('.mab-muscle-chip').forEach(chip => {
+      if (chip.dataset.group === newPrimary) {
+        chip.classList.remove('active');
+        chip.style.display = 'none';
+      } else {
+        chip.style.display = '';
+      }
+    });
+  });
+
   modalContent.querySelector('form').onsubmit = async ev => {
     ev.preventDefault();
     const fd = new FormData(ev.target),
       name = fd.get('name').trim(),
       now = new Date().toISOString();
+    if (!name) {
+      showToast('Informe o nome do exercício.');
+      return;
+    }
+    const primary = fd.get('muscleGroup');
+    const secondary = [...chipsContainer.querySelectorAll('.mab-muscle-chip.active')]
+      .map(c => c.dataset.group)
+      .filter(g => g && g !== primary);
+
     const saved = {
       ...e,
       id: e.id || repo.uuid(),
       name,
-      name,
       nameNormalized: name.toLowerCase(),
-      muscleGroup: fd.get('muscleGroup'),
-      equipment: fd.get('equipment'),
-      videoUrl: fd.get('videoUrl'),
-      notes: fd.get('notes'),
+      muscleGroup: primary,
+      primaryMuscleGroup: primary,
+      secondaryMuscleGroups: secondary,
+      equipment: String(fd.get('equipment') || '').trim(),
+      videoUrl: String(fd.get('videoUrl') || '').trim(),
+      notes: String(fd.get('notes') || '').trim(),
       active: e.active ?? true,
       createdAt: e.createdAt || now,
       updatedAt: now
@@ -599,10 +690,10 @@ function exerciseForm(e = {}, addToCurrentPlan = false) {
       const cycle = await activeCycle();
       const group = localStorage.getItem('mab-plan-group') || 'A';
       const items = await repo.all('planItems');
-      const same = items.filter(x => x.cycleId === cycle.id && x.groupCode === group);
+      const same = items.filter(x => x.cycleId === cycle?.id && x.groupCode === group);
       await repo.put('planItems', {
         id: repo.uuid(),
-        cycleId: cycle.id,
+        cycleId: cycle?.id,
         groupCode: group,
         exerciseId: saved.id,
         order: Math.max(0, ...same.map(x => x.order || 0)) + 1,
@@ -615,10 +706,10 @@ function exerciseForm(e = {}, addToCurrentPlan = false) {
         createdAt: now,
         updatedAt: now
       });
-      showToast('Exercício criado e adicionado ao Treino ' + group)
+      showToast('Exercício criado e adicionado ao Treino ' + group);
     } else showToast('Exercício salvo');
-    render()
-  }
+    render();
+  };
 }
 
 function planItemForm(existing = null) {
@@ -922,7 +1013,7 @@ function exportPeriodForm() {
 }
 
 function settings() {
-  modalContent.innerHTML = `<div class="stack"><div class="row"><h2>Configurações e Dados</h2><button class="ghost" data-close>✕</button></div><p class="muted">Os dados ficam neste aparelho. Faça backups periódicos.</p><p class="muted" id="lastBackupInfo"></p><button class="primary" id="exportBtn">Exportar backup JSON</button><button class="secondary" id="importBtn">Importar backup JSON</button><button class="ghost" id="exportPeriodBtn">Exportar treinos por período</button><button class="danger" id="eraseBtn">Apagar todos os dados</button></div>`;
+  modalContent.innerHTML = `<div class="stack"><div class="row"><h2>Configurações e Dados</h2><button class="ghost" data-close>✕</button></div><p class="muted">Os dados ficam neste aparelho. Faça backups periódicos.</p><p class="muted" id="lastBackupInfo"></p><button class="primary" id="exportBtn">Exportar backup JSON completo</button><button class="secondary" id="importBtn">Importar backup JSON completo</button><div style="display:grid;gap:8px;padding:12px 0;border-top:1px solid #282828;border-bottom:1px solid #282828"><div class="muted" style="font-size:11px;font-weight:700;color:#ff851b;letter-spacing:.08em">PRESCRIÇÃO DO PERSONAL TRAINER</div><button class="secondary" id="exportPersonalBtn">Exportar treinos A/B/C/D (Personal)</button><button class="secondary" id="importPersonalBtn">Importar treinos A/B/C/D (Personal)</button></div><button class="ghost" id="exportPeriodBtn">Exportar treinos por período</button><button class="danger" id="eraseBtn">Apagar todos os dados</button></div>`;
   modal.showModal();
   const updateBackupInfo = r => {
     const el = modalContent.querySelector('#lastBackupInfo');
@@ -939,6 +1030,13 @@ function settings() {
     showToast('Backup exportado')
   };
   modalContent.querySelector('#importBtn').onclick = () => document.querySelector('#importInput').click();
+  modalContent.querySelector('#exportPersonalBtn')?.addEventListener('click', () => {
+    modal.close();
+    exportPersonalTraining().catch(e => showToast(e.message));
+  });
+  modalContent.querySelector('#importPersonalBtn')?.addEventListener('click', () => {
+    document.querySelector('#importPersonalInput').click();
+  });
   modalContent.querySelector('#exportPeriodBtn').onclick = () => {
     modal.close();
     exportPeriodForm()
@@ -951,6 +1049,232 @@ function settings() {
     render();
     showToast('Dados apagados')
   }
+}
+
+async function exportPersonalTraining() {
+  const cycle = await activeCycle();
+  const [items, exercises, workoutGroups] = await Promise.all([
+    repo.all('planItems'),
+    repo.all('exercises'),
+    repo.all('workoutGroups')
+  ]);
+  const exById = new Map(exercises.map(e => [e.id, e]));
+  const codes = ['A', 'B', 'C', 'D'];
+  const treinos = {};
+
+  for (const code of codes) {
+    const wg = workoutGroups.find(g => g.cycleId === cycle?.id && g.code === code);
+    let titulo = `Treino ${code}`;
+    if (wg?.description) {
+      titulo = `Treino ${code} - ${wg.description}`;
+    }
+    const groupItems = items
+      .filter(x => x.cycleId === cycle?.id && x.groupCode === code && x.active)
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    const exercicios = groupItems.map(item => {
+      const ex = exById.get(item.exerciseId) || {};
+      const primary = ex.primaryMuscleGroup || ex.muscleGroup || 'Peitoral';
+      const secondaries = Array.isArray(ex.secondaryMuscleGroups)
+        ? ex.secondaryMuscleGroups.filter(g => g !== primary)
+        : [];
+      return {
+        nome: ex.name || 'Exercício',
+        grupoPrincipal: primary,
+        gruposSecundarios: secondaries,
+        equipamento: ex.equipment || '',
+        videoUrl: ex.videoUrl || '',
+        series: Number(item.sets) || 3,
+        repsMin: Number(item.minReps) || 8,
+        repsMax: Number(item.maxReps) || 12,
+        rirAlvo: item.rirTarget != null ? Number(item.rirTarget) : 2,
+        descansoSegundos: Number(item.restSeconds) || 90,
+        observacoes: ex.notes || ''
+      };
+    });
+
+    treinos[code] = {
+      titulo,
+      exercicios
+    };
+  }
+
+  const payload = {
+    tipo: 'MAB_TREINO_PERSONAL',
+    versaoFormato: 1,
+    ciclo: {
+      nome: cycle?.name || 'Hipertrofia - Foco em Superiores e Pernas',
+      observacoes: cycle?.goal || 'Prescrito pelo Personal Trainer'
+    },
+    treinos
+  };
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: 'application/json'
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `mab-treino-personal-${stamp}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  showToast('Treinos do Personal exportados');
+}
+
+async function importPersonalTraining(obj) {
+  if (!obj || (obj.tipo !== 'MAB_TREINO_PERSONAL' && !obj.treinos)) {
+    throw new Error('Arquivo inválido. O arquivo selecionado não contém o formato de treino do Personal Trainer.');
+  }
+
+  const treinos = obj.treinos || {};
+  const codes = ['A', 'B', 'C', 'D'];
+  const summaryParts = [];
+  let totalExercises = 0;
+
+  for (const c of codes) {
+    const list = Array.isArray(treinos[c]?.exercicios) ? treinos[c].exercicios : [];
+    totalExercises += list.length;
+    summaryParts.push(`Treino ${c}: ${list.length} ${list.length === 1 ? 'exercício' : 'exercícios'}`);
+  }
+
+  const cycleName = obj.ciclo?.nome || 'Prescrição do Personal Trainer';
+  const cycleObs = obj.ciclo?.observacoes || '';
+
+  const confirmMsg = `Importar treinos do Personal Trainer?\n\nCiclo: ${cycleName}\n${summaryParts.join('\n')}\n\nNota: Seu histórico de treinos concluídos, cargas e avaliações será preservado.`;
+  if (!confirm(confirmMsg)) return;
+
+  const now = new Date().toISOString();
+  let cycle = await activeCycle();
+
+  if (cycle) {
+    cycle.name = cycleName;
+    if (cycleObs) cycle.goal = cycleObs;
+    cycle.updatedAt = now;
+    await repo.put('cycles', cycle);
+  } else {
+    cycle = {
+      id: repo.uuid(),
+      name: cycleName,
+      startDate: now.slice(0, 10),
+      endDate: '',
+      goal: cycleObs || 'Hipertrofia',
+      status: 'active',
+      createdAt: now,
+      updatedAt: now
+    };
+    await repo.put('cycles', cycle);
+  }
+
+  const allExercises = await repo.all('exercises');
+  const exByName = new Map();
+  for (const ex of allExercises) {
+    const key = (ex.nameNormalized || ex.name || '').trim().toLowerCase();
+    if (key) exByName.set(key, ex);
+  }
+
+  const allGroups = await repo.all('workoutGroups');
+  const allPlanItems = await repo.all('planItems');
+
+  for (const code of codes) {
+    const tData = treinos[code];
+    if (!tData) continue;
+
+    if (tData.titulo) {
+      let desc = tData.titulo.replace(/^Treino\s+[A-D]\s*[-·]\s*/i, '').trim();
+      if (!desc) desc = tData.titulo;
+      let wg = allGroups.find(g => g.cycleId === cycle.id && g.code === code);
+      if (wg) {
+        wg.description = desc;
+        await repo.put('workoutGroups', wg);
+      } else {
+        wg = {
+          id: repo.uuid(),
+          cycleId: cycle.id,
+          code,
+          description: desc
+        };
+        await repo.put('workoutGroups', wg);
+        allGroups.push(wg);
+      }
+    }
+
+    const exList = Array.isArray(tData.exercicios) ? tData.exercicios : [];
+
+    const currentItems = allPlanItems.filter(x => x.cycleId === cycle.id && x.groupCode === code);
+    for (const item of currentItems) {
+      await repo.remove('planItems', item.id);
+    }
+
+    for (let i = 0; i < exList.length; i++) {
+      const rawEx = exList[i];
+      const exName = String(rawEx.nome || rawEx.name || '').trim();
+      if (!exName) continue;
+      const key = exName.toLowerCase();
+      let ex = exByName.get(key);
+
+      const primary = String(rawEx.grupoPrincipal || rawEx.muscleGroup || rawEx.primaryMuscleGroup || 'Peitoral').trim();
+      let secondaries = [];
+      if (Array.isArray(rawEx.gruposSecundarios || rawEx.secondaryMuscleGroups)) {
+        secondaries = (rawEx.gruposSecundarios || rawEx.secondaryMuscleGroups).map(String).map(s => s.trim()).filter(Boolean);
+      } else if (typeof (rawEx.gruposSecundarios || rawEx.secondaryMuscleGroups) === 'string') {
+        secondaries = (rawEx.gruposSecundarios || rawEx.secondaryMuscleGroups).split(',').map(s => s.trim()).filter(Boolean);
+      }
+      secondaries = secondaries.filter(g => g !== primary);
+
+      const equip = String(rawEx.equipamento || rawEx.equipment || '').trim();
+      const video = String(rawEx.videoUrl || '').trim();
+      const notes = String(rawEx.observacoes || rawEx.notes || '').trim();
+
+      if (ex) {
+        ex.primaryMuscleGroup = primary || ex.primaryMuscleGroup || ex.muscleGroup;
+        ex.muscleGroup = primary || ex.muscleGroup;
+        if (secondaries.length) ex.secondaryMuscleGroups = secondaries;
+        if (equip) ex.equipment = equip;
+        if (video) ex.videoUrl = video;
+        if (notes) ex.notes = notes;
+        ex.active = true;
+        ex.updatedAt = now;
+        await repo.put('exercises', ex);
+      } else {
+        ex = {
+          id: repo.uuid(),
+          name: exName,
+          nameNormalized: key,
+          muscleGroup: primary,
+          primaryMuscleGroup: primary,
+          secondaryMuscleGroups: secondaries,
+          equipment: equip,
+          videoUrl: video,
+          notes: notes,
+          active: true,
+          createdAt: now,
+          updatedAt: now
+        };
+        await repo.put('exercises', ex);
+        exByName.set(key, ex);
+        allExercises.push(ex);
+      }
+
+      await repo.put('planItems', {
+        id: repo.uuid(),
+        cycleId: cycle.id,
+        groupCode: code,
+        exerciseId: ex.id,
+        order: i + 1,
+        sets: Number(rawEx.series || rawEx.sets) || 3,
+        minReps: Number(rawEx.repsMin ?? rawEx.minReps) || 8,
+        maxReps: Number(rawEx.repsMax ?? rawEx.maxReps) || 12,
+        rirTarget: rawEx.rirAlvo != null ? Number(rawEx.rirAlvo) : (rawEx.rirTarget != null ? Number(rawEx.rirTarget) : 2),
+        restSeconds: Number(rawEx.descansoSegundos ?? rawEx.restSeconds) || 90,
+        active: true,
+        createdAt: now,
+        updatedAt: now
+      });
+    }
+  }
+
+  showToast(`Treinos do Personal importados! (${totalExercises} exercícios)`);
+  render();
 }
 
 document.addEventListener('click', async e => {
@@ -1055,7 +1379,13 @@ document.addEventListener('click', async e => {
   if (a === 'view-detail') {
     if (typeof window.openDetail === 'function') window.openDetail(b.dataset.kind, b.dataset.id);
   }
-  if (a === 'export-period') exportPeriodForm()
+  if (a === 'export-period') exportPeriodForm();
+  if (a === 'export-personal-plan') {
+    exportPersonalTraining().catch(e => showToast(e.message));
+  }
+  if (a === 'import-personal-plan') {
+    document.querySelector('#importPersonalInput')?.click();
+  }
 });
 document.querySelectorAll('.bottom-nav button').forEach(b => b.onclick = () => navigate(b.dataset.route));
 document.querySelector('#settingsBtn').onclick = settings;
@@ -1064,6 +1394,11 @@ document.querySelector('#importInput').onchange = async e => {
     const file = e.target.files[0];
     if (!file) return;
     const obj = JSON.parse(await file.text());
+    if (obj.tipo === 'MAB_TREINO_PERSONAL' || (obj.treinos && (obj.treinos.A || obj.treinos.B || obj.treinos.C || obj.treinos.D))) {
+      await importPersonalTraining(obj);
+      modal.close();
+      return;
+    }
     const counts = obj.metadata?.recordCounts || {};
     if (!confirm(`Restaurar backup de ${obj.metadata?.exportedAt||'data desconhecida'}?\nExercícios: ${counts.exercises||0}\nSéries: ${counts.executedSets||0}`)) return;
     const result = await importBackup(obj, 'replace');
@@ -1076,6 +1411,19 @@ document.querySelector('#importInput').onchange = async e => {
     e.target.value = ''
   }
 };
+document.querySelector('#importPersonalInput')?.addEventListener('change', async e => {
+  try {
+    const file = e.target.files[0];
+    if (!file) return;
+    const obj = JSON.parse(await file.text());
+    await importPersonalTraining(obj);
+    modal.close();
+  } catch (err) {
+    showToast(err.message || 'Erro ao importar treino do Personal.');
+  } finally {
+    e.target.value = '';
+  }
+});
 window.addEventListener('routechange', render);
 window.addEventListener('focus', () => route() === 'workout' && render());
 document.addEventListener('visibilitychange', async () => {
