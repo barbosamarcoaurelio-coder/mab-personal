@@ -161,12 +161,13 @@ async function exercises() {
     sensitivity: 'base'
   }));
   return `<div class="stack">
-    <div class="row" style="flex-wrap:wrap;gap:10px;align-items:center">
+    <div class="row" style="align-items:center;margin-bottom:0">
       <h2>Exercícios</h2>
-      <div style="display:flex;gap:8px;align-items:center;flex:1;min-width:280px">
-        <button type="button" class="secondary" data-action="export-exercises-dialog" style="flex:1;min-height:42px;font-size:12px;padding:8px 10px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:12px;white-space:nowrap">📤 Exportar base TXT</button>
-        <button type="button" class="primary" data-action="new-exercise" style="flex:1;min-height:42px;font-size:12px;font-weight:800;padding:8px 10px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:12px;white-space:nowrap">+ Cadastrar Novo Exercício</button>
-      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">
+      <button type="button" class="primary" data-action="new-exercise" style="flex:1;min-width:140px;min-height:42px;font-size:12px;font-weight:800;padding:8px 10px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:12px;white-space:nowrap">+ Cadastrar Novo Exercício</button>
+      <button type="button" class="secondary" data-action="import-exercises-dialog" style="flex:1;min-width:140px;min-height:42px;font-size:12px;font-weight:700;padding:8px 10px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:12px;white-space:nowrap">Importar Base de Exercícios</button>
+      <button type="button" class="primary" data-action="export-exercises-dialog" style="flex:1;min-width:140px;min-height:42px;font-size:12px;font-weight:800;padding:8px 10px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:12px;white-space:nowrap">Exportar Base de Exercícios</button>
     </div>
     <div class="card">
       <input id="exerciseSearch" aria-label="Pesquisar exercícios" placeholder="Pesquisar" style="width:100%;padding:12px;border-radius:10px;border:1px solid #383838;background:#0e0e0e;color:#fff">
@@ -1822,6 +1823,246 @@ async function exportExercisesModal() {
   };
 }
 
+function parseExercisesTxt(text) {
+  if (!text || typeof text !== 'string') {
+    throw new Error('Conteúdo do arquivo vazio.');
+  }
+
+  const lines = text.split(/\r?\n/);
+  const items = [];
+  let current = null;
+
+  const isHeader = line => line.startsWith('#') || line.startsWith('===') || line.startsWith('---');
+
+  const cleanVal = v => {
+    const s = String(v || '').trim();
+    if (!s || s.toLowerCase() === 'não informado' || s.toLowerCase() === 'nao informado' || s.toLowerCase() === 'nenhum' || s.toLowerCase() === 'nenhuma' || s === '-') return '';
+    return s;
+  };
+
+  for (let rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || isHeader(line)) continue;
+
+    const numMatch = line.match(/^\d+[\.\)]\s*(.+)$/);
+    if (numMatch) {
+      if (current && current.name) items.push(current);
+      current = {
+        name: numMatch[1].trim(),
+        primaryMuscleGroup: 'Peitoral',
+        secondaryMuscleGroups: [],
+        equipment: '',
+        videoUrl: '',
+        notes: '',
+        active: true
+      };
+      continue;
+    }
+
+    if (current) {
+      const cleanField = line.replace(/^[-*•\d.]+\s*/, '').trim();
+
+      const mPrimary = cleanField.match(/^(?:grupo\s*muscular\s*principal|grupo\s*principal|m[uú]sculo\s*principal|grupo)\s*[:=]\s*(.*)$/i);
+      if (mPrimary) {
+        const val = cleanVal(mPrimary[1]);
+        if (val) current.primaryMuscleGroup = val;
+        continue;
+      }
+
+      const mSecondary = cleanField.match(/^(?:grupos?\s*secund[aá]rios?\s*(?:\(sinergistas\))?|secund[aá]rios?|sinergistas?)\s*[:=]\s*(.*)$/i);
+      if (mSecondary) {
+        const val = cleanVal(mSecondary[1]);
+        if (val) {
+          current.secondaryMuscleGroups = val.split(/[,;|]/).map(s => s.trim()).filter(Boolean);
+        }
+        continue;
+      }
+
+      const mEquip = cleanField.match(/^(?:equipamento|aparelho|equip)\s*[:=]\s*(.*)$/i);
+      if (mEquip) {
+        current.equipment = cleanVal(mEquip[1]);
+        continue;
+      }
+
+      const mVideo = cleanField.match(/^(?:v[ií]deo(?:\s*de\s*execu[cç][aã]o)?|link)\s*[:=]\s*(.*)$/i);
+      if (mVideo) {
+        current.videoUrl = cleanVal(mVideo[1]);
+        continue;
+      }
+
+      const mNotes = cleanField.match(/^(?:observa[cç][oõ]es?|obs|notas?)\s*[:=]\s*(.*)$/i);
+      if (mNotes) {
+        current.notes = cleanVal(mNotes[1]);
+        continue;
+      }
+
+      const mStatus = cleanField.match(/^(?:status|ativo)\s*[:=]\s*(.*)$/i);
+      if (mStatus) {
+        const val = cleanVal(mStatus[1]).toLowerCase();
+        current.active = !(val === 'inativo' || val === 'false' || val === 'não' || val === 'nao');
+        continue;
+      }
+
+      if (!line.includes(':') && !line.startsWith('-')) {
+        if (current && current.name) items.push(current);
+        current = {
+          name: line,
+          primaryMuscleGroup: 'Peitoral',
+          secondaryMuscleGroups: [],
+          equipment: '',
+          videoUrl: '',
+          notes: '',
+          active: true
+        };
+        continue;
+      }
+    } else {
+      if (!line.includes(':')) {
+        current = {
+          name: line.replace(/^[-*•\d.]+\s*/, '').trim(),
+          primaryMuscleGroup: 'Peitoral',
+          secondaryMuscleGroups: [],
+          equipment: '',
+          videoUrl: '',
+          notes: '',
+          active: true
+        };
+      }
+    }
+  }
+
+  if (current && current.name) items.push(current);
+
+  if (!items.length) {
+    throw new Error('Nenhum exercício válido foi identificado no texto ou arquivo.');
+  }
+
+  return items;
+}
+
+async function importExercisesBatch(exercisesList) {
+  if (!Array.isArray(exercisesList) || !exercisesList.length) {
+    throw new Error('Nenhum exercício para importar.');
+  }
+
+  const confirmMsg = `Importar ${exercisesList.length} ${exercisesList.length === 1 ? 'exercício' : 'exercícios'} para a biblioteca?\n\nExercícios existentes serão atualizados e novos exercícios serão cadastrados.`;
+  if (!confirm(confirmMsg)) return;
+
+  const now = new Date().toISOString();
+  const allExisting = await repo.all('exercises');
+  const exByName = new Map();
+  for (const ex of allExisting) {
+    const key = (ex.nameNormalized || ex.name || '').trim().toLowerCase();
+    if (key) exByName.set(key, ex);
+  }
+
+  let createdCount = 0;
+  let updatedCount = 0;
+  const newCustomGroups = new Set();
+
+  for (const item of exercisesList) {
+    const name = String(item.name || '').trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+
+    const primary = String(item.primaryMuscleGroup || 'Peitoral').trim();
+    const secondaries = Array.isArray(item.secondaryMuscleGroups)
+      ? item.secondaryMuscleGroups.map(s => String(s || '').trim()).filter(Boolean)
+      : [];
+
+    if (primary && !BASE_MUSCLE_GROUPS.includes(primary)) newCustomGroups.add(primary);
+    secondaries.forEach(g => {
+      if (g && !BASE_MUSCLE_GROUPS.includes(g)) newCustomGroups.add(g);
+    });
+
+    const existing = exByName.get(key);
+    if (existing) {
+      existing.primaryMuscleGroup = primary || existing.primaryMuscleGroup || existing.muscleGroup;
+      existing.muscleGroup = primary || existing.muscleGroup;
+      if (secondaries.length) existing.secondaryMuscleGroups = secondaries;
+      if (item.equipment !== undefined) existing.equipment = item.equipment;
+      if (item.videoUrl !== undefined) existing.videoUrl = item.videoUrl;
+      if (item.notes !== undefined) existing.notes = item.notes;
+      if (item.active !== undefined) existing.active = item.active;
+      existing.updatedAt = now;
+      await repo.put('exercises', existing);
+      updatedCount++;
+    } else {
+      const newEx = {
+        id: repo.uuid(),
+        name,
+        nameNormalized: key,
+        muscleGroup: primary,
+        primaryMuscleGroup: primary,
+        secondaryMuscleGroups: secondaries,
+        equipment: item.equipment || '',
+        videoUrl: item.videoUrl || '',
+        notes: item.notes || '',
+        active: item.active !== false,
+        createdAt: now,
+        updatedAt: now
+      };
+      await repo.put('exercises', newEx);
+      exByName.set(key, newEx);
+      createdCount++;
+    }
+  }
+
+  for (const g of newCustomGroups) {
+    await addCustomMuscleGroup(g);
+  }
+
+  showToast(`Importação concluída! (${createdCount} novos, ${updatedCount} atualizados)`);
+  render();
+}
+
+function importExercisesModal() {
+  modalContent.innerHTML = `<div class="stack" style="gap:10px">
+    <div class="row" style="margin-bottom:0">
+      <div>
+        <div class="muted" style="font-size:11px;color:#ff851b;font-weight:700">IMPORTAÇÃO EM LOTE</div>
+        <h2 style="margin:2px 0 0;font-size:18px">Importar base de exercícios</h2>
+      </div>
+      <button type="button" class="ghost" data-close style="padding:4px 10px">✕</button>
+    </div>
+    <p class="muted" style="font-size:12px;margin:0">
+      Cadastre ou atualize múltiplos exercícios a partir de um arquivo <strong>TXT</strong> ou colando o texto diretamente:
+    </p>
+
+    <div class="row" style="gap:8px;padding:4px 0">
+      <button type="button" class="primary" id="btnSelectExercisesTxtFile" style="width:100%;min-height:42px;font-size:13px;font-weight:800;padding:8px 12px;display:flex;align-items:center;justify-content:center;border-radius:12px">📁 Selecionar arquivo TXT</button>
+    </div>
+
+    <div class="card" style="padding:12px;background:#141414;border-color:#333">
+      <div style="font-weight:700;font-size:12px;color:#ff851b;margin-bottom:6px">Ou cole o texto da base aqui:</div>
+      <textarea id="pasteExercisesTxtInput" placeholder="1. Supino Reto com Barra&#10;   - Grupo Muscular Principal: Peitoral&#10;   - Grupos Secundários (sinergistas): Tríceps, Ombros&#10;   - Equipamento: Barra e Banco&#10;   - Vídeo de Execução: https://...&#10;   - Observações: Pausa de 1s&#10;   - Status: Ativo" style="width:100%;height:130px;background:#0a0a0a;color:#fff;border:1px solid #383838;border-radius:8px;padding:8px;font-family:monospace;font-size:11px;box-sizing:border-box"></textarea>
+      <button type="button" class="secondary" id="btnImportPastedExercises" style="width:100%;margin-top:8px;padding:11px;font-size:13px;font-weight:700">▶ Processar e Importar Exercícios</button>
+    </div>
+  </div>`;
+
+  modal.showModal();
+  modalContent.querySelectorAll('[data-close]').forEach(b => b.onclick = () => modal.close());
+
+  modalContent.querySelector('#btnSelectExercisesTxtFile').onclick = () => {
+    document.querySelector('#importExercisesTxtInput')?.click();
+  };
+
+  modalContent.querySelector('#btnImportPastedExercises').onclick = async () => {
+    const text = modalContent.querySelector('#pasteExercisesTxtInput')?.value.trim();
+    if (!text) {
+      showToast('Cole o texto dos exercícios antes de importar.');
+      return;
+    }
+    try {
+      const parsed = parseExercisesTxt(text);
+      modal.close();
+      await importExercisesBatch(parsed);
+    } catch (err) {
+      showToast(err.message || 'Erro ao processar texto de exercícios.');
+    }
+  };
+}
+
 async function exportPersonalTraining() {
   const cycle = await activeCycle();
   const [items, exercises, workoutGroups] = await Promise.all([
@@ -2169,6 +2410,9 @@ document.addEventListener('click', async e => {
   if (a === 'export-exercises-dialog') {
     exportExercisesModal().catch(e => showToast(e.message));
   }
+  if (a === 'import-exercises-dialog') {
+    importExercisesModal();
+  }
 });
 document.querySelectorAll('.bottom-nav button').forEach(b => b.onclick = () => navigate(b.dataset.route));
 document.querySelector('#settingsBtn').onclick = settings;
@@ -2217,6 +2461,20 @@ document.querySelector('#importPersonalInput')?.addEventListener('change', async
     modal.close();
   } catch (err) {
     showToast(err.message || 'Erro ao importar treino do Personal.');
+  } finally {
+    e.target.value = '';
+  }
+});
+document.querySelector('#importExercisesTxtInput')?.addEventListener('change', async e => {
+  try {
+    const file = e.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    const parsed = parseExercisesTxt(text);
+    modal.close();
+    await importExercisesBatch(parsed);
+  } catch (err) {
+    showToast(err.message || 'Erro ao importar arquivo TXT de exercícios.');
   } finally {
     e.target.value = '';
   }
