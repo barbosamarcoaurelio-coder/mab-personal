@@ -88,7 +88,7 @@ async function dashboard() {
 async function workout() {
   const sessions = await openSessions();
   const s = sessions[0];
-  if (!s) return `<div class="card"><h2>Executar treino</h2><p class="muted">Selecione o grupo para começar.</p><div class="chips">${['A','B','C','D'].map(g=>`<button class="chip" data-action="start" data-group="${g}">Treino ${g}</button>`).join('')}</div></div>`;
+  if (!s) return `<div class="card"><h2>Executar treino</h2><p class="muted">Selecione o grupo para começar.</p><div class="plan-groups-grid">${['A','B','C','D','E','F','G'].map(g=>`<button class="plan-group-btn" data-action="start" data-group="${g}">Treino ${g}</button>`).join('')}</div></div>`;
   const items = (await repo.all('planItems')).filter(x => x.cycleId === s.cycleId && x.groupCode === s.groupCode && x.active).sort((a, b) => a.order - b.order);
   const exercises = await repo.all('exercises');
   const sets = await repo.all('executedSets');
@@ -121,8 +121,8 @@ async function plan() {
         </div>
         <button class="primary" data-action="add-plan-item">+ Adicionar ao treino</button>
       </div>
-      <div class="chips">
-        ${['A','B','C','D'].map(g=>`<button class="chip ${g===group?'active':''}" data-action="plan-group" data-group="${g}">Treino ${g}</button>`).join('')}
+      <div class="plan-groups-grid">
+        ${['A','B','C','D','E','F','G'].map(g=>`<button type="button" class="plan-group-btn ${g===group?'active':''}" data-action="plan-group" data-group="${g}">Treino ${g}</button>`).join('')}
       </div>
     </div>
     <div class="card">
@@ -151,7 +151,7 @@ async function plan() {
             </div>
           </div>
         </div>`;
-      }).join('')||'<div class="empty">Nenhum exercício.</div>'}
+      }).join('')||`<div class="empty">Nenhum exercício cadastrado no Treino ${group}. Toque em "+ Adicionar ao treino" acima.</div>`}
     </div>
   </div>`;
 }
@@ -1299,10 +1299,13 @@ function parseTextWorkout(text) {
     A: { titulo: 'Treino A', exercicios: [] },
     B: { titulo: 'Treino B', exercicios: [] },
     C: { titulo: 'Treino C', exercicios: [] },
-    D: { titulo: 'Treino D', exercicios: [] }
+    D: { titulo: 'Treino D', exercicios: [] },
+    E: { titulo: 'Treino E', exercicios: [] },
+    F: { titulo: 'Treino F', exercicios: [] },
+    G: { titulo: 'Treino G', exercicios: [] }
   };
 
-  const groupHeaderRegex = /^(?:#+\s*)?(?:\[\s*)?treino\s*([a-d])\s*(?:\])?(?:\s*[-–—:]\s*(.*))?$/i;
+  const groupHeaderRegex = /^(?:#+\s*)?(?:\[\s*)?treino\s*([a-g])\s*(?:\])?(?:\s*[-–—:]\s*(.*))?$/i;
   const cycleRegex = /^(?:#+\s*)?(?:ciclo|periodiza[cç][aã]o|objetivo)\s*[:=]\s*(.*)$/i;
   const obsRegex = /^(?:#+\s*)?(?:obs|observa[cç][oõ]es|notas?)\s*[:=]\s*(.*)$/i;
 
@@ -1546,7 +1549,7 @@ TREINO D - Ombros e Core
 
   const jsonStr = JSON.stringify(exampleJson, null, 2);
 
-  modalContent.innerHTML = `<div class="stack" style="max-height:86vh;overflow-y:auto">
+  modalContent.innerHTML = `<div class="stack" style="max-height:86vh;overflow-y:auto;overflow-x:hidden;max-width:100%;box-sizing:border-box;gap:10px">
     <div class="row">
       <div>
         <div class="muted" style="font-size:11px;color:#ff851b;font-weight:700">FICHA DE TREINO (PERSONAL TRAINER)</div>
@@ -1555,30 +1558,30 @@ TREINO D - Ombros e Core
       <button type="button" class="ghost" data-close>✕</button>
     </div>
 
-    <div class="card" style="padding:14px;background:#151515;border-color:#333">
+    <div class="card" style="padding:14px;background:#151515;border-color:#333;box-sizing:border-box;max-width:100%">
       <div style="font-weight:700;color:#ff851b;font-size:13px;margin-bottom:8px">CAMPOS DA SUA FICHA DE TREINO</div>
-      <div class="grid two" style="gap:8px;font-size:12px">
-        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+      <div class="grid two" style="gap:8px;font-size:12px;box-sizing:border-box;max-width:100%">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828;min-width:0">
           <strong style="display:block;color:#fff">🏋️ Nome do Exercício</strong>
           <span class="muted">Ex.: Supino Reto, Agachamento Livre, Leg Press</span>
         </div>
-        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828;min-width:0">
           <strong style="display:block;color:#fff">🔢 Séries</strong>
           <span class="muted">Ex.: 3 ou 4 séries</span>
         </div>
-        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828;min-width:0">
           <strong style="display:block;color:#fff">🎯 Repetições</strong>
           <span class="muted">Ex.: 8 a 10 reps, 10 a 12 reps ou 15 reps</span>
         </div>
-        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828;min-width:0">
           <strong style="display:block;color:#fff">⏱️ Descanso</strong>
           <span class="muted">Em segundos entre séries (ex.: 60s, 90s, 120s)</span>
         </div>
-        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828;min-width:0">
           <strong style="display:block;color:#fff">⚡ RIR (opcional)</strong>
           <span class="muted">Repetições na reserva antes de falhar (ex.: RIR 2)</span>
         </div>
-        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828;min-width:0">
           <strong style="display:block;color:#fff">🎬 Vídeo (opcional)</strong>
           <span class="muted">Link do YouTube para ver a execução do exercício</span>
         </div>
@@ -1590,15 +1593,15 @@ TREINO D - Ombros e Core
         <span style="font-weight:700;font-size:13px">Modelo em Texto (.txt / WhatsApp)</span>
         <span class="muted" style="font-size:11px">Fácil de ler e editar</span>
       </div>
-      <div style="background:#0a0a0a;border:1px solid #333;border-radius:12px;padding:12px;max-height:220px;overflow-y:auto;font-family:monospace;font-size:11px;color:#eee;white-space:pre-wrap;line-height:1.45" id="templateTextBlock">${esc(textTemplate)}</div>
+      <div style="background:#0a0a0a;border:1px solid #333;border-radius:12px;padding:12px;max-height:220px;overflow-y:auto;overflow-x:hidden;font-family:monospace;font-size:11px;color:#eee;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;line-height:1.45;box-sizing:border-box;max-width:100%" id="templateTextBlock">${esc(textTemplate)}</div>
     </div>
 
-    <div class="row" style="gap:8px;flex-wrap:wrap">
-      <button type="button" class="secondary" id="btnCopyTextTemplate" style="flex:1;min-width:140px;font-size:12px;padding:10px">📋 Copiar texto</button>
-      <button type="button" class="primary" id="btnDownloadTextTemplate" style="flex:1;min-width:140px;font-size:12px;padding:10px">⬇ Baixar .txt</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;box-sizing:border-box">
+      <button type="button" class="secondary" id="btnCopyTextTemplate" style="width:100%;min-height:40px;font-size:12px;padding:8px 4px;text-align:center">📋 Copiar texto</button>
+      <button type="button" class="primary" id="btnDownloadTextTemplate" style="width:100%;min-height:40px;font-size:12px;font-weight:800;padding:8px 4px;text-align:center">⬇ Baixar .txt</button>
     </div>
 
-    <div class="card" style="padding:14px;background:#181818;border-color:#383838;margin-top:4px">
+    <div class="card" style="padding:14px;background:#181818;border-color:#383838;margin-top:4px;box-sizing:border-box;max-width:100%">
       <div class="row" style="margin-bottom:8px">
         <strong style="font-size:13px;color:#ff851b">📝 Colar texto e importar agora</strong>
       </div>
@@ -1607,13 +1610,13 @@ TREINO D - Ombros e Core
       <button type="button" class="primary" id="btnImportPastedText" style="width:100%;margin-top:8px;padding:10px;font-size:13px">▶ Importar treino colado</button>
     </div>
 
-    <details style="font-size:11px;color:#888;margin-top:4px">
+    <details style="font-size:11px;color:#888;margin-top:4px;box-sizing:border-box;max-width:100%">
       <summary style="cursor:pointer;color:#aaa">Ver formato técnico avançado (JSON para desenvolvedores)</summary>
       <div style="margin-top:8px">
-        <div style="background:#0a0a0a;border:1px solid #282828;border-radius:8px;padding:10px;max-height:160px;overflow-y:auto;font-family:monospace;font-size:10px;color:#ccc;white-space:pre-wrap">${esc(jsonStr)}</div>
-        <div class="row" style="gap:6px;margin-top:6px">
-          <button type="button" class="ghost" id="btnCopyJsonTemplate" style="flex:1;font-size:11px;padding:6px">Copiar JSON</button>
-          <button type="button" class="ghost" id="btnDownloadJsonTemplate" style="flex:1;font-size:11px;padding:6px">Baixar .json</button>
+        <div style="background:#0a0a0a;border:1px solid #282828;border-radius:8px;padding:10px;max-height:160px;overflow-y:auto;overflow-x:hidden;font-family:monospace;font-size:10px;color:#ccc;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;box-sizing:border-box;max-width:100%">${esc(jsonStr)}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;width:100%;box-sizing:border-box">
+          <button type="button" class="ghost" id="btnCopyJsonTemplate" style="width:100%;font-size:11px;padding:8px 4px;text-align:center">Copiar JSON</button>
+          <button type="button" class="ghost" id="btnDownloadJsonTemplate" style="width:100%;font-size:11px;padding:8px 4px;text-align:center">Baixar .json</button>
         </div>
       </div>
     </details>
@@ -2018,7 +2021,7 @@ async function importExercisesBatch(exercisesList) {
 
 function importExercisesModal() {
   const textTemplate = `# BASE DE EXERCÍCIOS MAB PERSONAL
-============================================================
+----------------------------------------
 
 1. Supino Reto com Barra
    - Grupo Muscular Principal: Peitoral
@@ -2044,9 +2047,9 @@ function importExercisesModal() {
    - Observações: Foco na adução das escápulas
    - Status: Ativo
 
-============================================================`;
+----------------------------------------`;
 
-  modalContent.innerHTML = `<div class="stack" style="max-height:86vh;overflow-y:auto">
+  modalContent.innerHTML = `<div class="stack" style="max-height:86vh;overflow-y:auto;overflow-x:hidden;max-width:100%;box-sizing:border-box;gap:10px">
     <div class="row">
       <div>
         <div class="muted" style="font-size:11px;color:#ff851b;font-weight:700">BASE DE EXERCÍCIOS (IMPORTAÇÃO EM LOTE)</div>
@@ -2055,30 +2058,30 @@ function importExercisesModal() {
       <button type="button" class="ghost" data-close>✕</button>
     </div>
 
-    <div class="card" style="padding:14px;background:#151515;border-color:#333">
+    <div class="card" style="padding:14px;background:#151515;border-color:#333;box-sizing:border-box;max-width:100%">
       <div style="font-weight:700;color:#ff851b;font-size:13px;margin-bottom:8px">CAMPOS DO CADASTRO DE EXERCÍCIOS</div>
-      <div class="grid two" style="gap:8px;font-size:12px">
-        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+      <div class="grid two" style="gap:8px;font-size:12px;box-sizing:border-box;max-width:100%">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828;min-width:0">
           <strong style="display:block;color:#fff">🏋️ Nome do Exercício</strong>
           <span class="muted">Ex.: Supino Reto com Barra, Agachamento Livre</span>
         </div>
-        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828;min-width:0">
           <strong style="display:block;color:#fff">🎯 Grupo Muscular Principal</strong>
           <span class="muted">Ex.: Peitoral, Costas, Quadríceps, Ombros, etc.</span>
         </div>
-        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828;min-width:0">
           <strong style="display:block;color:#fff">🤝 Grupos Secundários</strong>
           <span class="muted">Sinergistas/apoio separados por vírgula (ex.: Tríceps, Ombros)</span>
         </div>
-        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828;min-width:0">
           <strong style="display:block;color:#fff">🛠️ Equipamento</strong>
           <span class="muted">Ex.: Barra e Banco, Máquina, Halteres, Polia</span>
         </div>
-        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828;min-width:0">
           <strong style="display:block;color:#fff">🎬 Vídeo de Execução (opcional)</strong>
           <span class="muted">Link do YouTube para visualização no app</span>
         </div>
-        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828;min-width:0">
           <strong style="display:block;color:#fff">📝 Observações (opcional)</strong>
           <span class="muted">Dicas posturais ou cuidados de execução</span>
         </div>
@@ -2090,16 +2093,16 @@ function importExercisesModal() {
         <span style="font-weight:700;font-size:13px">Modelo em Texto (.txt / Bloco de Notas)</span>
         <span class="muted" style="font-size:11px">Formato idêntico à exportação</span>
       </div>
-      <div style="background:#0a0a0a;border:1px solid #333;border-radius:12px;padding:12px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:11px;color:#eee;white-space:pre-wrap;line-height:1.45" id="templateExercisesTextBlock">${esc(textTemplate)}</div>
+      <div style="background:#0a0a0a;border:1px solid #333;border-radius:12px;padding:12px;max-height:200px;overflow-y:auto;overflow-x:hidden;font-family:monospace;font-size:11px;color:#eee;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;line-height:1.45;box-sizing:border-box;max-width:100%" id="templateExercisesTextBlock">${esc(textTemplate)}</div>
     </div>
 
-    <div class="row" style="gap:8px;flex-wrap:wrap">
-      <button type="button" class="secondary" id="btnCopyExercisesTextTemplate" style="flex:1;min-width:130px;font-size:12px;padding:10px">📋 Copiar texto</button>
-      <button type="button" class="primary" id="btnDownloadExercisesTextTemplate" style="flex:1;min-width:130px;font-size:12px;padding:10px">⬇ Baixar .txt</button>
-      <button type="button" class="ghost" id="btnSelectExercisesTxtFile" style="flex:1;min-width:130px;font-size:12px;padding:10px;border-color:rgba(255,133,27,0.4);color:#ff851b">📁 Carregar arquivo</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;box-sizing:border-box">
+      <button type="button" class="secondary" id="btnCopyExercisesTextTemplate" style="width:100%;min-height:40px;font-size:12px;padding:8px 4px;text-align:center">📋 Copiar texto</button>
+      <button type="button" class="primary" id="btnDownloadExercisesTextTemplate" style="width:100%;min-height:40px;font-size:12px;font-weight:800;padding:8px 4px;text-align:center">⬇ Baixar .txt</button>
     </div>
+    <button type="button" class="ghost" id="btnSelectExercisesTxtFile" style="width:100%;min-height:40px;font-size:12px;padding:8px 10px;border-color:rgba(255,133,27,0.4);color:#ff851b;margin-top:2px">📁 Selecionar arquivo TXT salvo</button>
 
-    <div class="card" style="padding:14px;background:#181818;border-color:#383838;margin-top:4px">
+    <div class="card" style="padding:14px;background:#181818;border-color:#383838;margin-top:4px;box-sizing:border-box;max-width:100%">
       <div class="row" style="margin-bottom:8px">
         <strong style="font-size:13px;color:#ff851b">📝 Colar texto e importar agora</strong>
       </div>
@@ -2156,7 +2159,7 @@ async function exportPersonalTraining() {
     repo.all('workoutGroups')
   ]);
   const exById = new Map(exercises.map(e => [e.id, e]));
-  const codes = ['A', 'B', 'C', 'D'];
+  const codes = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
   const treinos = {};
 
   for (const code of codes) {
@@ -2224,7 +2227,7 @@ async function importPersonalTraining(obj) {
   }
 
   const treinos = obj.treinos || {};
-  const codes = ['A', 'B', 'C', 'D'];
+  const codes = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
   const summaryParts = [];
   let totalExercises = 0;
 
@@ -2272,9 +2275,9 @@ async function importPersonalTraining(obj) {
   const allGroups = await repo.all('workoutGroups');
   const allPlanItems = await repo.all('planItems');
 
-  // Inativa todos os outros exercícios pré-existentes dos treinos A, B, C e D de musculação no ciclo atual
+  // Inativa todos os outros exercícios pré-existentes dos treinos A, B, C, D, E, F e G de musculação no ciclo atual
   for (const item of allPlanItems) {
-    if (item.cycleId === cycle.id && ['A', 'B', 'C', 'D'].includes(item.groupCode)) {
+    if (item.cycleId === cycle.id && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(item.groupCode)) {
       if (item.active !== false) {
         item.active = false;
         item.updatedAt = now;

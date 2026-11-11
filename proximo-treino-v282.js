@@ -4,15 +4,15 @@
 (() => {
   'use strict';
 
-  const NEXT = { A: 'B', B: 'C', C: 'D', D: 'A' };
+  const NEXT = { A: 'B', B: 'C', C: 'D', D: 'E', E: 'F', F: 'G', G: 'A' };
   let applying = false;
 
   function nextCodeFromDashboard() {
     const rows = [...document.querySelectorAll('#app .exercise-item')];
     for (const row of rows) {
       const text = row.textContent || '';
-      const match = text.match(/Muscula(?:ç|c)[aã]o\s*[·-]\s*Treino\s*([A-D])/i);
-      if (match) return NEXT[match[1].toUpperCase()];
+      const match = text.match(/Muscula(?:ç|c)[aã]o\s*[·-]\s*Treino\s*([A-G])/i);
+      if (match) return NEXT[match[1].toUpperCase()] || 'A';
     }
     return 'A';
   }
