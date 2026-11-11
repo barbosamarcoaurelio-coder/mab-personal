@@ -112,7 +112,7 @@ async function plan() {
     exercises = await repo.all('exercises');
   const group = localStorage.getItem('mab-plan-group') || 'A';
   const list = items.filter(x => x.cycleId === cycle?.id && x.groupCode === group && x.active).sort((a, b) => a.order - b.order);
-  return `<div class="stack"><div class="card"><div class="row"><div><span class="muted">CICLO ATUAL</span><h2>${esc(cycle?.name||'Sem ciclo')}</h2></div><button class="primary" data-action="add-plan-item">+ Adicionar ao treino</button></div><div class="chips">${['A','B','C','D'].map(g=>`<button class="chip ${g===group?'active':''}" data-action="plan-group" data-group="${g}">Treino ${g}</button>`).join('')}</div><div class="row" style="margin-top:12px;padding-top:12px;border-top:1px solid #282828;gap:8px;flex-wrap:wrap"><button type="button" class="ghost" data-action="export-personal-plan" style="font-size:12px;padding:8px 12px">📤 Exportar Treinos Personal (A/B/C/D)</button><button type="button" class="ghost" data-action="import-personal-plan" style="font-size:12px;padding:8px 12px">📥 Importar Treinos Personal</button></div></div><div class="card"><h3>Treino ${group}</h3>${list.map(i=>{const e=exercises.find(x=>x.id===i.exerciseId);return `<div class="exercise-item"><div><strong>${esc(e?.name)}</strong><div class="muted">${i.sets} séries · ${i.minReps}-${i.maxReps} reps · ${i.restSeconds}s</div></div><div class="row"><button class="ghost" data-action="move-plan-up" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para cima">↑</button><button class="ghost" data-action="move-plan-down" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para baixo">↓</button><button class="ghost" data-action="edit-plan-item" data-id="${i.id}">Editar</button><button class="chip active" data-action="toggle-plan" data-id="${i.id}">Inativar</button></div></div>`}).join('')||'<div class="empty">Nenhum exercício.</div>'}</div></div>`
+  return `<div class="stack"><div class="card"><div class="row"><div><span class="muted">CICLO ATUAL</span><h2>${esc(cycle?.name||'Sem ciclo')}</h2></div><button class="primary" data-action="add-plan-item">+ Adicionar ao treino</button></div><div class="chips">${['A','B','C','D'].map(g=>`<button class="chip ${g===group?'active':''}" data-action="plan-group" data-group="${g}">Treino ${g}</button>`).join('')}</div><div class="row" style="margin-top:12px;padding-top:12px;border-top:1px solid #282828;gap:8px;flex-wrap:wrap"><button type="button" class="ghost" data-action="export-personal-plan" style="font-size:12px;padding:8px 12px">📤 Exportar Treinos Personal (A/B/C/D)</button><button type="button" class="ghost" data-action="import-personal-plan" style="font-size:12px;padding:8px 12px">📥 Importar Treinos Personal</button><button type="button" class="ghost" data-action="view-personal-template" style="font-size:12px;padding:8px 12px;color:#ff851b;border-color:rgba(255,133,27,0.4)">📋 Formato esperado (JSON)</button></div></div><div class="card"><h3>Treino ${group}</h3>${list.map(i=>{const e=exercises.find(x=>x.id===i.exerciseId);return `<div class="exercise-item"><div><strong>${esc(e?.name)}</strong><div class="muted">${i.sets} séries · ${i.minReps}-${i.maxReps} reps · ${i.restSeconds}s</div></div><div class="row"><button class="ghost" data-action="move-plan-up" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para cima">↑</button><button class="ghost" data-action="move-plan-down" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para baixo">↓</button><button class="ghost" data-action="edit-plan-item" data-id="${i.id}">Editar</button><button class="chip active" data-action="toggle-plan" data-id="${i.id}">Inativar</button></div></div>`}).join('')||'<div class="empty">Nenhum exercício.</div>'}</div></div>`
 }
 
 async function exercises() {
@@ -608,6 +608,79 @@ async function addCustomMuscleGroup(name) {
   return formatted;
 }
 
+function openNewMuscleGroupDialog(origin, onAdded) {
+  const existingOverlay = document.querySelector('#mabNewGroupOverlay');
+  if (existingOverlay) existingOverlay.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'mabNewGroupOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box';
+  overlay.innerHTML = `
+    <div style="background:#181818;border:1px solid #383838;border-radius:18px;padding:20px;width:min(420px,100%);color:#fff;box-sizing:border-box;box-shadow:0 12px 32px rgba(0,0,0,0.6)">
+      <div class="row" style="margin-bottom:12px">
+        <h3 style="margin:0;font-size:17px;color:#ff851b">Novo Grupo Muscular</h3>
+        <button type="button" class="ghost" id="mabCloseNewGroup" style="padding:4px 10px;font-size:14px">✕</button>
+      </div>
+      <p class="muted" style="font-size:12px;margin:0 0 14px">
+        Digite o nome do músculo para adicioná-lo às opções (tanto para grupo principal quanto secundário):
+      </p>
+      <label class="field">
+        <input type="text" id="mabNewGroupNameInput" placeholder="Ex.: Adutores, Abdutores, Trapézio, Lombar" autofocus style="background:#0e0e0e;color:#fff;border:1px solid #444;border-radius:10px;padding:12px;font-size:15px;width:100%;box-sizing:border-box">
+      </label>
+      <div id="mabNewGroupError" style="color:#ff5555;font-size:12px;min-height:18px;margin-top:6px;font-weight:600"></div>
+      <div class="row" style="margin-top:14px;gap:8px">
+        <button type="button" class="ghost" id="mabCancelNewGroup" style="flex:1">Cancelar</button>
+        <button type="button" class="primary" id="mabConfirmNewGroup" style="flex:1">Adicionar grupo</button>
+      </div>
+    </div>
+  `;
+  const host = document.querySelector('#modalContent') || document.body;
+  host.appendChild(overlay);
+
+  const input = overlay.querySelector('#mabNewGroupNameInput');
+  const errorEl = overlay.querySelector('#mabNewGroupError');
+  const close = () => overlay.remove();
+
+  overlay.querySelector('#mabCloseNewGroup').onclick = close;
+  overlay.querySelector('#mabCancelNewGroup').onclick = close;
+
+  setTimeout(() => input?.focus(), 80);
+
+  const handleConfirm = async () => {
+    const raw = input.value.trim();
+    if (!raw) {
+      errorEl.textContent = 'Informe o nome do grupo muscular.';
+      input.focus();
+      return;
+    }
+    const currentGroups = await getAvailableMuscleGroups();
+    const normalize = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const cleanNorm = normalize(raw);
+    const existing = currentGroups.find(g => normalize(g) === cleanNorm);
+    if (existing) {
+      errorEl.textContent = `O grupo muscular "${existing}" já existe na lista.`;
+      input.focus();
+      return;
+    }
+
+    const formatted = raw.charAt(0).toUpperCase() + raw.slice(1);
+    await addCustomMuscleGroup(formatted);
+    close();
+    showToast(`Grupo "${formatted}" adicionado`);
+    if (typeof onAdded === 'function') onAdded(formatted, origin);
+  };
+
+  overlay.querySelector('#mabConfirmNewGroup').onclick = handleConfirm;
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleConfirm();
+    } else if (e.key === 'Escape') {
+      close();
+    }
+  });
+}
+
 async function exerciseForm(e = {}, addToCurrentPlan = false) {
   const allGroups = await getAvailableMuscleGroups();
   let currentPrimary = e.primaryMuscleGroup || e.muscleGroup || 'Peitoral';
@@ -628,7 +701,7 @@ async function exerciseForm(e = {}, addToCurrentPlan = false) {
     <div class="field">
       <div class="row" style="margin-bottom:2px">
         <span style="font-weight:600;font-size:13px">Grupo Muscular Principal (toque para selecionar um)</span>
-        <button type="button" class="ghost" id="btnAddMuscleGroup" style="font-size:11px;padding:4px 9px;border-color:rgba(255,133,27,0.4);color:#ff851b;border-radius:999px">+ Novo grupo</button>
+        <button type="button" class="ghost" data-add-group-for="primary" style="font-size:11px;padding:4px 9px;border-color:rgba(255,133,27,0.4);color:#ff851b;border-radius:999px">+ Novo grupo</button>
       </div>
       <small class="muted" style="margin-top:-2px">Selecione o músculo alvo principal do exercício</small>
       <div class="mab-muscle-chips" id="primaryChipsContainer">
@@ -637,7 +710,10 @@ async function exerciseForm(e = {}, addToCurrentPlan = false) {
       <input type="hidden" name="muscleGroup" id="primaryMuscleGroupInput" value="${esc(currentPrimary)}">
     </div>
     <div class="field">
-      <span style="font-weight:600;font-size:13px">Grupos Secundários (sinergistas)</span>
+      <div class="row" style="margin-bottom:2px">
+        <span style="font-weight:600;font-size:13px">Grupos Secundários (sinergistas)</span>
+        <button type="button" class="ghost" data-add-group-for="secondary" style="font-size:11px;padding:4px 9px;border-color:rgba(255,133,27,0.4);color:#ff851b;border-radius:999px">+ Novo grupo</button>
+      </div>
       <small class="muted" style="margin-top:-2px">Toque para marcar/desmarcar músculos acionados como apoio</small>
       <div class="mab-muscle-chips" id="secondaryChipsContainer">
         ${allGroups.map(g => {
@@ -668,7 +744,6 @@ async function exerciseForm(e = {}, addToCurrentPlan = false) {
   const primaryChipsContainer = modalContent.querySelector('#primaryChipsContainer');
   const secondaryChipsContainer = modalContent.querySelector('#secondaryChipsContainer');
   const primaryInput = modalContent.querySelector('#primaryMuscleGroupInput');
-  const btnAddMuscleGroup = modalContent.querySelector('#btnAddMuscleGroup');
 
   // Seleção única para o grupo principal
   primaryChipsContainer.addEventListener('click', ev => {
@@ -700,14 +775,10 @@ async function exerciseForm(e = {}, addToCurrentPlan = false) {
     chip.classList.toggle('active');
   });
 
-  // Cadastro de novo grupo muscular sob demanda
-  btnAddMuscleGroup.addEventListener('click', async () => {
-    const raw = prompt('Nome do novo grupo muscular (ex.: Adutores, Abdutores, Trapézio, Antebraço):');
-    if (!raw) return;
-    const newGroup = await addCustomMuscleGroup(raw);
-    if (!newGroup) return;
+  const handleGroupAdded = (newGroup, origin) => {
+    if (!allGroups.includes(newGroup)) allGroups.push(newGroup);
 
-    // Adiciona ao container principal
+    // Adiciona ao container principal se não existir
     let pChip = primaryChipsContainer.querySelector(`[data-group="${CSS.escape(newGroup)}"]`);
     if (!pChip) {
       pChip = document.createElement('button');
@@ -717,13 +788,8 @@ async function exerciseForm(e = {}, addToCurrentPlan = false) {
       pChip.textContent = newGroup;
       primaryChipsContainer.appendChild(pChip);
     }
-    // Seleciona o novo grupo como principal
-    primaryChipsContainer.querySelectorAll('.mab-primary-chip').forEach(c => {
-      c.classList.toggle('active', c === pChip);
-    });
-    primaryInput.value = newGroup;
 
-    // Adiciona ao container secundário (oculto de imediato pois agora é o principal)
+    // Adiciona ao container secundário se não existir
     let sChip = secondaryChipsContainer.querySelector(`[data-group="${CSS.escape(newGroup)}"]`);
     if (!sChip) {
       sChip = document.createElement('button');
@@ -731,19 +797,40 @@ async function exerciseForm(e = {}, addToCurrentPlan = false) {
       sChip.className = 'mab-muscle-chip mab-secondary-chip';
       sChip.dataset.group = newGroup;
       sChip.textContent = newGroup;
-      sChip.style.display = 'none';
       secondaryChipsContainer.appendChild(sChip);
-    } else {
-      sChip.classList.remove('active');
-      sChip.style.display = 'none';
     }
 
-    // Exibe os demais secundários
-    secondaryChipsContainer.querySelectorAll('.mab-secondary-chip').forEach(c => {
-      if (c.dataset.group !== newGroup) c.style.display = '';
-    });
+    if (origin === 'primary') {
+      // Seleciona como principal
+      primaryChipsContainer.querySelectorAll('.mab-primary-chip').forEach(c => {
+        c.classList.toggle('active', c === pChip);
+      });
+      primaryInput.value = newGroup;
 
-    showToast(`Grupo "${newGroup}" adicionado`);
+      // Oculta nos secundários pois agora é o principal
+      sChip.classList.remove('active');
+      sChip.style.display = 'none';
+
+      // Garante que os outros secundários fiquem visíveis
+      secondaryChipsContainer.querySelectorAll('.mab-secondary-chip').forEach(c => {
+        if (c.dataset.group !== newGroup) c.style.display = '';
+      });
+    } else {
+      // Adicionado a partir dos secundários
+      if (primaryInput.value !== newGroup) {
+        sChip.classList.add('active');
+        sChip.style.display = '';
+      } else {
+        sChip.style.display = 'none';
+      }
+    }
+  };
+
+  // Botões de adicionar novo grupo (disponíveis tanto no principal quanto no secundário)
+  modalContent.querySelectorAll('[data-add-group-for]').forEach(btn => {
+    btn.onclick = () => {
+      openNewMuscleGroupDialog(btn.dataset.addGroupFor, handleGroupAdded);
+    };
   });
 
   modalContent.querySelector('form').onsubmit = async ev => {
@@ -1104,7 +1191,7 @@ function exportPeriodForm() {
 }
 
 function settings() {
-  modalContent.innerHTML = `<div class="stack"><div class="row"><h2>Configurações e Dados</h2><button class="ghost" data-close>✕</button></div><p class="muted">Os dados ficam neste aparelho. Faça backups periódicos.</p><p class="muted" id="lastBackupInfo"></p><button class="primary" id="exportBtn">Exportar backup JSON completo</button><button class="secondary" id="importBtn">Importar backup JSON completo</button><div style="display:grid;gap:8px;padding:12px 0;border-top:1px solid #282828;border-bottom:1px solid #282828"><div class="muted" style="font-size:11px;font-weight:700;color:#ff851b;letter-spacing:.08em">PRESCRIÇÃO DO PERSONAL TRAINER</div><button class="secondary" id="exportPersonalBtn">Exportar treinos A/B/C/D (Personal)</button><button class="secondary" id="importPersonalBtn">Importar treinos A/B/C/D (Personal)</button></div><button class="ghost" id="exportPeriodBtn">Exportar treinos por período</button><button class="danger" id="eraseBtn">Apagar todos os dados</button></div>`;
+  modalContent.innerHTML = `<div class="stack"><div class="row"><h2>Configurações e Dados</h2><button class="ghost" data-close>✕</button></div><p class="muted">Os dados ficam neste aparelho. Faça backups periódicos.</p><p class="muted" id="lastBackupInfo"></p><button class="primary" id="exportBtn">Exportar backup JSON completo</button><button class="secondary" id="importBtn">Importar backup JSON completo</button><div style="display:grid;gap:8px;padding:12px 0;border-top:1px solid #282828;border-bottom:1px solid #282828"><div class="muted" style="font-size:11px;font-weight:700;color:#ff851b;letter-spacing:.08em">PRESCRIÇÃO DO PERSONAL TRAINER</div><button class="secondary" id="exportPersonalBtn">Exportar treinos A/B/C/D (Personal)</button><button class="secondary" id="importPersonalBtn">Importar treinos A/B/C/D (Personal)</button><button class="ghost" id="viewTemplatePersonalBtn" style="color:#ff851b;border-color:rgba(255,133,27,0.4)">📋 Ver formato esperado (JSON)</button></div><button class="ghost" id="exportPeriodBtn">Exportar treinos por período</button><button class="danger" id="eraseBtn">Apagar todos os dados</button></div>`;
   modal.showModal();
   const updateBackupInfo = r => {
     const el = modalContent.querySelector('#lastBackupInfo');
@@ -1128,6 +1215,9 @@ function settings() {
   modalContent.querySelector('#importPersonalBtn')?.addEventListener('click', () => {
     document.querySelector('#importPersonalInput').click();
   });
+  modalContent.querySelector('#viewTemplatePersonalBtn')?.addEventListener('click', () => {
+    showPersonalTemplateModal();
+  });
   modalContent.querySelector('#exportPeriodBtn').onclick = () => {
     modal.close();
     exportPeriodForm()
@@ -1140,6 +1230,129 @@ function settings() {
     render();
     showToast('Dados apagados')
   }
+}
+
+function showPersonalTemplateModal() {
+  const exampleJson = {
+    tipo: "MAB_TREINO_PERSONAL",
+    versaoFormato: 1,
+    ciclo: {
+      nome: "Hipertrofia - Foco em Superiores e Pernas",
+      observacoes: "Prescrito pelo Personal Trainer"
+    },
+    treinos: {
+      A: {
+        titulo: "Treino A - Peitoral e Tríceps",
+        exercicios: [
+          {
+            nome: "Supino Reto com Barra",
+            grupoPrincipal: "Peitoral",
+            gruposSecundarios: ["Tríceps", "Ombros"],
+            equipamento: "Barra e Banco",
+            videoUrl: "https://www.youtube.com/watch?v=...",
+            series: 4,
+            repsMin: 8,
+            repsMax: 10,
+            rirAlvo: 2,
+            descansoSegundos: 120,
+            observacoes: "Pausa de 1s na fase excêntrica"
+          }
+        ]
+      },
+      B: {
+        titulo: "Treino B - Costas e Bíceps",
+        exercicios: [
+          {
+            nome: "Puxada Frontal na Polia",
+            grupoPrincipal: "Costas",
+            gruposSecundarios: ["Bíceps", "Ombros"],
+            equipamento: "Polia Alta",
+            videoUrl: "https://www.youtube.com/watch?v=...",
+            series: 4,
+            repsMin: 8,
+            repsMax: 12,
+            rirAlvo: 2,
+            descansoSegundos: 90,
+            observacoes: "Foco na adução das escápulas"
+          }
+        ]
+      },
+      C: {
+        titulo: "Treino C - Pernas Completo",
+        exercicios: [
+          {
+            nome: "Agachamento Livre com Barra",
+            grupoPrincipal: "Quadríceps",
+            gruposSecundarios: ["Glúteos", "Posterior", "Core"],
+            equipamento: "Barra Olímpica",
+            videoUrl: "https://www.youtube.com/watch?v=...",
+            series: 4,
+            repsMin: 6,
+            repsMax: 8,
+            rirAlvo: 2,
+            descansoSegundos: 150,
+            observacoes: "Descida controlada"
+          }
+        ]
+      },
+      D: {
+        titulo: "Treino D - Ombros e Core",
+        exercicios: [
+          {
+            nome: "Desenvolvimento Militar",
+            grupoPrincipal: "Ombros",
+            gruposSecundarios: ["Tríceps", "Core"],
+            equipamento: "Barra",
+            videoUrl: "https://www.youtube.com/watch?v=...",
+            series: 4,
+            repsMin: 8,
+            repsMax: 10,
+            rirAlvo: 1,
+            descansoSegundos: 120,
+            observacoes: "Manter abdômen contraído"
+          }
+        ]
+      }
+    }
+  };
+
+  const jsonStr = JSON.stringify(exampleJson, null, 2);
+
+  modalContent.innerHTML = `<div class="stack" style="max-height:85vh;overflow-y:auto">
+    <div class="row">
+      <div>
+        <div class="muted" style="font-size:11px;color:#ff851b;font-weight:700">PADRÃO DE IMPORTAÇÃO</div>
+        <h2 style="margin:2px 0 0">Layout do Treino do Personal</h2>
+      </div>
+      <button type="button" class="ghost" data-close>✕</button>
+    </div>
+    <p class="muted" style="font-size:13px;line-height:1.4;margin:4px 0 8px">
+      Envie este modelo para o seu Personal Trainer ou monte o arquivo no formato <strong>JSON</strong> com as divisões A, B, C e D. Ao importar, os novos treinos tornam-se os únicos ativos da musculação (os anteriores são inativados automaticamente), mantendo todo o seu histórico preservado.
+    </p>
+    <div class="row" style="gap:8px;margin-bottom:6px">
+      <button type="button" class="secondary" id="btnCopyJsonTemplate" style="flex:1;font-size:12px;padding:10px">📋 Copiar modelo JSON</button>
+      <button type="button" class="primary" id="btnDownloadJsonTemplate" style="flex:1;font-size:12px;padding:10px">⬇ Baixar modelo (.json)</button>
+    </div>
+    <div style="background:#0a0a0a;border:1px solid #333;border-radius:12px;padding:12px;max-height:300px;overflow-y:auto;font-family:monospace;font-size:11px;color:#eee;white-space:pre-wrap;line-height:1.45" id="templateJsonBlock">${esc(jsonStr)}</div>
+    <button type="button" class="ghost" data-close style="margin-top:6px">Fechar</button>
+  </div>`;
+
+  modal.showModal();
+  modalContent.querySelectorAll('[data-close]').forEach(b => b.onclick = () => modal.close());
+
+  modalContent.querySelector('#btnCopyJsonTemplate').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(jsonStr);
+      showToast('Modelo JSON copiado!');
+    } catch {
+      showToast('Selecione e copie o texto acima.');
+    }
+  };
+
+  modalContent.querySelector('#btnDownloadJsonTemplate').onclick = () => {
+    downloadText(jsonStr, 'modelo-treino-personal-mab.json');
+    showToast('Arquivo modelo baixado');
+  };
 }
 
 async function exportPersonalTraining() {
@@ -1266,6 +1479,17 @@ async function importPersonalTraining(obj) {
   const allGroups = await repo.all('workoutGroups');
   const allPlanItems = await repo.all('planItems');
 
+  // Inativa todos os outros exercícios pré-existentes dos treinos A, B, C e D de musculação no ciclo atual
+  for (const item of allPlanItems) {
+    if (item.cycleId === cycle.id && ['A', 'B', 'C', 'D'].includes(item.groupCode)) {
+      if (item.active !== false) {
+        item.active = false;
+        item.updatedAt = now;
+        await repo.put('planItems', item);
+      }
+    }
+  }
+
   for (const code of codes) {
     const tData = treinos[code];
     if (!tData) continue;
@@ -1290,11 +1514,6 @@ async function importPersonalTraining(obj) {
     }
 
     const exList = Array.isArray(tData.exercicios) ? tData.exercicios : [];
-
-    const currentItems = allPlanItems.filter(x => x.cycleId === cycle.id && x.groupCode === code);
-    for (const item of currentItems) {
-      await repo.remove('planItems', item.id);
-    }
 
     for (let i = 0; i < exList.length; i++) {
       const rawEx = exList[i];
@@ -1476,6 +1695,9 @@ document.addEventListener('click', async e => {
   }
   if (a === 'import-personal-plan') {
     document.querySelector('#importPersonalInput')?.click();
+  }
+  if (a === 'view-personal-template') {
+    showPersonalTemplateModal();
   }
 });
 document.querySelectorAll('.bottom-nav button').forEach(b => b.onclick = () => navigate(b.dataset.route));
