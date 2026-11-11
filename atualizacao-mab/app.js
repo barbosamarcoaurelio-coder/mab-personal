@@ -161,11 +161,11 @@ async function exercises() {
     sensitivity: 'base'
   }));
   return `<div class="stack">
-    <div class="row" style="flex-wrap:wrap;gap:8px">
+    <div class="row" style="flex-wrap:wrap;gap:10px;align-items:center">
       <h2>Exercícios</h2>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button type="button" class="secondary" data-action="export-exercises-dialog" style="font-size:12px;padding:8px 14px">📤 Exportar base TXT</button>
-        <button class="primary" data-action="new-exercise">+ Cadastrar</button>
+      <div style="display:flex;gap:8px;align-items:center;flex:1;min-width:280px">
+        <button type="button" class="secondary" data-action="export-exercises-dialog" style="flex:1;min-height:42px;font-size:12px;padding:8px 10px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:12px;white-space:nowrap">📤 Exportar base TXT</button>
+        <button type="button" class="primary" data-action="new-exercise" style="flex:1;min-height:42px;font-size:12px;font-weight:800;padding:8px 10px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:12px;white-space:nowrap">+ Cadastrar Novo Exercício</button>
       </div>
     </div>
     <div class="card">
