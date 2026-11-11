@@ -12,4 +12,22 @@
 .mab-muscle-chip.active{background:#ff851b;color:#080808;border-color:#ff851b;font-weight:700}
 .mab-add-group-chip{border-style:dashed;border-color:#ff851b;color:#ff851b;background:rgba(255,133,27,.08);font-weight:600}
 .mab-add-group-chip:hover,.mab-add-group-chip:active{background:rgba(255,133,27,.18)}
+.plan-exercise-item{display:flex;flex-direction:column;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}
+.plan-exercise-main{display:flex;flex-direction:column;gap:5px;width:100%}
+.plan-exercise-title{font-size:15px;font-weight:700;color:#fff;line-height:1.35;word-break:normal}
+.plan-exercise-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px}
+.plan-meta-badge{display:inline-flex;align-items:center;background:rgba(255,255,255,.07);border:1px solid #333;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;color:#ddd}
+.plan-meta-badge.orange{background:rgba(255,133,27,.12);border-color:rgba(255,133,27,.35);color:#ff851b;font-weight:700}
+.plan-exercise-actions{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.plan-order-group,.plan-control-group{display:flex;align-items:center;gap:6px}
+.icon-sm{padding:6px 12px;min-height:36px;font-weight:700;font-size:14px}
+.btn-sm{padding:6px 14px;min-height:36px;font-size:12px}
+@media(min-width:600px){
+  .plan-exercise-item{flex-direction:row;justify-content:space-between;align-items:center}
+  .plan-exercise-actions{margin-top:0}
+}
+.export-ex-item{display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:10px;background:#141414;border:1px solid #282828;cursor:pointer;touch-action:manipulation;transition:background .15s}
+.export-ex-item:hover{background:#1c1c1c}
+.export-ex-item input[type="checkbox"]{width:18px;height:18px;margin-top:2px;accent-color:#ff851b;flex-shrink:0}
+
 

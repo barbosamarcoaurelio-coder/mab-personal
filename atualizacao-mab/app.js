@@ -112,14 +112,72 @@ async function plan() {
     exercises = await repo.all('exercises');
   const group = localStorage.getItem('mab-plan-group') || 'A';
   const list = items.filter(x => x.cycleId === cycle?.id && x.groupCode === group && x.active).sort((a, b) => a.order - b.order);
-  return `<div class="stack"><div class="card"><div class="row"><div><span class="muted">CICLO ATUAL</span><h2>${esc(cycle?.name||'Sem ciclo')}</h2></div><button class="primary" data-action="add-plan-item">+ Adicionar ao treino</button></div><div class="chips">${['A','B','C','D'].map(g=>`<button class="chip ${g===group?'active':''}" data-action="plan-group" data-group="${g}">Treino ${g}</button>`).join('')}</div><div class="row" style="margin-top:12px;padding-top:12px;border-top:1px solid #282828;gap:8px;flex-wrap:wrap"><button type="button" class="ghost" data-action="export-personal-plan" style="font-size:12px;padding:8px 12px">📤 Exportar Treinos Personal (A/B/C/D)</button><button type="button" class="ghost" data-action="import-personal-plan" style="font-size:12px;padding:8px 12px">📥 Importar Treinos Personal</button><button type="button" class="ghost" data-action="view-personal-template" style="font-size:12px;padding:8px 12px;color:#ff851b;border-color:rgba(255,133,27,0.4)">📋 Como preencher / Modelo (.txt)</button></div></div><div class="card"><h3>Treino ${group}</h3>${list.map(i=>{const e=exercises.find(x=>x.id===i.exerciseId);return `<div class="exercise-item"><div><strong>${esc(e?.name)}</strong><div class="muted">${i.sets} séries · ${i.minReps}-${i.maxReps} reps · ${i.restSeconds}s</div></div><div class="row"><button class="ghost" data-action="move-plan-up" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para cima">↑</button><button class="ghost" data-action="move-plan-down" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para baixo">↓</button><button class="ghost" data-action="edit-plan-item" data-id="${i.id}">Editar</button><button class="chip active" data-action="toggle-plan" data-id="${i.id}">Inativar</button></div></div>`}).join('')||'<div class="empty">Nenhum exercício.</div>'}</div></div>`
+  return `<div class="stack">
+    <div class="card">
+      <div class="row">
+        <div>
+          <span class="muted">CICLO ATUAL</span>
+          <h2>${esc(cycle?.name||'Sem ciclo')}</h2>
+        </div>
+        <button class="primary" data-action="add-plan-item">+ Adicionar ao treino</button>
+      </div>
+      <div class="chips">
+        ${['A','B','C','D'].map(g=>`<button class="chip ${g===group?'active':''}" data-action="plan-group" data-group="${g}">Treino ${g}</button>`).join('')}
+      </div>
+      <div class="row" style="margin-top:12px;padding-top:12px;border-top:1px solid #282828;gap:8px;flex-wrap:wrap">
+        <button type="button" class="ghost" data-action="export-personal-plan" style="font-size:12px;padding:8px 12px">📤 Exportar Treinos Personal (A/B/C/D)</button>
+        <button type="button" class="ghost" data-action="import-personal-plan" style="font-size:12px;padding:8px 12px">📥 Importar Treinos Personal</button>
+        <button type="button" class="ghost" data-action="view-personal-template" style="font-size:12px;padding:8px 12px;color:#ff851b;border-color:rgba(255,133,27,0.4)">📋 Como preencher / Modelo (.txt)</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Treino ${group}</h3>
+      ${list.map(i=>{
+        const e=exercises.find(x=>x.id===i.exerciseId);
+        const repsText = i.minReps === i.maxReps ? `${i.minReps} reps` : `${i.minReps} a ${i.maxReps} reps`;
+        return `<div class="plan-exercise-item">
+          <div class="plan-exercise-main">
+            <strong class="plan-exercise-title">${esc(e?.name)}</strong>
+            <div class="plan-exercise-meta">
+              <span class="plan-meta-badge">${i.sets} ${i.sets === 1 ? 'série' : 'séries'}</span>
+              <span class="plan-meta-badge orange">${repsText}</span>
+              <span class="plan-meta-badge">⏱ ${i.restSeconds}s descanso</span>
+              ${i.rirTarget != null ? `<span class="plan-meta-badge muted">RIR ${i.rirTarget}</span>` : ''}
+            </div>
+          </div>
+          <div class="plan-exercise-actions">
+            <div class="plan-order-group">
+              <button class="ghost icon-sm" data-action="move-plan-up" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para cima">↑</button>
+              <button class="ghost icon-sm" data-action="move-plan-down" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para baixo">↓</button>
+            </div>
+            <div class="plan-control-group">
+              <button class="ghost btn-sm" data-action="edit-plan-item" data-id="${i.id}">Editar</button>
+              <button class="chip active btn-sm" data-action="toggle-plan" data-id="${i.id}">Inativar</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')||'<div class="empty">Nenhum exercício.</div>'}
+    </div>
+  </div>`;
 }
 
 async function exercises() {
   const list = (await repo.all('exercises')).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', {
     sensitivity: 'base'
   }));
-  return `<div class="stack"><div class="row"><h2>Exercícios</h2><button class="primary" data-action="new-exercise">+ Cadastrar</button></div><div class="card"><input id="exerciseSearch" aria-label="Pesquisar exercícios" placeholder="Pesquisar" style="width:100%;padding:12px;border-radius:10px;border:1px solid #383838;background:#0e0e0e;color:#fff"><div id="exerciseList">${list.map(e=>exerciseRow(e)).join('')}</div></div></div>`
+  return `<div class="stack">
+    <div class="row" style="flex-wrap:wrap;gap:8px">
+      <h2>Exercícios</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button type="button" class="secondary" data-action="export-exercises-dialog" style="font-size:12px;padding:8px 14px">📤 Exportar base TXT</button>
+        <button class="primary" data-action="new-exercise">+ Cadastrar</button>
+      </div>
+    </div>
+    <div class="card">
+      <input id="exerciseSearch" aria-label="Pesquisar exercícios" placeholder="Pesquisar" style="width:100%;padding:12px;border-radius:10px;border:1px solid #383838;background:#0e0e0e;color:#fff">
+      <div id="exerciseList">${list.map(e=>exerciseRow(e)).join('')}</div>
+    </div>
+  </div>`;
 }
 
 function exerciseRow(e) {
@@ -1619,6 +1677,157 @@ TREINO D - Ombros e Core
   });
 }
 
+async function exportExercisesModal() {
+  const exercises = (await repo.all('exercises')).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }));
+
+  if (!exercises.length) {
+    showToast('Nenhum exercício cadastrado para exportar.');
+    return;
+  }
+
+  modalContent.innerHTML = `<div class="stack" style="max-height:86vh;overflow-y:auto">
+    <div class="row">
+      <div>
+        <div class="muted" style="font-size:11px;color:#ff851b;font-weight:700">EXPORTAÇÃO DE EXERCÍCIOS</div>
+        <h2 style="margin:2px 0 0">Exportar base cadastrada</h2>
+      </div>
+      <button type="button" class="ghost" data-close>✕</button>
+    </div>
+    <p class="muted" style="font-size:13px;margin:2px 0 8px">
+      Selecione os exercícios que deseja exportar com todos os campos cadastrados (grupos principal/secundários, equipamento, vídeo e observações):
+    </p>
+
+    <div class="row" style="gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #282828;flex-wrap:wrap">
+      <button type="button" class="chip active" id="btnToggleAllExercises">Desmarcar todos</button>
+      <span class="muted" id="selectedExercisesCount" style="font-size:12px">Total selecionado: ${exercises.length} de ${exercises.length}</span>
+    </div>
+
+    <input type="text" id="filterExportExercisesInput" placeholder="Filtrar lista de exercícios..." style="width:100%;padding:10px 12px;background:#0a0a0a;border:1px solid #333;border-radius:10px;color:#fff;font-size:13px;box-sizing:border-box">
+
+    <div id="exportExercisesList" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;padding-right:4px">
+      ${exercises.map(ex => {
+        const primary = ex.primaryMuscleGroup || ex.muscleGroup || 'Peitoral';
+        const secondaries = Array.isArray(ex.secondaryMuscleGroups) && ex.secondaryMuscleGroups.length ? ex.secondaryMuscleGroups.join(', ') : 'Nenhum';
+        return `<label class="export-ex-item" data-name="${esc((ex.name || '').toLowerCase())}">
+          <input type="checkbox" name="selectedEx" value="${esc(ex.id)}" checked>
+          <div style="flex:1;min-width:0">
+            <strong style="display:block;font-size:14px;color:#fff">${esc(ex.name)}</strong>
+            <div class="muted" style="font-size:11px;margin-top:2px">
+              Principal: <span style="color:#ddd">${esc(primary)}</span> · Secundários: <span style="color:#bbb">${esc(secondaries)}</span>
+            </div>
+            <div class="muted" style="font-size:11px">
+              ${ex.equipment ? `Equipamento: ${esc(ex.equipment)} · ` : ''}${ex.videoUrl ? `▶ Vídeo cadastrado · ` : ''}${ex.active !== false ? 'Ativo' : 'Inativo'}
+            </div>
+          </div>
+        </label>`;
+      }).join('')}
+    </div>
+
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button type="button" class="secondary" id="btnCopySelectedTxt" style="flex:1;min-width:140px;font-size:13px;padding:12px">📋 Copiar texto</button>
+      <button type="button" class="primary" id="btnDownloadSelectedTxt" style="flex:1;min-width:140px;font-size:13px;padding:12px">⬇ Baixar arquivo TXT</button>
+    </div>
+  </div>`;
+
+  modal.showModal();
+  modalContent.querySelectorAll('[data-close]').forEach(b => b.onclick = () => modal.close());
+
+  const listEl = modalContent.querySelector('#exportExercisesList');
+  const countEl = modalContent.querySelector('#selectedExercisesCount');
+  const toggleBtn = modalContent.querySelector('#btnToggleAllExercises');
+  const filterInput = modalContent.querySelector('#filterExportExercisesInput');
+
+  let allSelected = true;
+
+  const updateCount = () => {
+    const checked = listEl.querySelectorAll('input[type="checkbox"]:checked').length;
+    countEl.textContent = `Total selecionado: ${checked} de ${exercises.length}`;
+    if (checked === 0) {
+      toggleBtn.textContent = 'Selecionar todos';
+      toggleBtn.classList.remove('active');
+      allSelected = false;
+    } else if (checked === exercises.length) {
+      toggleBtn.textContent = 'Desmarcar todos';
+      toggleBtn.classList.add('active');
+      allSelected = true;
+    } else {
+      toggleBtn.textContent = 'Selecionar todos';
+      toggleBtn.classList.remove('active');
+      allSelected = false;
+    }
+  };
+
+  listEl.addEventListener('change', updateCount);
+
+  toggleBtn.onclick = () => {
+    allSelected = !allSelected;
+    listEl.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = allSelected);
+    updateCount();
+  };
+
+  filterInput.oninput = () => {
+    const q = filterInput.value.toLowerCase().trim();
+    listEl.querySelectorAll('.export-ex-item').forEach(item => {
+      item.style.display = item.dataset.name.includes(q) ? '' : 'none';
+    });
+  };
+
+  const generateTxtExport = () => {
+    const selectedIds = new Set([...listEl.querySelectorAll('input[type="checkbox"]:checked')].map(cb => cb.value));
+    const selected = exercises.filter(ex => selectedIds.has(ex.id));
+    if (!selected.length) {
+      showToast('Selecione ao menos um exercício para exportar.');
+      return null;
+    }
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('pt-BR');
+    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    let txt = `# BASE DE EXERCÍCIOS MAB PERSONAL\n`;
+    txt += `# Data da exportação: ${dateStr} às ${timeStr}\n`;
+    txt += `# Total de exercícios exportados: ${selected.length}\n`;
+    txt += `============================================================\n\n`;
+
+    selected.forEach((ex, idx) => {
+      const primary = ex.primaryMuscleGroup || ex.muscleGroup || 'Peitoral';
+      const secondaries = Array.isArray(ex.secondaryMuscleGroups) && ex.secondaryMuscleGroups.length
+        ? ex.secondaryMuscleGroups.join(', ')
+        : 'Nenhum';
+
+      txt += `${idx + 1}. ${ex.name}\n`;
+      txt += `   - Grupo Muscular Principal: ${primary}\n`;
+      txt += `   - Grupos Secundários (sinergistas): ${secondaries}\n`;
+      txt += `   - Equipamento: ${ex.equipment || 'Não informado'}\n`;
+      txt += `   - Vídeo de Execução: ${ex.videoUrl || 'Não informado'}\n`;
+      txt += `   - Observações: ${ex.notes || 'Nenhuma'}\n`;
+      txt += `   - Status: ${ex.active !== false ? 'Ativo' : 'Inativo'}\n\n`;
+    });
+
+    txt += `============================================================\n`;
+    return { txt, count: selected.length };
+  };
+
+  modalContent.querySelector('#btnCopySelectedTxt').onclick = async () => {
+    const res = generateTxtExport();
+    if (!res) return;
+    try {
+      await navigator.clipboard.writeText(res.txt);
+      showToast(`${res.count} exercícios copiados para a área de transferência!`);
+    } catch {
+      showToast('Não foi possível copiar automaticamente.');
+    }
+  };
+
+  modalContent.querySelector('#btnDownloadSelectedTxt').onclick = () => {
+    const res = generateTxtExport();
+    if (!res) return;
+    const dateSlug = new Date().toISOString().slice(0, 10);
+    downloadText(res.txt, `mab-exercicios-cadastrados-${dateSlug}.txt`);
+    showToast(`Arquivo TXT com ${res.count} exercícios baixado!`);
+  };
+}
+
 async function exportPersonalTraining() {
   const cycle = await activeCycle();
   const [items, exercises, workoutGroups] = await Promise.all([
@@ -1962,6 +2171,9 @@ document.addEventListener('click', async e => {
   }
   if (a === 'view-personal-template') {
     showPersonalTemplateModal();
+  }
+  if (a === 'export-exercises-dialog') {
+    exportExercisesModal().catch(e => showToast(e.message));
   }
 });
 document.querySelectorAll('.bottom-nav button').forEach(b => b.onclick = () => navigate(b.dataset.route));
