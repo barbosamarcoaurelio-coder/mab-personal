@@ -112,7 +112,7 @@ async function plan() {
     exercises = await repo.all('exercises');
   const group = localStorage.getItem('mab-plan-group') || 'A';
   const list = items.filter(x => x.cycleId === cycle?.id && x.groupCode === group && x.active).sort((a, b) => a.order - b.order);
-  return `<div class="stack"><div class="card"><div class="row"><div><span class="muted">CICLO ATUAL</span><h2>${esc(cycle?.name||'Sem ciclo')}</h2></div><button class="primary" data-action="add-plan-item">+ Adicionar ao treino</button></div><div class="chips">${['A','B','C','D'].map(g=>`<button class="chip ${g===group?'active':''}" data-action="plan-group" data-group="${g}">Treino ${g}</button>`).join('')}</div><div class="row" style="margin-top:12px;padding-top:12px;border-top:1px solid #282828;gap:8px;flex-wrap:wrap"><button type="button" class="ghost" data-action="export-personal-plan" style="font-size:12px;padding:8px 12px">📤 Exportar Treinos Personal (A/B/C/D)</button><button type="button" class="ghost" data-action="import-personal-plan" style="font-size:12px;padding:8px 12px">📥 Importar Treinos Personal</button><button type="button" class="ghost" data-action="view-personal-template" style="font-size:12px;padding:8px 12px;color:#ff851b;border-color:rgba(255,133,27,0.4)">📋 Formato esperado (JSON)</button></div></div><div class="card"><h3>Treino ${group}</h3>${list.map(i=>{const e=exercises.find(x=>x.id===i.exerciseId);return `<div class="exercise-item"><div><strong>${esc(e?.name)}</strong><div class="muted">${i.sets} séries · ${i.minReps}-${i.maxReps} reps · ${i.restSeconds}s</div></div><div class="row"><button class="ghost" data-action="move-plan-up" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para cima">↑</button><button class="ghost" data-action="move-plan-down" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para baixo">↓</button><button class="ghost" data-action="edit-plan-item" data-id="${i.id}">Editar</button><button class="chip active" data-action="toggle-plan" data-id="${i.id}">Inativar</button></div></div>`}).join('')||'<div class="empty">Nenhum exercício.</div>'}</div></div>`
+  return `<div class="stack"><div class="card"><div class="row"><div><span class="muted">CICLO ATUAL</span><h2>${esc(cycle?.name||'Sem ciclo')}</h2></div><button class="primary" data-action="add-plan-item">+ Adicionar ao treino</button></div><div class="chips">${['A','B','C','D'].map(g=>`<button class="chip ${g===group?'active':''}" data-action="plan-group" data-group="${g}">Treino ${g}</button>`).join('')}</div><div class="row" style="margin-top:12px;padding-top:12px;border-top:1px solid #282828;gap:8px;flex-wrap:wrap"><button type="button" class="ghost" data-action="export-personal-plan" style="font-size:12px;padding:8px 12px">📤 Exportar Treinos Personal (A/B/C/D)</button><button type="button" class="ghost" data-action="import-personal-plan" style="font-size:12px;padding:8px 12px">📥 Importar Treinos Personal</button><button type="button" class="ghost" data-action="view-personal-template" style="font-size:12px;padding:8px 12px;color:#ff851b;border-color:rgba(255,133,27,0.4)">📋 Como preencher / Modelo (.txt)</button></div></div><div class="card"><h3>Treino ${group}</h3>${list.map(i=>{const e=exercises.find(x=>x.id===i.exerciseId);return `<div class="exercise-item"><div><strong>${esc(e?.name)}</strong><div class="muted">${i.sets} séries · ${i.minReps}-${i.maxReps} reps · ${i.restSeconds}s</div></div><div class="row"><button class="ghost" data-action="move-plan-up" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para cima">↑</button><button class="ghost" data-action="move-plan-down" data-id="${i.id}" aria-label="Mover ${esc(e?.name)} para baixo">↓</button><button class="ghost" data-action="edit-plan-item" data-id="${i.id}">Editar</button><button class="chip active" data-action="toggle-plan" data-id="${i.id}">Inativar</button></div></div>`}).join('')||'<div class="empty">Nenhum exercício.</div>'}</div></div>`
 }
 
 async function exercises() {
@@ -1191,7 +1191,7 @@ function exportPeriodForm() {
 }
 
 function settings() {
-  modalContent.innerHTML = `<div class="stack"><div class="row"><h2>Configurações e Dados</h2><button class="ghost" data-close>✕</button></div><p class="muted">Os dados ficam neste aparelho. Faça backups periódicos.</p><p class="muted" id="lastBackupInfo"></p><button class="primary" id="exportBtn">Exportar backup JSON completo</button><button class="secondary" id="importBtn">Importar backup JSON completo</button><div style="display:grid;gap:8px;padding:12px 0;border-top:1px solid #282828;border-bottom:1px solid #282828"><div class="muted" style="font-size:11px;font-weight:700;color:#ff851b;letter-spacing:.08em">PRESCRIÇÃO DO PERSONAL TRAINER</div><button class="secondary" id="exportPersonalBtn">Exportar treinos A/B/C/D (Personal)</button><button class="secondary" id="importPersonalBtn">Importar treinos A/B/C/D (Personal)</button><button class="ghost" id="viewTemplatePersonalBtn" style="color:#ff851b;border-color:rgba(255,133,27,0.4)">📋 Ver formato esperado (JSON)</button></div><button class="ghost" id="exportPeriodBtn">Exportar treinos por período</button><button class="danger" id="eraseBtn">Apagar todos os dados</button></div>`;
+  modalContent.innerHTML = `<div class="stack"><div class="row"><h2>Configurações e Dados</h2><button class="ghost" data-close>✕</button></div><p class="muted">Os dados ficam neste aparelho. Faça backups periódicos.</p><p class="muted" id="lastBackupInfo"></p><button class="primary" id="exportBtn">Exportar backup JSON completo</button><button class="secondary" id="importBtn">Importar backup JSON completo</button><div style="display:grid;gap:8px;padding:12px 0;border-top:1px solid #282828;border-bottom:1px solid #282828"><div class="muted" style="font-size:11px;font-weight:700;color:#ff851b;letter-spacing:.08em">PRESCRIÇÃO DO PERSONAL TRAINER</div><button class="secondary" id="exportPersonalBtn">Exportar treinos A/B/C/D (Personal)</button><button class="secondary" id="importPersonalBtn">Importar treinos A/B/C/D (Personal)</button><button class="ghost" id="viewTemplatePersonalBtn" style="color:#ff851b;border-color:rgba(255,133,27,0.4)">📋 Como preencher / Modelo (.txt / JSON)</button></div><button class="ghost" id="exportPeriodBtn">Exportar treinos por período</button><button class="danger" id="eraseBtn">Apagar todos os dados</button></div>`;
   modal.showModal();
   const updateBackupInfo = r => {
     const el = modalContent.querySelector('#lastBackupInfo');
@@ -1232,7 +1232,181 @@ function settings() {
   }
 }
 
+function parseTextWorkout(text) {
+  if (!text || typeof text !== 'string') {
+    throw new Error('Conteúdo de texto vazio.');
+  }
+
+  const lines = text.split(/\r?\n/);
+  let cicloNome = 'Prescrição do Personal Trainer';
+  let cicloObs = '';
+  let currentGroup = null;
+  const groups = {
+    A: { titulo: 'Treino A', exercicios: [] },
+    B: { titulo: 'Treino B', exercicios: [] },
+    C: { titulo: 'Treino C', exercicios: [] },
+    D: { titulo: 'Treino D', exercicios: [] }
+  };
+
+  const groupHeaderRegex = /^(?:#+\s*)?(?:\[\s*)?treino\s*([a-d])\s*(?:\])?(?:\s*[-–—:]\s*(.*))?$/i;
+  const cycleRegex = /^(?:#+\s*)?(?:ciclo|periodiza[cç][aã]o|objetivo)\s*[:=]\s*(.*)$/i;
+  const obsRegex = /^(?:#+\s*)?(?:obs|observa[cç][oõ]es|notas?)\s*[:=]\s*(.*)$/i;
+
+  for (let rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || (line.startsWith('#') && !groupHeaderRegex.test(line) && !cycleRegex.test(line))) continue;
+
+    const cycleMatch = line.match(cycleRegex);
+    if (cycleMatch) {
+      cicloNome = cycleMatch[1].trim() || cicloNome;
+      continue;
+    }
+
+    const obsMatch = line.match(obsRegex);
+    if (obsMatch) {
+      cicloObs = obsMatch[1].trim() || cicloObs;
+      continue;
+    }
+
+    const groupMatch = line.match(groupHeaderRegex);
+    if (groupMatch) {
+      const code = groupMatch[1].toUpperCase();
+      currentGroup = code;
+      const subtitle = (groupMatch[2] || '').trim();
+      groups[code].titulo = subtitle ? `Treino ${code} - ${subtitle}` : `Treino ${code}`;
+      continue;
+    }
+
+    if (currentGroup && groups[currentGroup]) {
+      const cleanLine = line.replace(/^[-*•\d.]+\s*/, '').trim();
+      if (!cleanLine) continue;
+
+      let name = '';
+      let details = '';
+
+      if (cleanLine.includes(':')) {
+        const colonIdx = cleanLine.indexOf(':');
+        name = cleanLine.slice(0, colonIdx).trim();
+        details = cleanLine.slice(colonIdx + 1).trim();
+      } else {
+        const splitMatch = cleanLine.match(/^(.*?)(?:\s+)(\d+\s*(?:s[eé]ries|x\s*\d+).*)$/i);
+        if (splitMatch) {
+          name = splitMatch[1].trim();
+          details = splitMatch[2].trim();
+        } else {
+          name = cleanLine;
+          details = '';
+        }
+      }
+
+      if (!name) continue;
+
+      let sets = 3;
+      let minReps = 8;
+      let maxReps = 12;
+      let rirTarget = 2;
+      let restSeconds = 90;
+      let videoUrl = '';
+      let equipamento = '';
+      let observacoes = '';
+
+      if (details) {
+        const videoMatch = details.match(/https?:\/\/[^\s,]+/i);
+        if (videoMatch) {
+          videoUrl = videoMatch[0];
+          details = details.replace(videoMatch[0], '');
+        }
+
+        const setsMatch = details.match(/(\d+)\s*(?:s[eé]ries?|x)/i);
+        if (setsMatch) {
+          sets = Number(setsMatch[1]);
+        }
+
+        const repsRangeMatch = details.match(/(?:x\s*)?(\d+)\s*(?:a|-|–)\s*(\d+)\s*(?:reps?|repeti[cç][oõ]es)?/i);
+        if (repsRangeMatch) {
+          minReps = Number(repsRangeMatch[1]);
+          maxReps = Number(repsRangeMatch[2]);
+        } else {
+          const singleRepMatch = details.match(/(?:x\s*|de\s*)(\d+)\s*(?:reps?|repeti[cç][oõ]es)?/i);
+          if (singleRepMatch) {
+            minReps = Number(singleRepMatch[1]);
+            maxReps = Number(singleRepMatch[1]);
+          }
+        }
+
+        const restMatch = details.match(/(?:descanso|pausa|intervalo)\s*[:=]?\s*(\d+)\s*s?/i);
+        if (restMatch) {
+          restSeconds = Number(restMatch[1]);
+        }
+
+        const rirMatch = details.match(/(?:rir|reserva)\s*[:=]?\s*(\d+)/i);
+        if (rirMatch) {
+          rirTarget = Number(rirMatch[1]);
+        }
+
+        const equipMatch = details.match(/(?:equipamento|equip)\s*[:=]?\s*([^,;]+)/i);
+        if (equipMatch) {
+          equipamento = equipMatch[1].trim();
+        }
+
+        const notesMatch = details.match(/(?:obs|observa[cç][aã]o|nota)\s*[:=]?\s*([^,;]+)/i);
+        if (notesMatch) {
+          observacoes = notesMatch[1].trim();
+        }
+      }
+
+      groups[currentGroup].exercicios.push({
+        nome: name,
+        grupoPrincipal: 'Geral',
+        gruposSecundarios: [],
+        equipamento: equipamento || '',
+        videoUrl: videoUrl || '',
+        series: sets,
+        repsMin: minReps,
+        repsMax: maxReps,
+        rirAlvo: rirTarget,
+        descansoSegundos: restSeconds,
+        observacoes: observacoes || ''
+      });
+    }
+  }
+
+  const totalFound = Object.values(groups).reduce((acc, g) => acc + g.exercicios.length, 0);
+  if (totalFound === 0) {
+    throw new Error('Não foi possível identificar exercícios no texto. Certifique-se de que os blocos começam com "TREINO A", "TREINO B", etc.');
+  }
+
+  return {
+    tipo: 'MAB_TREINO_PERSONAL',
+    versaoFormato: 1,
+    ciclo: {
+      nome: cicloNome,
+      observacoes: cicloObs
+    },
+    treinos: groups
+  };
+}
+
 function showPersonalTemplateModal() {
+  const textTemplate = `Ciclo: Hipertrofia - Foco em Superiores e Pernas
+Observações: Prescrito pelo Personal Trainer
+
+TREINO A - Peitoral e Tríceps
+- Supino Reto com Barra: 4 séries, 8 a 10 reps, RIR 2, descanso 120s, vídeo: https://www.youtube.com/watch?v=rT7DgCr-3pg
+- Tríceps Testa: 3 séries, 10 a 12 reps, RIR 1, descanso 90s, vídeo: https://www.youtube.com/watch?v=d_KZxkY_0cM
+
+TREINO B - Costas e Bíceps
+- Puxada Frontal na Polia: 4 séries, 8 a 12 reps, RIR 2, descanso 90s, vídeo: https://www.youtube.com/watch?v=CAwf7n6Luuc
+- Rosca Direta com Barra: 3 séries, 10 a 12 reps, RIR 2, descanso 60s
+
+TREINO C - Pernas Completo
+- Agachamento Livre com Barra: 4 séries, 6 a 8 reps, RIR 2, descanso 150s, vídeo: https://www.youtube.com/watch?v=bEv6CCg2BC8
+- Cadeira Extensora: 3 séries, 10 a 12 reps, RIR 1, descanso 90s
+
+TREINO D - Ombros e Core
+- Desenvolvimento Militar: 4 séries, 8 a 10 reps, RIR 1, descanso 120s, vídeo: https://www.youtube.com/watch?v=2yjwXTZQDDI
+- Elevação Lateral: 4 séries, 12 a 15 reps, RIR 1, descanso 60s`;
+
   const exampleJson = {
     tipo: "MAB_TREINO_PERSONAL",
     versaoFormato: 1,
@@ -1249,7 +1423,7 @@ function showPersonalTemplateModal() {
             grupoPrincipal: "Peitoral",
             gruposSecundarios: ["Tríceps", "Ombros"],
             equipamento: "Barra e Banco",
-            videoUrl: "https://www.youtube.com/watch?v=...",
+            videoUrl: "https://www.youtube.com/watch?v=rT7DgCr-3pg",
             series: 4,
             repsMin: 8,
             repsMax: 10,
@@ -1267,13 +1441,13 @@ function showPersonalTemplateModal() {
             grupoPrincipal: "Costas",
             gruposSecundarios: ["Bíceps", "Ombros"],
             equipamento: "Polia Alta",
-            videoUrl: "https://www.youtube.com/watch?v=...",
+            videoUrl: "https://www.youtube.com/watch?v=CAwf7n6Luuc",
             series: 4,
             repsMin: 8,
             repsMax: 12,
             rirAlvo: 2,
             descansoSegundos: 90,
-            observacoes: "Foco na adução das escápulas"
+            observacoes: ""
           }
         ]
       },
@@ -1283,15 +1457,15 @@ function showPersonalTemplateModal() {
           {
             nome: "Agachamento Livre com Barra",
             grupoPrincipal: "Quadríceps",
-            gruposSecundarios: ["Glúteos", "Posterior", "Core"],
+            gruposSecundarios: ["Glúteos", "Posterior"],
             equipamento: "Barra Olímpica",
-            videoUrl: "https://www.youtube.com/watch?v=...",
+            videoUrl: "https://www.youtube.com/watch?v=bEv6CCg2BC8",
             series: 4,
             repsMin: 6,
             repsMax: 8,
             rirAlvo: 2,
             descansoSegundos: 150,
-            observacoes: "Descida controlada"
+            observacoes: ""
           }
         ]
       },
@@ -1303,13 +1477,13 @@ function showPersonalTemplateModal() {
             grupoPrincipal: "Ombros",
             gruposSecundarios: ["Tríceps", "Core"],
             equipamento: "Barra",
-            videoUrl: "https://www.youtube.com/watch?v=...",
+            videoUrl: "https://www.youtube.com/watch?v=2yjwXTZQDDI",
             series: 4,
             repsMin: 8,
             repsMax: 10,
             rirAlvo: 1,
             descansoSegundos: 120,
-            observacoes: "Manter abdômen contraído"
+            observacoes: ""
           }
         ]
       }
@@ -1318,41 +1492,131 @@ function showPersonalTemplateModal() {
 
   const jsonStr = JSON.stringify(exampleJson, null, 2);
 
-  modalContent.innerHTML = `<div class="stack" style="max-height:85vh;overflow-y:auto">
+  modalContent.innerHTML = `<div class="stack" style="max-height:86vh;overflow-y:auto">
     <div class="row">
       <div>
-        <div class="muted" style="font-size:11px;color:#ff851b;font-weight:700">PADRÃO DE IMPORTAÇÃO</div>
-        <h2 style="margin:2px 0 0">Layout do Treino do Personal</h2>
+        <div class="muted" style="font-size:11px;color:#ff851b;font-weight:700">FICHA DE TREINO (PERSONAL TRAINER)</div>
+        <h2 style="margin:2px 0 0">Como preencher e importar</h2>
       </div>
       <button type="button" class="ghost" data-close>✕</button>
     </div>
-    <p class="muted" style="font-size:13px;line-height:1.4;margin:4px 0 8px">
-      Envie este modelo para o seu Personal Trainer ou monte o arquivo no formato <strong>JSON</strong> com as divisões A, B, C e D. Ao importar, os novos treinos tornam-se os únicos ativos da musculação (os anteriores são inativados automaticamente), mantendo todo o seu histórico preservado.
-    </p>
-    <div class="row" style="gap:8px;margin-bottom:6px">
-      <button type="button" class="secondary" id="btnCopyJsonTemplate" style="flex:1;font-size:12px;padding:10px">📋 Copiar modelo JSON</button>
-      <button type="button" class="primary" id="btnDownloadJsonTemplate" style="flex:1;font-size:12px;padding:10px">⬇ Baixar modelo (.json)</button>
+
+    <div class="card" style="padding:14px;background:#151515;border-color:#333">
+      <div style="font-weight:700;color:#ff851b;font-size:13px;margin-bottom:8px">CAMPOS DA SUA FICHA DE TREINO</div>
+      <div class="grid two" style="gap:8px;font-size:12px">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+          <strong style="display:block;color:#fff">🏋️ Nome do Exercício</strong>
+          <span class="muted">Ex.: Supino Reto, Agachamento Livre, Leg Press</span>
+        </div>
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+          <strong style="display:block;color:#fff">🔢 Séries</strong>
+          <span class="muted">Ex.: 3 ou 4 séries</span>
+        </div>
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+          <strong style="display:block;color:#fff">🎯 Repetições</strong>
+          <span class="muted">Ex.: 8 a 10 reps, 10 a 12 reps ou 15 reps</span>
+        </div>
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+          <strong style="display:block;color:#fff">⏱️ Descanso</strong>
+          <span class="muted">Em segundos entre séries (ex.: 60s, 90s, 120s)</span>
+        </div>
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+          <strong style="display:block;color:#fff">⚡ RIR (opcional)</strong>
+          <span class="muted">Repetições na reserva antes de falhar (ex.: RIR 2)</span>
+        </div>
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+          <strong style="display:block;color:#fff">🎬 Vídeo (opcional)</strong>
+          <span class="muted">Link do YouTube para ver a execução do exercício</span>
+        </div>
+      </div>
     </div>
-    <div style="background:#0a0a0a;border:1px solid #333;border-radius:12px;padding:12px;max-height:300px;overflow-y:auto;font-family:monospace;font-size:11px;color:#eee;white-space:pre-wrap;line-height:1.45" id="templateJsonBlock">${esc(jsonStr)}</div>
-    <button type="button" class="ghost" data-close style="margin-top:6px">Fechar</button>
+
+    <div>
+      <div class="row" style="margin-bottom:6px">
+        <span style="font-weight:700;font-size:13px">Modelo em Texto (.txt / WhatsApp)</span>
+        <span class="muted" style="font-size:11px">Fácil de ler e editar</span>
+      </div>
+      <div style="background:#0a0a0a;border:1px solid #333;border-radius:12px;padding:12px;max-height:220px;overflow-y:auto;font-family:monospace;font-size:11px;color:#eee;white-space:pre-wrap;line-height:1.45" id="templateTextBlock">${esc(textTemplate)}</div>
+    </div>
+
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <button type="button" class="secondary" id="btnCopyTextTemplate" style="flex:1;min-width:140px;font-size:12px;padding:10px">📋 Copiar texto</button>
+      <button type="button" class="primary" id="btnDownloadTextTemplate" style="flex:1;min-width:140px;font-size:12px;padding:10px">⬇ Baixar .txt</button>
+    </div>
+
+    <div class="card" style="padding:14px;background:#181818;border-color:#383838;margin-top:4px">
+      <div class="row" style="margin-bottom:8px">
+        <strong style="font-size:13px;color:#ff851b">📝 Colar texto e importar agora</strong>
+      </div>
+      <p class="muted" style="font-size:11px;margin:0 0 8px">Recebeu a ficha do seu Personal por WhatsApp ou e-mail? Cole o texto abaixo e importe diretamente:</p>
+      <textarea id="pasteWorkoutInput" placeholder="Cole aqui o texto com Treino A, B, C, D..." style="width:100%;height:90px;background:#0d0d0d;color:#fff;border:1px solid #383838;border-radius:8px;padding:8px;font-family:monospace;font-size:11px;box-sizing:border-box"></textarea>
+      <button type="button" class="primary" id="btnImportPastedText" style="width:100%;margin-top:8px;padding:10px;font-size:13px">▶ Importar treino colado</button>
+    </div>
+
+    <details style="font-size:11px;color:#888;margin-top:4px">
+      <summary style="cursor:pointer;color:#aaa">Ver formato técnico avançado (JSON para desenvolvedores)</summary>
+      <div style="margin-top:8px">
+        <div style="background:#0a0a0a;border:1px solid #282828;border-radius:8px;padding:10px;max-height:160px;overflow-y:auto;font-family:monospace;font-size:10px;color:#ccc;white-space:pre-wrap">${esc(jsonStr)}</div>
+        <div class="row" style="gap:6px;margin-top:6px">
+          <button type="button" class="ghost" id="btnCopyJsonTemplate" style="flex:1;font-size:11px;padding:6px">Copiar JSON</button>
+          <button type="button" class="ghost" id="btnDownloadJsonTemplate" style="flex:1;font-size:11px;padding:6px">Baixar .json</button>
+        </div>
+      </div>
+    </details>
+
+    <button type="button" class="ghost" data-close style="margin-top:4px">Fechar</button>
   </div>`;
 
   modal.showModal();
   modalContent.querySelectorAll('[data-close]').forEach(b => b.onclick = () => modal.close());
 
-  modalContent.querySelector('#btnCopyJsonTemplate').onclick = async () => {
+  modalContent.querySelector('#btnCopyTextTemplate').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(textTemplate);
+      showToast('Modelo de texto copiado!');
+    } catch {
+      showToast('Selecione e copie o texto acima.');
+    }
+  };
+
+  modalContent.querySelector('#btnDownloadTextTemplate').onclick = () => {
+    downloadText(textTemplate, 'modelo-treino-personal-mab.txt');
+    showToast('Arquivo modelo (.txt) baixado');
+  };
+
+  modalContent.querySelector('#btnImportPastedText').onclick = async () => {
+    const text = modalContent.querySelector('#pasteWorkoutInput')?.value.trim();
+    if (!text) {
+      showToast('Cole o texto da ficha de treino antes de importar.');
+      return;
+    }
+    try {
+      let obj = null;
+      try {
+        obj = JSON.parse(text);
+      } catch {
+        obj = parseTextWorkout(text);
+      }
+      modal.close();
+      await importPersonalTraining(obj);
+    } catch (err) {
+      showToast(err.message || 'Erro ao processar texto do treino.');
+    }
+  };
+
+  modalContent.querySelector('#btnCopyJsonTemplate')?.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(jsonStr);
       showToast('Modelo JSON copiado!');
     } catch {
       showToast('Selecione e copie o texto acima.');
     }
-  };
+  });
 
-  modalContent.querySelector('#btnDownloadJsonTemplate').onclick = () => {
+  modalContent.querySelector('#btnDownloadJsonTemplate')?.addEventListener('click', () => {
     downloadText(jsonStr, 'modelo-treino-personal-mab.json');
-    showToast('Arquivo modelo baixado');
-  };
+    showToast('Arquivo modelo (.json) baixado');
+  });
 }
 
 async function exportPersonalTraining() {
@@ -1706,14 +1970,22 @@ document.querySelector('#importInput').onchange = async e => {
   try {
     const file = e.target.files[0];
     if (!file) return;
-    const obj = JSON.parse(await file.text());
-    if (obj.tipo === 'MAB_TREINO_PERSONAL' || (obj.treinos && (obj.treinos.A || obj.treinos.B || obj.treinos.C || obj.treinos.D))) {
+    const text = await file.text();
+    let obj = null;
+    try {
+      obj = JSON.parse(text);
+    } catch {
+      if (/treino\s*[a-d]/i.test(text)) {
+        obj = parseTextWorkout(text);
+      }
+    }
+    if (obj && (obj.tipo === 'MAB_TREINO_PERSONAL' || (obj.treinos && (obj.treinos.A || obj.treinos.B || obj.treinos.C || obj.treinos.D)))) {
       await importPersonalTraining(obj);
       modal.close();
       return;
     }
-    const counts = obj.metadata?.recordCounts || {};
-    if (!confirm(`Restaurar backup de ${obj.metadata?.exportedAt||'data desconhecida'}?\nExercícios: ${counts.exercises||0}\nSéries: ${counts.executedSets||0}`)) return;
+    const counts = obj?.metadata?.recordCounts || {};
+    if (!confirm(`Restaurar backup de ${obj?.metadata?.exportedAt||'data desconhecida'}?\nExercícios: ${counts.exercises||0}\nSéries: ${counts.executedSets||0}`)) return;
     const result = await importBackup(obj, 'replace');
     modal.close();
     render();
@@ -1728,7 +2000,13 @@ document.querySelector('#importPersonalInput')?.addEventListener('change', async
   try {
     const file = e.target.files[0];
     if (!file) return;
-    const obj = JSON.parse(await file.text());
+    const text = await file.text();
+    let obj = null;
+    try {
+      obj = JSON.parse(text);
+    } catch {
+      obj = parseTextWorkout(text);
+    }
     await importPersonalTraining(obj);
     modal.close();
   } catch (err) {
