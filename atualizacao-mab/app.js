@@ -124,11 +124,6 @@ async function plan() {
       <div class="chips">
         ${['A','B','C','D'].map(g=>`<button class="chip ${g===group?'active':''}" data-action="plan-group" data-group="${g}">Treino ${g}</button>`).join('')}
       </div>
-      <div class="row" style="margin-top:12px;padding-top:12px;border-top:1px solid #282828;gap:8px;flex-wrap:wrap">
-        <button type="button" class="ghost" data-action="export-personal-plan" style="font-size:12px;padding:8px 12px">📤 Exportar Treinos Personal (A/B/C/D)</button>
-        <button type="button" class="ghost" data-action="import-personal-plan" style="font-size:12px;padding:8px 12px">📥 Importar Treinos Personal</button>
-        <button type="button" class="ghost" data-action="view-personal-template" style="font-size:12px;padding:8px 12px;color:#ff851b;border-color:rgba(255,133,27,0.4)">📋 Como preencher / Modelo (.txt)</button>
-      </div>
     </div>
     <div class="card">
       <h3>Treino ${group}</h3>
