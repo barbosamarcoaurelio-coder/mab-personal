@@ -2017,31 +2017,116 @@ async function importExercisesBatch(exercisesList) {
 }
 
 function importExercisesModal() {
-  modalContent.innerHTML = `<div class="stack" style="gap:10px">
-    <div class="row" style="margin-bottom:0">
+  const textTemplate = `# BASE DE EXERCÍCIOS MAB PERSONAL
+============================================================
+
+1. Supino Reto com Barra
+   - Grupo Muscular Principal: Peitoral
+   - Grupos Secundários (sinergistas): Tríceps, Ombros
+   - Equipamento: Barra e Banco
+   - Vídeo de Execução: https://www.youtube.com/watch?v=rT7DgCr-3pg
+   - Observações: Pausa de 1s na fase excêntrica
+   - Status: Ativo
+
+2. Agachamento Livre com Barra
+   - Grupo Muscular Principal: Quadríceps
+   - Grupos Secundários (sinergistas): Glúteos, Posterior, Core
+   - Equipamento: Barra Olímpica
+   - Vídeo de Execução: https://www.youtube.com/watch?v=bEv6CCg2BC8
+   - Observações: Profundidade controlada
+   - Status: Ativo
+
+3. Puxada Frontal na Polia
+   - Grupo Muscular Principal: Costas
+   - Grupos Secundários (sinergistas): Bíceps, Ombros
+   - Equipamento: Polia Alta
+   - Vídeo de Execução: https://www.youtube.com/watch?v=CAwf7n6Luuc
+   - Observações: Foco na adução das escápulas
+   - Status: Ativo
+
+============================================================`;
+
+  modalContent.innerHTML = `<div class="stack" style="max-height:86vh;overflow-y:auto">
+    <div class="row">
       <div>
-        <div class="muted" style="font-size:11px;color:#ff851b;font-weight:700">IMPORTAÇÃO EM LOTE</div>
-        <h2 style="margin:2px 0 0;font-size:18px">Importar base de exercícios</h2>
+        <div class="muted" style="font-size:11px;color:#ff851b;font-weight:700">BASE DE EXERCÍCIOS (IMPORTAÇÃO EM LOTE)</div>
+        <h2 style="margin:2px 0 0">Como preencher e importar</h2>
       </div>
-      <button type="button" class="ghost" data-close style="padding:4px 10px">✕</button>
-    </div>
-    <p class="muted" style="font-size:12px;margin:0">
-      Cadastre ou atualize múltiplos exercícios a partir de um arquivo <strong>TXT</strong> ou colando o texto diretamente:
-    </p>
-
-    <div class="row" style="gap:8px;padding:4px 0">
-      <button type="button" class="primary" id="btnSelectExercisesTxtFile" style="width:100%;min-height:42px;font-size:13px;font-weight:800;padding:8px 12px;display:flex;align-items:center;justify-content:center;border-radius:12px">📁 Selecionar arquivo TXT</button>
+      <button type="button" class="ghost" data-close>✕</button>
     </div>
 
-    <div class="card" style="padding:12px;background:#141414;border-color:#333">
-      <div style="font-weight:700;font-size:12px;color:#ff851b;margin-bottom:6px">Ou cole o texto da base aqui:</div>
-      <textarea id="pasteExercisesTxtInput" placeholder="1. Supino Reto com Barra&#10;   - Grupo Muscular Principal: Peitoral&#10;   - Grupos Secundários (sinergistas): Tríceps, Ombros&#10;   - Equipamento: Barra e Banco&#10;   - Vídeo de Execução: https://...&#10;   - Observações: Pausa de 1s&#10;   - Status: Ativo" style="width:100%;height:130px;background:#0a0a0a;color:#fff;border:1px solid #383838;border-radius:8px;padding:8px;font-family:monospace;font-size:11px;box-sizing:border-box"></textarea>
-      <button type="button" class="secondary" id="btnImportPastedExercises" style="width:100%;margin-top:8px;padding:11px;font-size:13px;font-weight:700">▶ Processar e Importar Exercícios</button>
+    <div class="card" style="padding:14px;background:#151515;border-color:#333">
+      <div style="font-weight:700;color:#ff851b;font-size:13px;margin-bottom:8px">CAMPOS DO CADASTRO DE EXERCÍCIOS</div>
+      <div class="grid two" style="gap:8px;font-size:12px">
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+          <strong style="display:block;color:#fff">🏋️ Nome do Exercício</strong>
+          <span class="muted">Ex.: Supino Reto com Barra, Agachamento Livre</span>
+        </div>
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+          <strong style="display:block;color:#fff">🎯 Grupo Muscular Principal</strong>
+          <span class="muted">Ex.: Peitoral, Costas, Quadríceps, Ombros, etc.</span>
+        </div>
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+          <strong style="display:block;color:#fff">🤝 Grupos Secundários</strong>
+          <span class="muted">Sinergistas/apoio separados por vírgula (ex.: Tríceps, Ombros)</span>
+        </div>
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+          <strong style="display:block;color:#fff">🛠️ Equipamento</strong>
+          <span class="muted">Ex.: Barra e Banco, Máquina, Halteres, Polia</span>
+        </div>
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+          <strong style="display:block;color:#fff">🎬 Vídeo de Execução (opcional)</strong>
+          <span class="muted">Link do YouTube para visualização no app</span>
+        </div>
+        <div style="background:#0e0e0e;padding:10px;border-radius:10px;border:1px solid #282828">
+          <strong style="display:block;color:#fff">📝 Observações (opcional)</strong>
+          <span class="muted">Dicas posturais ou cuidados de execução</span>
+        </div>
+      </div>
     </div>
+
+    <div>
+      <div class="row" style="margin-bottom:6px">
+        <span style="font-weight:700;font-size:13px">Modelo em Texto (.txt / Bloco de Notas)</span>
+        <span class="muted" style="font-size:11px">Formato idêntico à exportação</span>
+      </div>
+      <div style="background:#0a0a0a;border:1px solid #333;border-radius:12px;padding:12px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:11px;color:#eee;white-space:pre-wrap;line-height:1.45" id="templateExercisesTextBlock">${esc(textTemplate)}</div>
+    </div>
+
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <button type="button" class="secondary" id="btnCopyExercisesTextTemplate" style="flex:1;min-width:130px;font-size:12px;padding:10px">📋 Copiar texto</button>
+      <button type="button" class="primary" id="btnDownloadExercisesTextTemplate" style="flex:1;min-width:130px;font-size:12px;padding:10px">⬇ Baixar .txt</button>
+      <button type="button" class="ghost" id="btnSelectExercisesTxtFile" style="flex:1;min-width:130px;font-size:12px;padding:10px;border-color:rgba(255,133,27,0.4);color:#ff851b">📁 Carregar arquivo</button>
+    </div>
+
+    <div class="card" style="padding:14px;background:#181818;border-color:#383838;margin-top:4px">
+      <div class="row" style="margin-bottom:8px">
+        <strong style="font-size:13px;color:#ff851b">📝 Colar texto e importar agora</strong>
+      </div>
+      <p class="muted" style="font-size:11px;margin:0 0 8px">Já tem a lista de exercícios? Cole o texto abaixo e importe para sua biblioteca:</p>
+      <textarea id="pasteExercisesTxtInput" placeholder="Cole aqui o texto da lista de exercícios formatada..." style="width:100%;height:90px;background:#0d0d0d;color:#fff;border:1px solid #383838;border-radius:8px;padding:8px;font-family:monospace;font-size:11px;box-sizing:border-box"></textarea>
+      <button type="button" class="primary" id="btnImportPastedExercises" style="width:100%;margin-top:8px;padding:10px;font-size:13px">▶ Importar exercícios colados</button>
+    </div>
+
+    <button type="button" class="ghost" data-close style="margin-top:4px">Fechar</button>
   </div>`;
 
   modal.showModal();
   modalContent.querySelectorAll('[data-close]').forEach(b => b.onclick = () => modal.close());
+
+  modalContent.querySelector('#btnCopyExercisesTextTemplate').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(textTemplate);
+      showToast('Modelo de exercícios copiado!');
+    } catch {
+      showToast('Selecione e copie o texto acima.');
+    }
+  };
+
+  modalContent.querySelector('#btnDownloadExercisesTextTemplate').onclick = () => {
+    downloadText(textTemplate, 'modelo-base-exercicios-mab.txt');
+    showToast('Arquivo modelo (.txt) baixado');
+  };
 
   modalContent.querySelector('#btnSelectExercisesTxtFile').onclick = () => {
     document.querySelector('#importExercisesTxtInput')?.click();
