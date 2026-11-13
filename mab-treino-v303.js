@@ -470,7 +470,7 @@ async function enhanceDashboardCalories() {
     if (!title.includes('Musculação')) continue;
     const detail = row.querySelector('.muted');
     if (!detail) continue;
-    const group = (title.match(/Treino\s+([A-D])/i) || [])[1],
+    const group = (title.match(/Treino\s+([A-G])/i) || [])[1],
       date = (detail.textContent.match(/\d{4}-\d{2}-\d{2}/) || [])[0];
     const s = sessions.find(x => x.groupCode === group && (x.startedAt || '').slice(0, 10) === date);
     if (s) {
@@ -533,7 +533,7 @@ async function enhanceNextWorkoutFocus() {
   const h2 = card.querySelector('h2');
   const start = card.querySelector('[data-action="start"]');
   if (!h2 || !start) return;
-  const group = (start.dataset.group || (h2.textContent.match(/Treino\s+([A-D])/i) || [])[1] || '').toUpperCase();
+  const group = (start.dataset.group || (h2.textContent.match(/Treino\s+([A-G])/i) || [])[1] || '').toUpperCase();
   if (!group) return;
   const focus = await workoutFocusLabel(group);
   const nextText = focus ? `Treino ${group} · ${focus}` : `Treino ${group}`;

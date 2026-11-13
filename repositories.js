@@ -1,5 +1,6 @@
 import {all,get,put,remove,uuid,STORES} from './db.js';
 export const repo={all,get,put,remove,uuid,stores:STORES};
+if(typeof window!=='undefined')window.repo=repo;
 export async function seed(){
   if((await all('exercises')).length)return;
   const now=new Date().toISOString();

@@ -1,4 +1,4 @@
-const CACHE_NAME='mab-cache-v4.3.0';
+const CACHE_NAME='mab-cache-v4.3.1';
 const CACHE=CACHE_NAME;
 const ASSETS=['./','./index.html','./manifest.webmanifest','./styles.css','./mab-brand-v301.css','./mab-logo.svg','./mab-icon.svg','./apple-touch-icon.png','./icons/icon-192.png','./icons/icon-512.png','./app.js','./repositories.js','./router.js','./timer-service.js','./validators.js','./backup-service.js','./db.js','./proximo-treino-v282.js','./mab-stability-v304.js','./mab-treino-v303.js','./mab-list-sync-v305.js','./mab-brand-v301.js','./mab-release-v305.js','./mab-v306.js','./mab-live-v400.js','./assets/body-front.webp','./assets/body-back.webp','./vendor/leaflet/leaflet.js','./vendor/leaflet/leaflet.css'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));
