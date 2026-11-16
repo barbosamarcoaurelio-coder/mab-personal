@@ -12,7 +12,7 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
   1. **Seleção de tipo de avaliação corporal (+Avaliação na aba Evolução)**:
      - Ao clicar em "+ Avaliação", exibir diálogo inicial para escolha entre "Apenas Peso" ou "Bioimpedância Completa".
      - Opção "Apenas Peso": formulário simplificado apenas com data e peso corporal (kg).
-     - Opção "Bioimpedância Completa": formulário completo contendo peso, composição corporal (% gordura, massa magra, massa gorda) e circunferências corporais (tronco e membros).
+     - Opção "Bioimpedância Completa": formulário completo contendo peso, composição corporal (% gordura, músculo esquelético, massa gorda) e circunferências corporais (tronco e membros).
   2. **Gráfico de atividades registradas na aba Evolução (Substituição de 'Outras atividades')**:
      - Remover o quadro estático de listagem e botão "+ Registrar" de outras atividades da aba Evolução (mantendo o registro centralizado na aba Início).
      - Incluir gráfico consolidado de atividades registradas (semelhante ao gráfico de evolução corporal), com seletor de métricas:

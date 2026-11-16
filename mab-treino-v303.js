@@ -564,7 +564,7 @@ function assessmentEditorV2103(a) {
       <label class="field">Peso corporal (kg)<input name="weight" type="number" min="0" max="1000" step="0.1" inputmode="decimal" value="${val(a.weight)}"></label>
       <label class="field">% Gordura<input name="bodyFat" type="number" min="0" max="100" step="0.1" inputmode="decimal" value="${val(a.bodyFat)}"></label>
       <label class="field">Massa gorda (kg)<input name="fatMass" type="number" min="0" max="1000" step="0.1" inputmode="decimal" value="${val(a.fatMass)}"></label>
-      <label class="field">Massa magra (kg)<input name="leanMass" type="number" min="0" max="1000" step="0.1" inputmode="decimal" value="${val(a.leanMass)}"></label>
+      <label class="field">Músculo Esquelético (kg)<input name="leanMass" type="number" min="0" max="1000" step="0.1" inputmode="decimal" value="${val(a.leanMass)}"></label>
     </div>
     <h3>Membros (cm)</h3>
     <div class="grid two">
