@@ -42,6 +42,16 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
        - Soma de Kg levantados (Volume Load: soma de repetições × kg).
        - Esforço médio por grupo muscular (RIR médio ou RPE da sessão).
 
+## Versão 4.3.4 — Imagem da atividade para compartilhar
+
+- Em Atividades recentes → Ver detalhes, o botão laranja **Compartilhar atividade** fica entre Editar e Excluir, tanto na musculação quanto nas demais modalidades.
+- Gera localmente um PNG com o conteúdo completo do popup (inclusive a parte fora da área visível), identidade MAB, métricas e imagens, sem os botões de controle e sem alterar registros. A prévia permite revisar as informações antes de enviá-las.
+- Instagram / WhatsApp abre o compartilhamento nativo de arquivos quando suportado; os destinos dependem dos apps instalados e do sistema. No iPhone, o toque de compartilhar acontece após a imagem estar pronta, preservando o gesto exigido pelo navegador.
+- Salvar imagem abre as opções nativas quando disponíveis; para o rolo da câmera, escolha Salvar Imagem/Fotos ou toque e segure a prévia. **Baixar PNG salva um arquivo**, não grava automaticamente na galeria. Sem Web Share de arquivos, download e prévia continuam disponíveis.
+- Sobre atualizado para 4.3.4 com o resumo deste compartilhamento, da tela ativa desde o aquecimento e dos ajustes recentes de avaliação corporal, rodízio e som.
+- Renderização com html2canvas 1.4.1 (MIT), distribuído localmente em `vendor/html2canvas`, disponível no cache offline; nenhuma imagem da atividade é enviada a serviços de renderização.
+- Testes: `node --experimental-vm-modules --test tests/*.test.mjs`. A lista de destinos e o salvamento em Fotos precisam também de validação nos aparelhos reais.
+
 ## Versão 4.3.3 — Tela ativa desde o aquecimento
 
 - Todos os treinos de musculação (A–G) compartilham o mesmo controle de tela ativa, desde o aquecimento até concluir ou descartar a sessão, incluindo exercícios e descansos.

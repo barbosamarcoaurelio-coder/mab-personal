@@ -2,6 +2,7 @@
 import {repo} from './repositories.js';
 import {navigate} from './router.js';
 import {fmt, elapsed} from './timer-service.js';
+import {openActivityShare} from './activity-share.js';
 
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const toast = m => { const t = document.querySelector('#toast'); if (!t) return; t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2400) };
@@ -197,8 +198,32 @@ const stars = (v, max = 5) => { if (v == null) return '—'; const full = Math.m
 const metric = (label, value) => `<div style="background:#0d0d0d;border:1px solid #2a2a2a;border-radius:10px;padding:8px"><div style="color:#888;font-size:10px">${label}</div><div style="color:#fff;font-weight:700;font-size:13px;margin-top:2px">${value}</div></div>`;
 
 function detailShell(title, subtitle, bodyHtml, footerHtml = '') {
-  showModal(`<div class="stack" style="gap:10px"><div class="row" style="align-items:center"><img src="mab-logo.svg" alt="MAB Training" style="width:30px;height:30px"><div style="flex:1"><div style="font-weight:800;font-size:13px;letter-spacing:.04em">MAB TRAINING</div><div style="color:#888;font-size:9px;letter-spacing:.18em">TREINO · ATIVIDADE · EVOLUÇÃO</div></div><button type="button" class="ghost" data-close>✕</button></div><div><strong style="font-size:16px">${esc(title)}</strong><div class="muted" style="font-size:12px">${esc(subtitle)}</div></div>${bodyHtml}${footerHtml ? `<div class="row" style="gap:8px;margin-top:12px">${footerHtml}</div>` : ''}</div>`);
+  showModal(`<div class="stack" id="mabActivityCapture" style="gap:10px"><div class="row" style="align-items:center"><img src="mab-logo.svg" alt="MAB Training" style="width:30px;height:30px"><div style="flex:1"><div style="font-weight:800;font-size:13px;letter-spacing:.04em">MAB TRAINING</div><div style="color:#888;font-size:9px;letter-spacing:.18em">TREINO · ATIVIDADE · EVOLUÇÃO</div></div><button type="button" class="ghost" data-close data-html2canvas-ignore>✕</button></div><div><strong style="font-size:16px">${esc(title)}</strong><div class="muted" style="font-size:12px">${esc(subtitle)}</div></div>${bodyHtml}${footerHtml ? `<div class="mab-detail-actions" data-html2canvas-ignore>${footerHtml}</div><p id="mabDetailShareStatus" class="muted mab-share-help" role="status" aria-live="polite" data-html2canvas-ignore></p>` : ''}</div>`);
   modalContent().querySelectorAll('[data-close]').forEach(b => b.onclick = closeModal);
+}
+
+function detailActions() {
+  return `<button type="button" class="secondary" id="mabDetailEdit">Editar</button><button type="button" class="primary" id="mabDetailShare">Compartilhar atividade</button><button type="button" class="danger" id="mabDetailDelete">Excluir</button>`;
+}
+
+function bindDetailShare(kind, id, title) {
+  const button = modalContent().querySelector('#mabDetailShare');
+  const capture = modalContent().querySelector('#mabActivityCapture');
+  const status = modalContent().querySelector('#mabDetailShareStatus');
+  button.onclick = async () => {
+    button.disabled = true;
+    button.textContent = 'Gerando imagem…';
+    status.textContent = 'Preparando a imagem completa da atividade…';
+    try {
+      await openActivityShare(capture, title, () => openDetail(kind, id));
+    } catch (error) {
+      console.error('Falha ao gerar a imagem da atividade.', error);
+      status.textContent = 'Não foi possível gerar a imagem. Verifique se as imagens do detalhe carregaram e tente novamente.';
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Compartilhar atividade';
+    }
+  };
 }
 
 function editWorkoutSessionForm(session) {
@@ -244,13 +269,14 @@ async function openDetail(kind, id) {
     exIds.forEach(eid => { const ex = exercises.find(e => e.id === eid); const primaries = ex?.primaryMuscleGroups?.length ? ex.primaryMuscleGroups : (ex?.primaryMuscleGroup ? [ex.primaryMuscleGroup] : []); primaries.forEach(g => primary.add(g)); (ex?.secondaryMuscleGroups || []).forEach(g => secondary.add(g)) });
     primary.forEach(g => secondary.delete(g));
     const legend = primary.size || secondary.size ? `${[...primary].join(', ')}${secondary.size ? ` <span style="color:#888">· apoio: ${[...secondary].join(', ')}</span>` : ''}` : 'Classifique os exercícios na Biblioteca para ver o mapa muscular.';
-    const footer = `<button type="button" class="secondary" id="mabDetailEdit" style="flex:1">Editar</button><button type="button" class="danger" id="mabDetailDelete" style="flex:1">Excluir</button>`;
+    const footer = detailActions();
     detailShell(
       `Treino ${s.groupCode || ''}${groupDesc ? ' · ' + groupDesc : ''}`,
       (s.startedAt || '').slice(0, 10),
       `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${metric('Tempo total', fmt(totalSec))}${metric('Média por exercício', avgPerEx != null ? fmt(avgPerEx) : '—')}${metric('Calorias', s.calories != null ? `${s.calories} kcal` : '—')}${metric('Esforço (RPE)', stars(s.sessionRpe, 10))}${metric('Fadiga', stars(s.fatigueAfter, 5))}${metric('Grupo', `Treino ${s.groupCode || '—'}`)}</div><div style="margin-top:10px">${bodySvg(primary, secondary)}</div><div class="muted" style="font-size:11px;text-align:center;margin-top:4px">${legend}</div>${s.notes ? `<div class="muted" style="font-size:12px;margin-top:8px">Obs.: ${esc(s.notes)}</div>` : ''}`,
       footer
     );
+    bindDetailShare(kind, id, `Treino ${s.groupCode || ''}`);
     modalContent()?.querySelector('#mabDetailEdit')?.addEventListener('click', () => editWorkoutSessionForm(s));
     modalContent()?.querySelector('#mabDetailDelete')?.addEventListener('click', async () => {
       if (!confirm(`Deseja excluir definitivamente este Treino ${s.groupCode || ''}? Todas as séries registradas serão removidas.`)) return;
@@ -268,13 +294,14 @@ async function openDetail(kind, id) {
   const a = await repo.get('activityDiary', id);
   if (!a) return;
   const sec = a.durationSeconds ?? Math.round(Number(a.durationMinutes || 0) * 60);
-  const footer = `<button type="button" class="secondary" id="mabDetailEdit" style="flex:1">Editar</button><button type="button" class="danger" id="mabDetailDelete" style="flex:1">Excluir</button>`;
+  const footer = detailActions();
   detailShell(
     a.modality || 'Atividade',
     a.date || '',
-    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${metric('Duração', fmt(sec))}${metric('Distância', a.distanceKm != null ? `${a.distanceKm} km` : '—')}${metric('Velocidade média', a.avgSpeedKmh != null ? `${a.avgSpeedKmh} km/h` : '—')}${metric('Vel. máxima', a.maxSpeedKmh != null ? `${a.maxSpeedKmh} km/h` : '—')}${metric('Calorias', a.calories != null ? `${a.calories} kcal` : '—')}${metric('Esforço (RPE)', stars(a.sessionRpe, 10))}${metric('Fadiga', stars(a.fatigueAfter, 5))}</div>${a.intensity ? `<div class="muted" style="font-size:12px;margin-top:8px">Intensidade: ${esc(a.intensity)}</div>` : ''}${a.notes ? `<div class="muted" style="font-size:12px;margin-top:4px">Obs.: ${esc(a.notes)}</div>` : ''}${a.route?.length > 1 ? `<button class="secondary" id="mabRouteMapBtn" style="width:100%;margin-top:8px">🗺 Ver rota no mapa</button>` : ''}`,
+    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${metric('Duração', fmt(sec))}${metric('Distância', a.distanceKm != null ? `${a.distanceKm} km` : '—')}${metric('Velocidade média', a.avgSpeedKmh != null ? `${a.avgSpeedKmh} km/h` : '—')}${metric('Vel. máxima', a.maxSpeedKmh != null ? `${a.maxSpeedKmh} km/h` : '—')}${metric('Calorias', a.calories != null ? `${a.calories} kcal` : '—')}${metric('Esforço (RPE)', stars(a.sessionRpe, 10))}${metric('Fadiga', stars(a.fatigueAfter, 5))}</div>${a.intensity ? `<div class="muted" style="font-size:12px;margin-top:8px">Intensidade: ${esc(a.intensity)}</div>` : ''}${a.notes ? `<div class="muted" style="font-size:12px;margin-top:4px">Obs.: ${esc(a.notes)}</div>` : ''}${a.route?.length > 1 ? `<button class="secondary" id="mabRouteMapBtn" style="width:100%;margin-top:8px" data-html2canvas-ignore>🗺 Ver rota no mapa</button>` : ''}`,
     footer
   );
+  bindDetailShare(kind, id, a.modality || 'Atividade');
   modalContent()?.querySelector('#mabRouteMapBtn')?.addEventListener('click', ev => {
     const btn = ev.currentTarget;
     btn.disabled = true;
@@ -395,4 +422,4 @@ document.addEventListener('click', e => {
 }, true);
 
 window.openDetail = openDetail;
-window.MABLive = { version: '4.2.4', openDetail, chooseActivityMode };
+window.MABLive = { version: '4.3.4', openDetail, chooseActivityMode };
