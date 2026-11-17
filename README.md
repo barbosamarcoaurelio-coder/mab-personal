@@ -42,6 +42,13 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
        - Soma de Kg levantados (Volume Load: soma de repetições × kg).
        - Esforço médio por grupo muscular (RIR médio ou RPE da sessão).
 
+## Versão 4.3.3 — Tela ativa desde o aquecimento
+
+- Todos os treinos de musculação (A–G) compartilham o mesmo controle de tela ativa, desde o aquecimento até concluir ou descartar a sessão, incluindo exercícios e descansos.
+- Ao retornar ao app, recarregar ou navegar entre abas internas com uma sessão em andamento, a proteção é solicitada novamente quando necessário. Nenhum dado ou cálculo do treino foi alterado.
+- Requer HTTPS e suporte à Screen Wake Lock API (Safari/iOS e Chrome/Android atualizados). O app precisa permanecer visível; bloqueio manual, economia de bateria e restrições do sistema não podem ser anulados pelo PWA. Se a solicitação falhar, o app informa que a tela pode bloquear, sem indicar proteção inexistente.
+- Testes automatizados do controle: `node --experimental-vm-modules --test tests/screen-wake-lock.test.mjs`. A validação física do bloqueio automático deve ser feita em iPhone e Android.
+
 ## Versão 4.2.1 — Persistência de medidas corporais e avaliação rápida
 
 - **Preservação de medidas corporais anteriores**: ao registrar apenas o peso corporal pela aba Evolução (`+ Avaliação -> Apenas Peso`), o quadro de "Medidas corporais" mantém as últimas informações de circunferências e membros registradas anteriormente, preservando também a data exata da última medição física.

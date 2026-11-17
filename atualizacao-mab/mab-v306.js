@@ -2,6 +2,7 @@ import {repo} from './repositories.js';
 import {navigate,route} from './router.js';
 import {elapsed,fmt} from './timer-service.js';
 import {esc,number} from './validators.js';
+import {setWorkoutScreenActive,screenWakeLockStatus} from './screen-wake-lock.js';
 
 const MUSCLE_GROUPS=['Peitoral','Costas','Ombros','Bíceps','Tríceps','Pernas','Quadríceps','Posterior','Glúteos','Panturrilhas','Core'];
 const today=()=>new Date().toISOString().slice(0,10);
@@ -179,6 +180,11 @@ function showWarmup(session){
   let type='Caminhada leve';
   overlay.innerHTML=`<div style="width:min(620px,100%);background:#151515;border:1px solid #3a3a3a;border-radius:22px;padding:20px;color:#fff;box-sizing:border-box"><div style="color:#ff851b;font-size:13px;font-weight:800;letter-spacing:.08em">AQUECIMENTO · OPCIONAL</div><h2 style="margin:6px 0 4px">Prepare o corpo</h2><div style="color:#aaa;font-size:13px;margin-bottom:14px">Sugestão: 5–10 minutos leves antes da musculação. O tempo de aquecimento não entra na duração da musculação.</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${['Caminhada leve','Bicicleta','Mobilidade','Alongamento','Livre'].map((t,i)=>`<button type="button" data-wtype="${t}" style="padding:10px 14px;border-radius:999px;border:1px solid ${i===0?'#ff851b':'#444'};background:${i===0?'rgba(255,133,27,.15)':'#101010'};color:#fff;font-size:14px">${t}</button>`).join('')}</div><div style="text-align:center;margin:6px 0 18px"><div id="mabWarmupTimer" style="font-size:44px;font-weight:800;color:#ff851b;font-variant-numeric:tabular-nums">00:00</div><div style="color:#888;font-size:12px">tempo de aquecimento</div></div><button id="mabWarmupDone" style="width:100%;background:#ff851b;color:#080808;border:0;border-radius:14px;padding:15px;font-size:16px;font-weight:800">Concluir aquecimento →</button><button id="mabWarmupSkip" style="width:100%;margin-top:10px;background:transparent;color:#bbb;border:1px solid #444;border-radius:14px;padding:13px;font-size:14px">Pular e ir direto para a musculação</button></div>`;
   document.body.appendChild(overlay);
+  const wakeStatus=document.createElement('div');
+  wakeStatus.dataset.wakeStatus='';
+  wakeStatus.className='muted';
+  wakeStatus.textContent=screenWakeLockStatus();
+  overlay.querySelector('#mabWarmupTimer').parentElement.appendChild(wakeStatus);
   const timerEl=overlay.querySelector('#mabWarmupTimer');
   const tick=setInterval(()=>{const s=Math.floor((Date.now()-startedAt)/1000);timerEl.textContent=fmt(s)},1000);
   overlay.querySelectorAll('[data-wtype]').forEach(btn=>btn.onclick=()=>{type=btn.dataset.wtype;overlay.querySelectorAll('[data-wtype]').forEach(b=>{const on=b===btn;b.style.borderColor=on?'#ff851b':'#444';b.style.background=on?'rgba(255,133,27,.15)':'#101010'})});
@@ -214,10 +220,9 @@ async function startSessionWithCheckin(group){
       recoveryRecord={...(recovery||{}),id:recovery?.id||repo.uuid(),date,sleepHours:sleepParsed,updatedAt:new Date().toISOString(),createdAt:recovery?.createdAt||new Date().toISOString()};
       await repo.put('dailyRecovery',recoveryRecord);
     }
-    const wakeLock=navigator.wakeLock;
-    if(wakeLock)try{await wakeLock.request('screen')}catch{}
     const session={id:repo.uuid(),cycleId:cycle.id,groupCode:group,status:'in_progress',startedAt:new Date().toISOString(),currentIndex:0,readinessBefore:optional(readinessValue,1,5),sleepHoursBefore:sleepParsed,dailyRecoveryId:recoveryRecord?.id||null};
     await repo.put('workoutSessions',session);
+    await setWorkoutScreenActive(true);
     closeModal();showWarmup(session)
   };
   modalContent().querySelector('#mabV306SkipStart').onclick=()=>createSession(false).catch(error=>toast(error.message));

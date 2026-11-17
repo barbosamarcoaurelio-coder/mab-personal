@@ -20,29 +20,13 @@ import {
   downloadBackup,
   importBackup
 } from './backup-service.js';
+import { setWorkoutScreenActive, screenWakeLockStatus } from './screen-wake-lock.js';
 
 const app = document.querySelector('#app'),
   modal = document.querySelector('#modal'),
   modalContent = document.querySelector('#modalContent'),
   toast = document.querySelector('#toast');
 let tick;
-let screenWakeLock = null;
-async function requestScreenWakeLock() {
-  if (!('wakeLock' in navigator)) return false;
-  try {
-    if (screenWakeLock && !screenWakeLock.released) return true;
-    screenWakeLock = await navigator.wakeLock.request('screen');
-    return true
-  } catch (e) {
-    return false
-  }
-}
-async function releaseScreenWakeLock() {
-  try {
-    if (screenWakeLock && !screenWakeLock.released) await screenWakeLock.release()
-  } catch (e) {}
-  screenWakeLock = null
-}
 
 const showToast = m => {
   toast.textContent = m;
@@ -125,7 +109,7 @@ async function workout() {
     const saved = exSets.find(x => x.setNumber === i + 1) || {};
     return `<div class="set-row"><strong>${i+1}</strong><label>REPS<input inputmode="numeric" data-set="reps" data-n="${i+1}" value="${saved.reps??''}"></label><label>KG<input inputmode="decimal" data-set="weight" data-n="${i+1}" value="${saved.weight??''}"></label><label>RIR<input inputmode="numeric" data-set="rir" data-n="${i+1}" value="${saved.rir??''}"></label><button class="done" data-action="save-set" data-n="${i+1}">${saved.completed?'✓':'○'}</button></div>`
   }).join('');
-  return `<div class="stack"><div class="card row"><div><span class="muted">TREINO ${s.groupCode}</span><div class="muted" id="wakeStatus">${'wakeLock' in navigator?'Tela ativa durante o treino':'Bloqueio de tela controlado pelo sistema'}</div><div id="workoutTimer" class="timer">${fmt(elapsed(s.startedAt))}</div></div><button class="danger" data-action="finish">Finalizar</button></div>${rest?`<div class="card"><span class="orange">DESCANSO</span><div id="restTimer" class="timer">${fmt(remaining(rest.targetEndAt))}</div><div class="chips"><button class="chip" data-action="rest" data-sec="60">60 s</button><button class="chip" data-action="rest" data-sec="90">90 s</button><button class="chip" data-action="rest" data-sec="120">120 s</button><button class="chip" data-action="skip-rest">Pular</button></div></div>`:''}<div class="card"><div class="row"><div><span class="muted">${(s.currentIndex||0)+1}/${items.length}</span><h2>${esc(ex.name)}</h2></div><span class="orange">${current.minReps}-${current.maxReps} reps · RIR ${current.rirTarget}</span></div><div class="stack">${rows}</div><p class="muted">Descanso padrão: ${current.restSeconds}s</p><div class="row"><button class="ghost" data-action="prev">← Anterior</button><button class="primary" data-action="next">Próximo →</button></div></div></div>`
+  return `<div class="stack"><div class="card row"><div><span class="muted">TREINO ${s.groupCode}</span><div class="muted" id="wakeStatus">${screenWakeLockStatus()}</div><div id="workoutTimer" class="timer">${fmt(elapsed(s.startedAt))}</div></div><button class="danger" data-action="finish">Finalizar</button></div>${rest?`<div class="card"><span class="orange">DESCANSO</span><div id="restTimer" class="timer">${fmt(remaining(rest.targetEndAt))}</div><div class="chips"><button class="chip" data-action="rest" data-sec="60">60 s</button><button class="chip" data-action="rest" data-sec="90">90 s</button><button class="chip" data-action="rest" data-sec="120">120 s</button><button class="chip" data-action="skip-rest">Pular</button></div></div>`:''}<div class="card"><div class="row"><div><span class="muted">${(s.currentIndex||0)+1}/${items.length}</span><h2>${esc(ex.name)}</h2></div><span class="orange">${current.minReps}-${current.maxReps} reps · RIR ${current.rirTarget}</span></div><div class="stack">${rows}</div><p class="muted">Descanso padrão: ${current.restSeconds}s</p><div class="row"><button class="ghost" data-action="prev">← Anterior</button><button class="primary" data-action="next">Próximo →</button></div></div></div>`
 }
 
 async function plan() {
@@ -494,6 +478,7 @@ async function renderActivityChart(metric = 'duration') {
 async function render() {
   clearInterval(tick);
   setNav();
+  await setWorkoutScreenActive((await openSessions()).length > 0);
   const views = {
     dashboard,
     workout,
@@ -573,7 +558,6 @@ async function start(group) {
       recoveryRecord = { ...(recovery || {}), id: recovery?.id || repo.uuid(), date, sleepHours: sleepParsed, updatedAt: new Date().toISOString(), createdAt: recovery?.createdAt || new Date().toISOString() };
       await repo.put('dailyRecovery', recoveryRecord);
     }
-    await requestScreenWakeLock();
     await repo.put('workoutSessions', {
       id: repo.uuid(),
       cycleId: cycle.id,
@@ -2445,7 +2429,7 @@ document.addEventListener('click', async e => {
     s.status = 'completed';
     s.finishedAt = new Date().toISOString();
     await repo.put('workoutSessions', s);
-    await releaseScreenWakeLock();
+    await setWorkoutScreenActive((await openSessions()).length > 0);
     navigate('dashboard');
     showToast('Treino concluído')
   }
@@ -2593,7 +2577,6 @@ window.addEventListener('routechange', render);
 window.addEventListener('focus', () => route() === 'workout' && render());
 document.addEventListener('visibilitychange', async () => {
   if (!document.hidden && route() === 'workout') {
-    if ((await openSessions()).length) await requestScreenWakeLock();
     render()
   }
 });
