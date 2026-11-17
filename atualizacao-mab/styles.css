@@ -40,7 +40,6 @@
 .mab-detail-actions button:disabled,.mab-share-panel button:disabled{opacity:.55;cursor:wait}
 .mab-share-panel h2,.mab-share-panel p{margin:0}
 .mab-share-preview{display:block;width:100%;max-height:50dvh;object-fit:contain;background:#080808;border:1px solid var(--line);border-radius:12px}
-.mab-share-download{display:block;text-align:center;text-decoration:none}
 .mab-share-help{font-size:12px;line-height:1.5;overflow-wrap:anywhere}
 #mabDetailShareStatus:empty{display:none}
 

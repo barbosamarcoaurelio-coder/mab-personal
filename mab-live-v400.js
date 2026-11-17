@@ -422,4 +422,4 @@ document.addEventListener('click', e => {
 }, true);
 
 window.openDetail = openDetail;
-window.MABLive = { version: '4.3.4', openDetail, chooseActivityMode };
+window.MABLive = { version: '4.3.5', openDetail, chooseActivityMode };

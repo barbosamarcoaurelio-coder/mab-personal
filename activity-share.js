@@ -9,7 +9,7 @@ export function canShareActivityImage(file) {
 
 export async function shareActivityImage(file, title) {
   if (!canShareActivityImage(file)) {
-    throw new Error('Compartilhamento de imagens indisponível neste navegador. Use Baixar PNG.');
+    throw new Error('Compartilhamento de imagens indisponível neste navegador. Use Salvar imagem.');
   }
   try {
     await navigator.share({ files: [file], title });
@@ -100,16 +100,14 @@ export async function openActivityShare(element, title, onBack) {
     <img id="mabSharePreview" class="mab-share-preview" src="${url}" alt="Imagem dos detalhes de ${esc(title)}">
     <button type="button" class="primary" id="mabShareNative" ${nativeShare ? '' : 'disabled'}>Instagram / WhatsApp</button>
     <button type="button" class="secondary" id="mabShareSave">Salvar imagem</button>
-    <a class="ghost mab-share-download" id="mabShareDownload" href="${url}" download="${file.name}">Baixar PNG</a>
-    <p class="muted mab-share-help">O compartilhamento abre as opções do sistema; os aplicativos disponíveis dependem do aparelho. Para o rolo da câmera, escolha Salvar Imagem/Fotos, quando disponível, ou toque e segure a imagem acima. Baixar PNG salva um arquivo, não adiciona automaticamente às Fotos.</p>
-    <p id="mabShareStatus" class="muted mab-share-help" role="status" aria-live="polite">${nativeShare ? '' : 'Este navegador não permite compartilhar arquivos. Você pode baixar o PNG ou tocar e segurar a imagem para salvá-la.'}</p>
+    <p class="muted mab-share-help">O compartilhamento abre as opções do sistema; os aplicativos disponíveis dependem do aparelho. Para o rolo da câmera, escolha Salvar Imagem/Fotos, quando disponível, ou toque e segure a imagem acima. Sem compartilhamento nativo, Salvar imagem baixa o arquivo, sem adicioná-lo automaticamente às Fotos.</p>
+    <p id="mabShareStatus" class="muted mab-share-help" role="status" aria-live="polite">${nativeShare ? '' : 'Este navegador não permite compartilhar arquivos. Use Salvar imagem ou toque e segure a prévia para salvá-la.'}</p>
     <button type="button" class="ghost" id="mabShareBack">Voltar aos detalhes</button>
   </section>`;
   const preview = content.querySelector('#mabSharePreview');
   const status = content.querySelector('#mabShareStatus');
   const nativeButton = content.querySelector('#mabShareNative');
   const saveButton = content.querySelector('#mabShareSave');
-  const download = content.querySelector('#mabShareDownload');
   const cleanup = () => {
     URL.revokeObjectURL(url);
     observer.disconnect();
@@ -122,9 +120,6 @@ export async function openActivityShare(element, title, onBack) {
   dialog.addEventListener('close', cleanup);
   content.querySelector('#mabShareClose').onclick = () => dialog.close();
   content.querySelector('#mabShareBack').onclick = onBack;
-  download.onclick = () => {
-    status.textContent = 'PNG solicitado para download. Abra o arquivo baixado para salvá-lo em Fotos/Galeria.';
-  };
   const share = async saving => {
     nativeButton.disabled = true;
     saveButton.disabled = true;
@@ -137,12 +132,22 @@ export async function openActivityShare(element, title, onBack) {
       if (!shared) status.textContent = 'Compartilhamento cancelado. A imagem continua disponível.';
     } catch (error) {
       console.error('Falha ao compartilhar a imagem da atividade.', error);
-      status.textContent = 'Não foi possível abrir o compartilhamento. Tente novamente ou use Baixar PNG.';
+      status.textContent = 'Não foi possível abrir o compartilhamento. Tente novamente ou toque e segure a prévia para salvar a imagem.';
     } finally {
       nativeButton.disabled = !nativeShare;
       saveButton.disabled = false;
     }
   };
   nativeButton.onclick = () => share(false);
-  saveButton.onclick = () => nativeShare ? share(true) : download.click();
+  saveButton.onclick = () => {
+    if (nativeShare) return share(true);
+    const download = document.createElement('a');
+    download.href = url;
+    download.download = file.name;
+    download.hidden = true;
+    content.appendChild(download);
+    download.click();
+    download.remove();
+    status.textContent = 'Salvamento solicitado. Abra o arquivo baixado para salvá-lo em Fotos/Galeria.';
+  };
 }

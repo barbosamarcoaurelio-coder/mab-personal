@@ -43,13 +43,13 @@ test('shares the generated PNG file without substituting a text link', async () 
 test('text-only sharing is not mistaken for image sharing support', async () => {
   let calls = 0;
   const app = await setup({ canShare: () => false, share: async () => { calls++; } });
-  await assert.rejects(app.shareActivityImage({}, 'Atividade'), /Baixar PNG/);
+  await assert.rejects(app.shareActivityImage({}, 'Atividade'), /Salvar imagem/);
   assert.equal(calls, 0);
 });
 
 test('missing Web Share API keeps the explicit download alternative', async () => {
   const app = await setup({});
-  await assert.rejects(app.shareActivityImage({}, 'Atividade'), /Baixar PNG/);
+  await assert.rejects(app.shareActivityImage({}, 'Atividade'), /Salvar imagem/);
 });
 
 test('a cancelled native share is not reported as a successful share', async () => {

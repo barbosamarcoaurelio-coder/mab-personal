@@ -1,6 +1,6 @@
 (()=>{
   'use strict';
-  const VERSION='4.3.4';
+  const VERSION='4.3.5';
   const SOUND_KEY='mab-rest-sound-enabled';
   const soundEnabled=()=>localStorage.getItem(SOUND_KEY)!=='false';
   let audioCtx=null,lastRestEnded=false,lastRestSec=null,beepAudio=null;

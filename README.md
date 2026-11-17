@@ -42,6 +42,10 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
        - Soma de Kg levantados (Volume Load: soma de repetições × kg).
        - Esforço médio por grupo muscular (RIR médio ou RPE da sessão).
 
+## Versão 4.3.5 — Compartilhamento simplificado
+
+- Removido o botão separado Baixar PNG. O painel mantém Instagram / WhatsApp e Salvar imagem; sem compartilhamento nativo, Salvar imagem continua permitindo baixar o arquivo.
+
 ## Versão 4.3.4 — Imagem da atividade para compartilhar
 
 - Em Atividades recentes → Ver detalhes, o botão laranja **Compartilhar atividade** fica entre Editar e Excluir, tanto na musculação quanto nas demais modalidades.
