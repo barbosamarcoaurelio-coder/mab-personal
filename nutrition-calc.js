@@ -7,13 +7,32 @@ export function sumTotals(items) {
   }, { kcal: 0, carbs: 0, protein: 0, fat: 0 });
 }
 
+export function macroCalories({ carbs = 0, protein = 0, fat = 0 }) {
+  return Number(carbs) * 4 + Number(protein) * 4 + Number(fat) * 9;
+}
+
+export function sumWater(items) {
+  return items.reduce((total, item) => total + (item.kind === 'water' ? Number(item.quantityMl ?? 0) : 0), 0);
+}
+
+export function mealCount(items) {
+  return new Set(items.filter(item => item.kind !== 'water' && item.meal).map(item => item.meal)).size;
+}
+
+export function proteinByMeal(items) {
+  return items.reduce((totals, item) => {
+    if (item.kind !== 'water' && item.meal) totals[item.meal] = (totals[item.meal] || 0) + Number(item.protein ?? 0);
+    return totals;
+  }, {});
+}
+
 export function scalePortions(food, qty) {
   return Object.fromEntries(KEYS.map(key => [key, Number(food[key] ?? 0) * qty]));
 }
 
 export function macroPercentages({ carbs = 0, protein = 0, fat = 0 }) {
   const calories = { carbs: carbs * 4, protein: protein * 4, fat: fat * 9 };
-  const total = calories.carbs + calories.protein + calories.fat;
+  const total = macroCalories({ carbs, protein, fat });
   return Object.fromEntries(Object.entries(calories).map(([key, value]) => [key, total ? value / total * 100 : 0]));
 }
 

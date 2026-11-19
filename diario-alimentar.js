@@ -1,7 +1,7 @@
 import { all, get, remove, tx, uuid } from './db.js';
 import { route } from './router.js';
 import { esc, number } from './validators.js';
-import { sumTotals, scalePortions, macroPercentages, calorieBalance, localDate } from './nutrition-calc.js';
+import { sumTotals, scalePortions, macroCalories, macroPercentages, sumWater, mealCount, proteinByMeal, calorieBalance, localDate } from './nutrition-calc.js';
 import { scanBarcode } from './barcode-scanner.js';
 import { fetchOffProduct, searchOffProducts, isValidEan } from './off-client.js';
 
@@ -36,10 +36,22 @@ function shiftDate(date, offset) {
   return localDate(value);
 }
 
+function defaultTimeForDate(date) {
+  if (date !== localDate()) return '';
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
 async function dayData(date) {
   const [logs, setting, closure] = await Promise.all([all('foodLogs'), get('settings', 'nutritionGoals'), get('dayClosures', date)]);
-  const items = logs.filter(item => item.date === date);
-  return { items, consumed: closure?.consumed ?? sumTotals(items), goals: closure?.goals ?? setting?.value, closure };
+  const dayLogs = logs.filter(item => item.date === date);
+  const waterLogs = dayLogs.filter(item => item.kind === 'water');
+  const items = dayLogs.filter(item => item.kind !== 'water');
+  return {
+    items, waterLogs, waterMl: closure?.waterMl ?? sumWater(waterLogs),
+    consumed: closure?.consumed ?? sumTotals(items),
+    goals: closure?.goals ?? setting?.value, closure
+  };
 }
 
 function progress(value, goal) {
@@ -48,8 +60,8 @@ function progress(value, goal) {
 
 function calorieSummary(consumed, goals) {
   return goals
-    ? `<strong>${n(consumed.kcal)} / ${n(goals.kcal)} kcal</strong><div class="muted">Consumidas / meta · ${consumed.kcal > goals.kcal ? `excedidas ${n(consumed.kcal - goals.kcal)}` : `restam ${n(goals.kcal - consumed.kcal)}`} kcal</div>${progress(consumed.kcal, goals.kcal)}`
-    : `<strong>${n(consumed.kcal)} kcal consumidas</strong><p class="muted">Defina suas metas</p>`;
+    ? `<strong>${n(consumed.kcal)} / ${n(goals.kcal)} kcal</strong><div class="muted">Consumidas / meta · ${consumed.kcal > goals.kcal ? `excedidas ${n(consumed.kcal - goals.kcal)}` : `restam ${n(goals.kcal - consumed.kcal)}`} kcal</div>${progress(consumed.kcal, goals.kcal)}<div class="muted">Energia estimada dos macros (4/4/9): ${n(macroCalories(consumed))} kcal</div>`
+    : `<strong>${n(consumed.kcal)} kcal consumidas</strong><p class="muted">Energia estimada dos macros (4/4/9): ${n(macroCalories(consumed))} kcal</p><p class="muted">Defina suas metas</p>`;
 }
 
 export async function dietCardHtml() {
@@ -74,20 +86,25 @@ function pie(consumed) {
 
 export async function dietView() {
   if (!viewingDate) selectedDate = localDate();
-  const { items, consumed, goals, closure } = await dayData(selectedDate);
+  const { items, waterLogs, waterMl, consumed, goals, closure } = await dayData(selectedDate);
   const closures = (await all('dayClosures')).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7);
   const mealTypes = [...Object.entries(MEALS)];
   for (const meal of new Set(items.map(item => item.meal).filter(meal => meal && !MEALS[meal]))) {
     mealTypes.push([meal, meal]);
   }
+  const proteinTotals = proteinByMeal(items);
+  const mealProteinRows = mealTypes.filter(([meal]) => Object.hasOwn(proteinTotals, meal))
+    .map(([meal, label]) => `<div class="row"><span>${esc(label)}</span><strong>${n(proteinTotals[meal])} g</strong></div>`).join('');
+  const waterRows = waterLogs.map(item => `<div class="row water-log-row"><span>Água · ${n(item.quantityMl)} ml${item.time ? ` · ${esc(item.time)}` : ''}</span>${closure ? '' : `<div class="row"><button class="ghost" data-diet="edit-water" data-id="${esc(item.id)}" aria-label="Editar registro de água">Editar</button><button class="ghost" data-diet="delete-water" data-id="${esc(item.id)}" aria-label="Excluir registro de água">Excluir</button></div>`}</div>`).join('');
   return `<section id="dietView" class="stack">
     <div class="row"><h2>Diário de alimentação</h2><button class="ghost" data-diet="goals">Metas</button></div>
     <div class="row"><button class="ghost" data-diet="previous" aria-label="Dia anterior">‹</button><label class="field">Data<input id="dietDate" type="date" value="${esc(selectedDate)}"></label><button class="ghost" data-diet="next" aria-label="Próximo dia">›</button></div>
     <div class="card stack">${calorieSummary(consumed, goals)}${macroBars(consumed, goals)}${pie(consumed)}<button class="primary" data-diet="${closure ? 'reopen' : 'close-day'}">${closure ? 'Reabrir dia para editar' : 'Fechar dia'}</button>${closure ? `<p>Saldo: ${balanceLabel(closure.balance)}</p><p class="muted">Gasto em treinos/atividades: ${n(closure.burnedKcal)} kcal (estimado). Dia fechado com as metas da época. Reabra para alterar os registros.</p>` : `<button class="secondary" data-diet="register-meal">+ Registrar Refeição</button>`}</div>
+    <div class="card stack diet-daily-details"><div class="grid two"><div class="metric"><span class="muted">Refeições registradas</span><strong>${mealCount(items)}</strong></div><div class="metric"><span class="muted">Água consumida</span><strong>${n(waterMl)} ml</strong>${closure ? '' : '<button type="button" class="ghost" data-diet="add-water">+ Registrar água</button>'}</div></div><div><h3>Proteína por refeição</h3>${mealProteinRows || '<p class="muted">Nenhuma refeição registrada.</p>'}</div>${waterRows ? `<div class="stack"><h3>Registros de água</h3>${waterRows}</div>` : ''}</div>
     ${mealTypes.map(([meal, label]) => {
       const rows = items.filter(item => item.meal === meal);
       const totals = sumTotals(rows);
-      return `<div class="card stack diet-meal-card"><div class="row diet-meal-heading"><div><h3>${esc(label)}</h3><span class="muted">${n(totals.kcal)} kcal · C ${n(totals.carbs)} g · P ${n(totals.protein)} g · G ${n(totals.fat)} g</span></div><button type="button" class="primary diet-meal-toggle" data-diet="toggle-meal" aria-expanded="false" aria-label="Expandir ${esc(label)}" aria-controls="meal-${esc(meal)}">+</button></div><div id="meal-${esc(meal)}" class="stack diet-meal-content" hidden>${rows.map(item => `<div class="diet-food-row stack"><strong>${esc(item.name)}</strong><span class="muted">${n(item.qty)} porções · ${n(item.kcal)} kcal · C ${n(item.carbs)} g · P ${n(item.protein)} g · G ${n(item.fat)} g</span>${closure ? '' : `<div class="row"><button class="ghost" data-diet="edit-log" data-id="${esc(item.id)}">Editar</button><button class="ghost" data-diet="delete-log" data-id="${esc(item.id)}">Excluir</button></div>`}</div>`).join('') || '<p class="muted">Nenhum alimento registrado.</p>'}${closure ? '' : `<button class="ghost" data-diet="add" data-meal="${esc(meal)}">+ Adicionar alimentos</button><button class="ghost" data-diet="copy" data-meal="${esc(meal)}">Copiar refeição de ontem</button>`}</div></div>`;
+      return `<div class="card stack diet-meal-card"><div class="row diet-meal-heading"><div><h3>${esc(label)}</h3><span class="muted">${n(totals.kcal)} kcal · C ${n(totals.carbs)} g · P ${n(totals.protein)} g · G ${n(totals.fat)} g</span></div><button type="button" class="primary diet-meal-toggle" data-diet="toggle-meal" aria-expanded="false" aria-label="Expandir ${esc(label)}" aria-controls="meal-${esc(meal)}">+</button></div><div id="meal-${esc(meal)}" class="stack diet-meal-content" hidden>${rows.map(item => `<div class="diet-food-row stack"><strong>${esc(item.name)}</strong><span class="muted">${n(item.qty)} porções${item.quantity != null && item.unit !== 'porção' ? ` · ${n(item.quantity)} ${esc(item.unit || '')}${item.weightGrams != null && item.unit !== 'g' ? ` · ${n(item.weightGrams)} g` : ''}` : ''}${item.time ? ` · ${esc(item.time)}` : ''} · ${n(item.kcal)} kcal · C ${n(item.carbs)} g · P ${n(item.protein)} g · G ${n(item.fat)} g</span>${closure ? '' : `<div class="row"><button class="ghost" data-diet="edit-log" data-id="${esc(item.id)}">Editar</button><button class="ghost" data-diet="delete-log" data-id="${esc(item.id)}">Excluir</button></div>`}</div>`).join('') || '<p class="muted">Nenhum alimento registrado.</p>'}${closure ? '' : `<button class="ghost" data-diet="add" data-meal="${esc(meal)}">+ Adicionar alimentos</button><button class="ghost" data-diet="copy" data-meal="${esc(meal)}">Copiar refeição de ontem</button>`}</div></div>`;
     }).join('')}
     <div class="card stack"><h3>Últimos 7 dias fechados</h3>${closures.map(day => `<button class="ghost" data-diet="show-date" data-date="${esc(day.date)}">${esc(day.date)} · ${balanceLabel(day.balance)}</button>`).join('') || '<p class="muted">Nenhum dia fechado.</p>'}</div>
   </section>`;
@@ -154,7 +171,7 @@ async function addDialog(meal) {
   const date = selectedDate;
   await requireOpen(date);
   const localFoods = (await all('foodItems')).sort((a, b) => Number(b.favorite) - Number(a.favorite) || (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '') || a.name.localeCompare(b.name));
-  mealDraft = { meal, date, items: [], localFoods, query: '', remoteFoods: [], searchMessage: '' };
+  mealDraft = { meal, date, time: defaultTimeForDate(date), items: [], localFoods, query: '', remoteFoods: [], searchMessage: '' };
   showDialog('Registrar refeição', '');
   renderMealBuilder();
 }
@@ -172,7 +189,8 @@ function renderMealBuilder() {
     return `<div class="diet-food-row stack"><div class="row"><strong>${esc(item.food.name)}</strong><button type="button" class="danger diet-remove-item" data-diet="builder-remove" data-id="${esc(item.draftId)}" aria-label="Excluir ${esc(item.food.name)}">Excluir</button></div><label class="field">Quantidade (${esc(item.food.servingUnit)} por porção)<input type="text" inputmode="decimal" autocomplete="off" value="${esc(item.qty)}" data-builder-qty="${esc(item.draftId)}" aria-label="Quantidade de ${esc(item.food.name)}"></label><span class="muted" data-builder-item-total="${esc(item.draftId)}">${mealNutritionText(totals)}</span><button type="button" class="ghost" data-diet="builder-edit" data-id="${esc(item.draftId)}">Editar alimento e nutrientes</button></div>`;
   }).join('');
   const totals = sumTotals(state.items.map(item => scalePortions(item.food, item.qty)));
-  content().innerHTML = `<div class="stack diet-dialog"><div class="row"><h2>${esc(MEALS[state.meal] || state.meal)}</h2><button type="button" class="ghost" data-diet="dismiss" aria-label="Cancelar refeição">✕</button></div><label class="field">Buscar alimento por nome<input id="dietBuilderSearch" type="search" inputmode="search" autocomplete="off" placeholder="Ex.: leite integral" value="${esc(state.query)}"></label><div id="dietBuilderResults" class="stack" aria-live="polite"></div><button type="button" class="primary" data-diet="scan" data-meal="${esc(state.meal)}">Ler código de barras</button><button type="button" class="ghost" data-diet="builder-manual">+ Cadastrar alimento manualmente</button><h3>Alimentos desta refeição (${state.items.length})</h3><div id="dietBuilderItems" class="stack">${rows || '<p class="muted">Adicione um ou mais alimentos. Nada será salvo no diário até tocar em “Salvar Refeição”.</p>'}</div><div class="card stack"><strong>Total da refeição</strong><span id="dietBuilderTotal">${mealNutritionText(totals)}</span></div><button type="button" class="primary" data-diet="save-meal" ${state.items.length ? '' : 'disabled'}>Salvar Refeição</button><button type="button" class="ghost" data-diet="cancel-meal">Cancelar sem salvar</button></div>`;
+  content().innerHTML = `<div class="stack diet-dialog"><div class="row"><h2>${esc(MEALS[state.meal] || state.meal)}</h2><button type="button" class="ghost" data-diet="dismiss" aria-label="Cancelar refeição">✕</button></div><label class="field">Horário da refeição (opcional)<input id="dietMealTime" type="time" value="${esc(state.time)}"></label><label class="field">Buscar alimento por nome<input id="dietBuilderSearch" type="search" inputmode="search" autocomplete="off" placeholder="Ex.: leite integral" value="${esc(state.query)}"></label><div id="dietBuilderResults" class="stack" aria-live="polite"></div><button type="button" class="primary" data-diet="scan" data-meal="${esc(state.meal)}">Ler código de barras</button><button type="button" class="ghost" data-diet="builder-manual">+ Cadastrar alimento manualmente</button><h3>Alimentos desta refeição (${state.items.length})</h3><div id="dietBuilderItems" class="stack">${rows || '<p class="muted">Adicione um ou mais alimentos. Nada será salvo no diário até tocar em “Salvar Refeição”.</p>'}</div><div class="card stack"><strong>Total da refeição</strong><span id="dietBuilderTotal">${mealNutritionText(totals)}</span></div><button type="button" class="primary" data-diet="save-meal" ${state.items.length ? '' : 'disabled'}>Salvar Refeição</button><button type="button" class="ghost" data-diet="cancel-meal">Cancelar sem salvar</button></div>`;
+  content().querySelector('#dietMealTime').oninput = event => { state.time = event.target.value; };
   content().querySelector('#dietBuilderSearch').oninput = event => {
     state.query = event.target.value.trim();
     scheduleFoodSearch(state);
@@ -311,7 +329,8 @@ async function saveMealDraft() {
       item,
       log: {
         id: uuid(), date: state.date, meal: state.meal, foodId: item.food.id,
-        name: item.food.name, qty: item.qty, ...scalePortions(item.food, item.qty)
+        name: item.food.name, qty: item.qty, ...(state.time ? { time: state.time } : {}),
+        ...logQuantity(item.food, item.qty), ...scalePortions(item.food, item.qty)
       }
     }));
     await tx(['foodLogs', 'foodItems'], 'readwrite', stores => {
@@ -331,6 +350,17 @@ async function saveMealDraft() {
     if (saveButton) saveButton.disabled = false;
     throw error;
   }
+}
+
+function logQuantity(food, portions) {
+  const servingSize = Number(food.servingSize);
+  const unit = food.servingUnit || 'porção';
+  const hasServing = Number.isFinite(servingSize) && servingSize > 0 && unit !== 'porção';
+  const quantity = hasServing ? servingSize * portions : portions;
+  return {
+    quantity, unit: hasServing ? unit : 'porção',
+    ...(hasServing && unit === 'g' ? { weightGrams: quantity } : {})
+  };
 }
 
 async function lookupBarcode(meal) {
@@ -406,7 +436,9 @@ async function portionDialog(meal, food, log) {
   await requireOpen(date);
   // An existing log is its own per-portion snapshot, never the edited food.
   const perPortion = log ? scalePortions(log, 1 / log.qty) : food;
-  showDialog(log ? 'Editar registro' : 'Quantidade', `<form class="stack"><strong>${esc(log?.name || food.name)}</strong>${food ? `<p class="muted">1 porção = ${n(food.servingSize)} ${esc(food.servingUnit)}</p>` : ''}${numericField('qty', 'Quantidade (porções)', log?.qty ?? 1)}<p id="dietPreview" aria-live="polite"></p><button class="primary">Salvar na refeição</button></form>`);
+  const quantityPerPortion = log?.quantity != null ? Number(log.quantity) / Number(log.qty) : log ? null : Number(food.servingSize);
+  const unit = log?.unit || (log ? 'porção' : food.servingUnit || 'porção');
+  showDialog(log ? 'Editar registro' : 'Quantidade', `<form class="stack"><strong>${esc(log?.name || food.name)}</strong>${food ? `<p class="muted">1 porção = ${n(food.servingSize)} ${esc(food.servingUnit)}</p>` : log?.quantity != null ? `<p class="muted">Registro: ${n(log.quantity)} ${esc(log.unit || '')}</p>` : ''}<label class="field">Horário (opcional)<input name="time" type="time" value="${esc(log ? log.time || '' : defaultTimeForDate(date))}"></label>${numericField('qty', 'Quantidade (porções)', log?.qty ?? 1)}<p id="dietPreview" aria-live="polite"></p><button class="primary">Salvar na refeição</button></form>`);
   const form = content().querySelector('form');
   form.oninput = () => {
     const qty = Number(form.elements.namedItem('qty').value.replace(',', '.'));
@@ -418,7 +450,12 @@ async function portionDialog(meal, food, log) {
     event.preventDefault();
     await requireOpen(date);
     const qty = readNumber(form, 'qty', 0.000001);
-    const entry = { id: log?.id || uuid(), date, meal, foodId: log?.foodId || food.id, name: log?.name || food.name, qty, ...scalePortions(perPortion, qty) };
+    const quantity = quantityPerPortion == null ? qty : quantityPerPortion * qty;
+    const measurement = log
+      ? { quantity, unit, ...(log.weightGrams != null ? { weightGrams: Number(log.weightGrams) / log.qty * qty } : {}) }
+      : logQuantity(food, qty);
+    const time = form.elements.namedItem('time').value;
+    const entry = { id: log?.id || uuid(), date, meal, foodId: log?.foodId || food.id, name: log?.name || food.name, qty, ...measurement, ...(time ? { time } : {}), ...scalePortions(perPortion, qty) };
     const currentFood = await get('foodItems', entry.foodId);
     await tx(['foodLogs', 'foodItems'], 'readwrite', t => {
       t.objectStore('foodLogs').put(entry);
@@ -429,20 +466,44 @@ async function portionDialog(meal, food, log) {
   });
 }
 
+async function saveWaterLog(amount, time, date = selectedDate, id = null) {
+  await requireOpen(date);
+  const record = {
+    id: id || uuid(), kind: 'water', date, name: 'Água',
+    quantityMl: amount, unit: 'ml', ...(time ? { time } : {})
+  };
+  await tx(['foodLogs'], 'readwrite', stores => stores.objectStore('foodLogs').put(record));
+  modal().close();
+  await refresh();
+}
+
+async function waterDialog(log = null) {
+  const date = log?.date || selectedDate;
+  await requireOpen(date);
+  const time = log ? log.time || '' : defaultTimeForDate(date);
+  showDialog(log ? 'Editar água' : 'Registrar água', `${log ? '' : `<div class="grid two water-presets">${[200, 300, 500, 750].map(amount => `<button type="button" class="ghost" data-diet="water-preset" data-ml="${amount}">${amount} ml</button>`).join('')}</div>`}<form id="waterForm" class="stack"><label class="field">Quantidade de água (ml)<input name="amount" inputmode="decimal" value="${esc(log?.quantityMl ?? '')}" required></label><label class="field">Horário (opcional)<input name="time" type="time" value="${esc(time)}"></label><button class="primary">${log ? 'Salvar alteração' : 'Registrar água'}</button></form>`);
+  content().querySelector('#waterForm').onsubmit = guard(async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const amount = readNumber(form, 'amount', 1);
+    await saveWaterLog(amount, form.elements.namedItem('time').value, date, log?.id);
+  });
+}
+
 function balanceLabel(balance) {
   return `${balance > 0 ? '+' : ''}${n(balance)} kcal · ${balance < 0 ? 'déficit' : balance > 0 ? 'superávit' : 'equilíbrio'}`;
 }
 
 async function closeDayDialog() {
   const date = selectedDate;
-  const { consumed, goals } = await dayData(date);
+  const { consumed, goals, waterMl } = await dayData(date);
   if (!goals) { toast('Defina suas metas antes de fechar o dia.'); await goalsDialog(); return; }
   const [sessions, activities] = await Promise.all([all('workoutSessions'), all('activityDiary')]);
   const burnedKcal = [...sessions, ...activities].filter(item => item.startedAt ? localDate(item.startedAt) === date : item.date === date).reduce((total, item) => total + Number(item.calories ?? 0), 0);
   const balance = calorieBalance(consumed.kcal, goals.kcal);
-  showDialog('Fechar dia', `<p>${esc(date)}</p><p>Consumido / meta: ${n(consumed.kcal)} / ${n(goals.kcal)} kcal</p><strong>Saldo: ${balanceLabel(balance)}</strong>${macroBars(consumed, goals)}<p>Gasto em treinos/atividades: ${n(burnedKcal)} kcal (estimado)</p><p class="muted">Gasto apenas informativo; não descontado do saldo (consumido − meta).</p><button class="primary" id="dietConfirmClosure">Confirmar fechamento</button>`);
+  showDialog('Fechar dia', `<p>${esc(date)}</p><p>Consumido / meta: ${n(consumed.kcal)} / ${n(goals.kcal)} kcal</p><p>Água consumida: ${n(waterMl)} ml</p><strong>Saldo: ${balanceLabel(balance)}</strong>${macroBars(consumed, goals)}<p>Gasto em treinos/atividades: ${n(burnedKcal)} kcal (estimado)</p><p class="muted">Gasto apenas informativo; não descontado do saldo (consumido − meta).</p><button class="primary" id="dietConfirmClosure">Confirmar fechamento</button>`);
   content().querySelector('#dietConfirmClosure').onclick = guard(async () => {
-    await tx(['dayClosures'], 'readwrite', t => t.objectStore('dayClosures').put({ date, closedAt: new Date().toISOString(), goals, consumed, burnedKcal, balance }));
+    await tx(['dayClosures'], 'readwrite', t => t.objectStore('dayClosures').put({ date, closedAt: new Date().toISOString(), goals, consumed, waterMl, burnedKcal, balance }));
     modal().close();
     await refresh();
   });
@@ -486,6 +547,21 @@ document.addEventListener('click', guard(async event => {
     await refresh();
   }
   if (action === 'goals') await goalsDialog();
+  if (action === 'add-water') await waterDialog();
+  if (action === 'water-preset') {
+    const time = content().querySelector('#waterForm [name="time"]')?.value || '';
+    await saveWaterLog(number(button.dataset.ml, 1, 1000000), time);
+  }
+  if (action === 'edit-water' || action === 'delete-water') {
+    const log = await get('foodLogs', id);
+    if (!log || log.kind !== 'water') throw new Error('Registro de água não encontrado.');
+    await requireOpen(log.date);
+    if (action === 'edit-water') await waterDialog(log);
+    else {
+      await remove('foodLogs', id);
+      await refresh();
+    }
+  }
   if (action === 'register-meal') {
     await requireOpen(selectedDate);
     mealPickerDialog();

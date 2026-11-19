@@ -7,7 +7,7 @@ const source = readFileSync(new URL('../nutrition-calc.js', import.meta.url), 'u
 const module = new SourceTextModule(source, { context: createContext({ Date }) });
 await module.link(() => {});
 await module.evaluate();
-const { sumTotals, scalePortions, macroPercentages, calorieBalance, localDate } = module.namespace;
+const { sumTotals, scalePortions, macroCalories, sumWater, mealCount, proteinByMeal, macroPercentages, calorieBalance, localDate } = module.namespace;
 const plain = value => JSON.parse(JSON.stringify(value));
 
 test('sums snapshots, including empty and fractional meals, without mutation', () => {
@@ -23,6 +23,19 @@ test('scales only nutritional values by fractional or multiple portions', () => 
   assert.deepEqual(plain(scalePortions(food, 0.5)), { kcal: 60, carbs: 12.5, protein: 1.5, fat: 0.2 });
   assert.equal(scalePortions(food, 2).kcal, 240);
   assert.equal(food.kcal, 120);
+});
+
+test('calculates 4/4/9 energy, daily water, meals, and protein per meal', () => {
+  const items = [
+    { meal: 'cafe', protein: 12, kind: 'food' },
+    { meal: 'cafe', protein: 3, kind: 'food' },
+    { meal: 'almoco', protein: 30, kind: 'food' },
+    { kind: 'water', quantityMl: 250 }
+  ];
+  assert.equal(macroCalories({ carbs: 10, protein: 20, fat: 5 }), 165);
+  assert.equal(sumWater(items), 250);
+  assert.equal(mealCount(items), 2);
+  assert.deepEqual(plain(proteinByMeal(items)), { cafe: 15, almoco: 30 });
 });
 
 test('uses 4/4/9 kcal per gram, not the declared calories, and handles zero', () => {

@@ -34,6 +34,8 @@
 .diet-search-result button{min-height:44px}
 .diet-search-result .row{flex-wrap:wrap;justify-content:flex-start}
 .diet-dialog button:disabled{opacity:.5}
+.diet-daily-details .water-log-row{flex-wrap:wrap}
+.water-presets button{min-height:48px}
 .mab-add-group-chip{border-style:dashed;border-color:#ff851b;color:#ff851b;background:rgba(255,133,27,.08);font-weight:600}
 .mab-add-group-chip:hover,.mab-add-group-chip:active{background:rgba(255,133,27,.18)}
 .plan-exercise-item{display:flex;flex-direction:column;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}

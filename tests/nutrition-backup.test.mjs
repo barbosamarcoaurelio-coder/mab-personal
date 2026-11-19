@@ -78,3 +78,24 @@ test('barcode provenance fields survive export and replace without affecting leg
   assert.deepEqual(app.data.foodItems.find(item => item.id === 'scanned'), scanned);
   assert.deepEqual(app.data.foodItems.find(item => item.id === 'food'), { id: 'food', name: 'Arroz' });
 });
+
+test('new meal measurements, times, and water records survive backup without changing legacy logs', async () => {
+  const app = await setup();
+  const measured = {
+    id: 'measured', date: '2026-11-19', time: '08:30', meal: 'cafe', name: 'Leite',
+    qty: 1.5, quantity: 300, unit: 'ml', kcal: 180, protein: 9, carbs: 15, fat: 9
+  };
+  const weighed = {
+    id: 'weighed', date: '2026-11-19', time: '08:35', meal: 'cafe', name: 'Pão',
+    qty: 1.5, quantity: 75, unit: 'g', weightGrams: 75, kcal: 200, protein: 6, carbs: 36, fat: 2
+  };
+  const water = { id: 'water', kind: 'water', date: '2026-11-19', time: '09:00', quantityMl: 250, unit: 'ml' };
+  app.data.foodLogs.push(measured, weighed, water);
+  const backup = await app.exportBackup();
+  app.data.foodLogs = [];
+  await app.importBackup(backup);
+  assert.deepEqual(app.data.foodLogs.find(item => item.id === 'measured'), measured);
+  assert.deepEqual(app.data.foodLogs.find(item => item.id === 'weighed'), weighed);
+  assert.deepEqual(app.data.foodLogs.find(item => item.id === 'water'), water);
+  assert.deepEqual(app.data.foodLogs.find(item => item.id === 'log'), { id: 'log', kcal: 120 });
+});

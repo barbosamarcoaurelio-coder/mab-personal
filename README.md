@@ -2,6 +2,14 @@
 
 PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e backup/restauração em JSON.
 
+## Versão 4.7.0 — Resumo nutricional ampliado
+
+- Registros alimentares passam a guardar horário local, quantidade consumida e unidade; quando a porção é medida em gramas, o peso consumido também é armazenado. Os campos são opcionais quando a medida não se aplica.
+- O resumo diário mostra refeições registradas, proteína por refeição e água em ml. Água é registrada no mesmo store histórico, mas não entra nas calorias nem na contagem de refeições.
+- A estimativa energética dos macros explicita a regra proteína/carboidrato 4 kcal/g e gordura 9 kcal/g; calorias informadas nos alimentos e metas continuam separadas.
+- Inclusão, edição, exclusão, cópias e backups preservam os snapshots existentes. Os campos novos são opcionais, sem migração destrutiva nem alteração do IndexedDB v3.
+- Em dados antigos sem horário ou medida física, o diário não inventa esses valores; ao editar, a quantidade histórica continua identificada como porções.
+
 ## Versão 4.6.0 — Registro rápido de refeições
 
 - Cards das refeições começam recolhidos; o cabeçalho mantém kcal e macros, e cada alimento continua editável/excluível.
