@@ -36,7 +36,12 @@
 #dietView .diet-meal-content[hidden]{display:none}
 .diet-search-result{display:grid;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card2);overflow-wrap:anywhere}
 .diet-search-result button{min-height:44px}
-.diet-search-result .row{flex-wrap:wrap;justify-content:flex-start}
+.diet-food-list{--food-row-height:56px;max-height:calc(5 * var(--food-row-height));margin:0;padding:0;list-style:none;overflow-y:auto}
+.diet-food-list-item{height:var(--food-row-height);display:flex;align-items:center;gap:4px;padding:0 4px;box-shadow:inset 0 -1px var(--line)}
+.diet-food-list-name{flex:1;min-width:0}
+.diet-food-list-name>*{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.diet-food-list-item button{flex:none;min-height:44px;padding:4px;font-size:.75rem;white-space:nowrap}
+.diet-food-list-item button[aria-pressed="true"]{color:var(--orange)}
 .diet-dialog button:disabled{opacity:.5}
 .diet-export-link{display:grid;place-items:center;min-height:44px;text-align:center;text-decoration:none}
 .diet-daily-details .water-log-row{flex-wrap:wrap}

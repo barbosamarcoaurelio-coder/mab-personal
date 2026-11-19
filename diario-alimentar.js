@@ -291,9 +291,8 @@ async function addDialog(meal) {
   const date = selectedDate;
   await requireOpen(date);
   const [foods, logs] = await Promise.all([all('foodItems'), all('foodLogs')]);
-  const localFoods = foods.sort((a, b) => Number(b.favorite) - Number(a.favorite) || (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '') || a.name.localeCompare(b.name));
   const toleranceLog = logs.find(item => item.kind === 'meal-feedback' && item.date === date && item.meal === meal);
-  mealDraft = { meal, date, time: defaultTimeForDate(date), items: [], localFoods, query: '', remoteFoods: [], searchMessage: '', tolerance: toleranceLog?.tolerance || '', toleranceCreatedAt: toleranceLog?.createdAt || null, toleranceTouched: false };
+  mealDraft = { meal, date, time: defaultTimeForDate(date), items: [], localFoods: foods, query: '', remoteFoods: [], searchMessage: '', tolerance: toleranceLog?.tolerance || '', toleranceCreatedAt: toleranceLog?.createdAt || null, toleranceTouched: false };
   showDialog('Registrar refeição', '');
   renderMealBuilder();
 }
@@ -311,29 +310,66 @@ function renderMealBuilder() {
     return `<div class="diet-food-row stack"><div class="row"><strong>${esc(item.food.name)}</strong><button type="button" class="danger diet-remove-item" data-diet="builder-remove" data-id="${esc(item.draftId)}" aria-label="Excluir ${esc(item.food.name)}">Excluir</button></div><label class="field">Quantidade (${esc(item.food.servingUnit)} por porção)<input type="text" inputmode="decimal" autocomplete="off" value="${esc(item.qty)}" data-builder-qty="${esc(item.draftId)}" aria-label="Quantidade de ${esc(item.food.name)}"></label><span class="muted" data-builder-item-total="${esc(item.draftId)}">${mealNutritionText(totals)}</span><button type="button" class="ghost" data-diet="builder-edit" data-id="${esc(item.draftId)}">Editar alimento e nutrientes</button></div>`;
   }).join('');
   const totals = sumTotals(state.items.map(item => scalePortions(item.food, item.qty)));
-  content().innerHTML = `<div class="stack diet-dialog"><div class="row"><h2>${esc(MEALS[state.meal] || state.meal)}</h2><button type="button" class="ghost" data-diet="dismiss" aria-label="Cancelar refeição">✕</button></div><label class="field">Horário da refeição (opcional)<input id="dietMealTime" type="time" value="${esc(state.time)}"></label><div class="diet-meal-tolerance"><strong>Tolerância após a refeição · opcional</strong>${toleranceChoices(state.tolerance, 'draft-tolerance', true, state.meal)}</div><label class="field">Buscar alimento por nome<input id="dietBuilderSearch" type="search" inputmode="search" autocomplete="off" placeholder="Ex.: leite integral" value="${esc(state.query)}"></label><div id="dietBuilderResults" class="stack" aria-live="polite"></div><button type="button" class="primary" data-diet="scan" data-meal="${esc(state.meal)}">Ler código de barras</button><button type="button" class="ghost" data-diet="builder-manual">+ Cadastrar alimento manualmente</button><h3>Alimentos desta refeição (${state.items.length})</h3><div id="dietBuilderItems" class="stack">${rows || '<p class="muted">Adicione um ou mais alimentos. Nada será salvo no diário até tocar em “Salvar Refeição”.</p>'}</div><div class="card stack"><strong>Total da refeição</strong><span id="dietBuilderTotal">${mealNutritionText(totals)}</span></div><button type="button" class="primary" data-diet="save-meal" ${state.items.length ? '' : 'disabled'}>Salvar Refeição</button><button type="button" class="ghost" data-diet="cancel-meal">Cancelar sem salvar</button></div>`;
+  const listScroll = content().querySelector('#dietBuilderLocal')?.scrollTop ?? 0;
+  content().innerHTML = `<div class="stack diet-dialog">
+    <div class="row"><h2>${esc(MEALS[state.meal] || state.meal)}</h2><button type="button" class="ghost" data-diet="dismiss" aria-label="Cancelar refeição">✕</button></div>
+    <label class="field">Horário da refeição (opcional)<input id="dietMealTime" type="time" value="${esc(state.time)}"></label>
+    <div class="diet-meal-tolerance"><strong>Tolerância após a refeição · opcional</strong>${toleranceChoices(state.tolerance, 'draft-tolerance', true, state.meal)}</div>
+    <button type="button" class="primary" data-diet="scan" data-meal="${esc(state.meal)}">Ler código de barras</button>
+    <button type="button" class="ghost" data-diet="builder-manual">+ Cadastrar alimento manualmente</button>
+    <label class="field">Buscar alimento por nome<input id="dietBuilderSearch" type="search" inputmode="search" autocomplete="off" placeholder="Ex.: leite integral" value="${esc(state.query)}"></label>
+    <ul id="dietBuilderLocal" class="diet-food-list" aria-label="Alimentos cadastrados" tabindex="0" hidden></ul>
+    <div id="dietBuilderResults" class="stack" aria-live="polite"></div>
+    <h3>Alimentos desta refeição (${state.items.length})</h3>
+    <div id="dietBuilderItems" class="stack">${rows || '<p class="muted">Adicione um ou mais alimentos. Nada será salvo no diário até tocar em “Salvar Refeição”.</p>'}</div>
+    <div class="card stack"><strong>Total da refeição</strong><span id="dietBuilderTotal">${mealNutritionText(totals)}</span></div>
+    <button type="button" class="primary" data-diet="save-meal" ${state.items.length ? '' : 'disabled'}>Salvar Refeição</button>
+    <button type="button" class="ghost" data-diet="cancel-meal">Cancelar sem salvar</button>
+  </div>`;
   content().querySelector('#dietMealTime').oninput = event => { state.time = event.target.value; };
   content().querySelector('#dietBuilderSearch').oninput = event => {
     state.query = event.target.value.trim();
+    renderBuilderLocal(state);
     scheduleFoodSearch(state);
   };
   content().querySelectorAll('[data-builder-qty]').forEach(input => {
     input.oninput = () => updateMealDraftTotals(state);
   });
+  renderBuilderLocal(state).scrollTop = listScroll;
   renderBuilderResults(state);
+}
+
+function renderBuilderLocal(state) {
+  const list = content().querySelector('#dietBuilderLocal');
+  const query = state.query.toLocaleLowerCase('pt-BR');
+  const foods = state.localFoods
+    .filter(food => food.name.toLocaleLowerCase('pt-BR').includes(query))
+    .sort((a, b) => Number(Boolean(b.favorite)) - Number(Boolean(a.favorite)) || a.name.localeCompare(b.name, 'pt-BR'));
+  list.innerHTML = foods.map(food => {
+    const name = esc(food.name);
+    const id = esc(food.id);
+    const favorite = Boolean(food.favorite);
+    return `<li class="diet-food-list-item">
+      <div class="diet-food-list-name"><strong title="${name}">${name}</strong><small class="muted">${n(food.servingSize)} ${esc(food.servingUnit)} · ${n(food.kcal)} kcal</small></div>
+      <button type="button" class="ghost" data-diet="builder-add-local" data-id="${id}" aria-label="Adicionar ${name}">Adicionar</button>
+      <button type="button" class="ghost" data-diet="builder-edit-local" data-id="${id}" aria-label="Editar ${name}">Editar</button>
+      <button type="button" class="ghost" data-diet="builder-favorite" data-id="${id}" aria-label="Favoritar ${name}" aria-pressed="${favorite}" title="${favorite ? 'Desfavoritar' : 'Favoritar'}">${favorite ? '★ ' : ''}Favoritar</button>
+    </li>`;
+  }).join('');
+  list.hidden = !foods.length;
+  list.scrollTop = 0;
+  return list;
 }
 
 function renderBuilderResults(state) {
   const target = content().querySelector('#dietBuilderResults');
   if (!target || mealDraft !== state) return;
-  const query = state.query.toLocaleLowerCase('pt-BR');
-  const local = state.localFoods.filter(food => !query || food.name.toLocaleLowerCase('pt-BR').includes(query));
-  const localHtml = local.map(food => `<div class="diet-search-result"><strong>${esc(food.name)}</strong><span class="muted">${n(food.servingSize)} ${esc(food.servingUnit)} · ${n(food.kcal)} kcal${food.favorite ? ' · Favorito' : ''}</span><div class="row"><button type="button" class="ghost" data-diet="builder-add-local" data-id="${esc(food.id)}">Adicionar</button><button type="button" class="ghost" data-diet="builder-edit-local" data-id="${esc(food.id)}">Editar alimento</button><button type="button" class="ghost" data-diet="builder-favorite" data-id="${esc(food.id)}">${food.favorite ? 'Desfavoritar' : 'Favoritar'}</button></div></div>`).join('');
   const remoteHtml = state.remoteFoods.map((food, index) => `<div class="diet-search-result"><strong>${esc(food.name)}</strong><span class="muted">${food.brand ? `${esc(food.brand)} · ` : ''}${mealNutritionText(food)} · Open Food Facts</span>${food.warnings.length ? `<span class="orange">${esc(food.warnings.join(' · '))}</span>` : ''}<button type="button" class="ghost" data-diet="builder-add-off" data-index="${index}">Conferir e adicionar</button></div>`).join('');
   const queryNotice = state.searchMessage ? `<p class="muted" role="status">${esc(state.searchMessage)}</p>` : '';
-  const empty = !local.length && !state.remoteFoods.length && state.query && !state.searchMessage
+  const empty = content().querySelector('#dietBuilderLocal').hidden && !state.remoteFoods.length && state.query && !state.searchMessage
     ? '<p class="muted">Nenhum produto encontrado. Você pode cadastrar manualmente.</p>' : '';
-  target.innerHTML = `${queryNotice}${localHtml}${remoteHtml}${empty}`;
+  target.innerHTML = `${queryNotice}${remoteHtml}${empty}`;
+  target.hidden = !target.innerHTML;
 }
 
 function scheduleFoodSearch(state) {
@@ -790,13 +826,20 @@ document.addEventListener('click', guard(async event => {
     builderFoodDialog(food, { draftId: uuid(), food, qty: 1, isNew: false });
   }
   if (action === 'builder-favorite') {
-    const food = mealDraft?.localFoods.find(item => item.id === id);
+    const state = mealDraft;
+    const food = state?.localFoods.find(item => item.id === id);
     if (!food) throw new Error('Alimento não encontrado.');
     const updated = { ...food, favorite: !food.favorite, updatedAt: new Date().toISOString() };
     await tx(['foodItems'], 'readwrite', stores => stores.objectStore('foodItems').put(updated));
-    mealDraft.localFoods = mealDraft.localFoods.map(item => item.id === id ? updated : item)
-      .sort((a, b) => Number(b.favorite) - Number(a.favorite) || (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '') || a.name.localeCompare(b.name));
-    renderBuilderResults(mealDraft);
+    state.localFoods = state.localFoods.map(item => item.id === id ? updated : item);
+    for (const item of state.items) {
+      if (item.food.id === id) item.food = { ...item.food, favorite: updated.favorite };
+    }
+    if (mealDraft === state && content().querySelector('#dietBuilderLocal')) {
+      const restoreFocus = document.activeElement === button;
+      const list = renderBuilderLocal(state);
+      if (restoreFocus) list.querySelector(`[data-diet="builder-favorite"][data-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+    }
   }
   if (action === 'builder-add-off') {
     const food = mealDraft?.remoteFoods[Number(button.dataset.index)];
