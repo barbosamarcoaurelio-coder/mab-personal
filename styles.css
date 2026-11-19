@@ -36,6 +36,21 @@
 .diet-dialog button:disabled{opacity:.5}
 .diet-daily-details .water-log-row{flex-wrap:wrap}
 .water-presets button{min-height:48px}
+.diet-wellbeing>summary,.diet-activity-item>summary{cursor:pointer;font-weight:700}
+.diet-rating-field{min-width:0;margin:0;padding:10px;border:1px solid #333;border-radius:10px}
+.diet-rating-field legend{padding:0 4px;font-size:13px;font-weight:700}
+.diet-rating-scale{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.diet-rating-scale label{display:flex;align-items:center;justify-content:center;gap:5px;min-height:42px;border:1px solid #444;border-radius:8px;background:#101010}
+.diet-rating-scale input{accent-color:#f58220}
+.diet-rating-ends{margin-top:5px;font-size:11px}
+.diet-tolerance-options{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.diet-tolerance-options button{flex:1 1 140px;min-height:42px;text-align:left;white-space:normal}
+.diet-tolerance-options button.active{border-color:#f58220;background:rgba(245,130,32,.14);color:#ffbf80}
+.diet-meal-tolerance{display:grid;gap:4px;padding-top:8px;border-top:1px solid #333}
+.diet-activity-item{padding:10px 0;border-bottom:1px solid #333}
+.diet-activity-item:last-child{border-bottom:0}
+.diet-session-wellbeing{padding:10px 0}
+@media(max-width:380px){.diet-tolerance-options button{flex-basis:100%}.diet-activity-item .row{flex-wrap:wrap}}
 .mab-add-group-chip{border-style:dashed;border-color:#ff851b;color:#ff851b;background:rgba(255,133,27,.08);font-weight:600}
 .mab-add-group-chip:hover,.mab-add-group-chip:active{background:rgba(255,133,27,.18)}
 .plan-exercise-item{display:flex;flex-direction:column;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}

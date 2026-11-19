@@ -5,12 +5,15 @@ import { createContext, SourceTextModule, SyntheticModule } from 'node:vm';
 
 async function setup() {
   const context = createContext({});
-  const stores = ['settings', 'foodItems', 'foodLogs', 'dayClosures'];
+  const stores = ['settings', 'foodItems', 'foodLogs', 'dayClosures', 'dailyRecovery', 'workoutSessions', 'activityDiary'];
   const data = {
     settings: [{ key: 'nutritionGoals', value: { kcal: 2000 } }, { key: 'old', value: true }],
     foodItems: [{ id: 'food', name: 'Arroz' }],
     foodLogs: [{ id: 'log', kcal: 120 }],
-    dayClosures: [{ date: '2026-11-18', balance: -100 }]
+    dayClosures: [{ date: '2026-11-18', balance: -100 }],
+    dailyRecovery: [],
+    workoutSessions: [],
+    activityDiary: []
   };
   const db = new SyntheticModule(['all', 'DB_VERSION', 'put', 'tx', 'STORES'], function () {
     this.setExport('all', async store => structuredClone(data[store]));
@@ -90,12 +93,32 @@ test('new meal measurements, times, and water records survive backup without cha
     qty: 1.5, quantity: 75, unit: 'g', weightGrams: 75, kcal: 200, protein: 6, carbs: 36, fat: 2
   };
   const water = { id: 'water', kind: 'water', date: '2026-11-19', time: '09:00', quantityMl: 250, unit: 'ml' };
-  app.data.foodLogs.push(measured, weighed, water);
+  const mealFeedback = { id: 'meal-feedback:2026-11-19:cafe', kind: 'meal-feedback', date: '2026-11-19', meal: 'cafe', tolerance: 'comfortable' };
+  app.data.foodLogs.push(measured, weighed, water, mealFeedback);
   const backup = await app.exportBackup();
   app.data.foodLogs = [];
   await app.importBackup(backup);
   assert.deepEqual(app.data.foodLogs.find(item => item.id === 'measured'), measured);
   assert.deepEqual(app.data.foodLogs.find(item => item.id === 'weighed'), weighed);
   assert.deepEqual(app.data.foodLogs.find(item => item.id === 'water'), water);
+  assert.deepEqual(app.data.foodLogs.find(item => item.id === mealFeedback.id), mealFeedback);
   assert.deepEqual(app.data.foodLogs.find(item => item.id === 'log'), { id: 'log', kcal: 120 });
+});
+
+test('wellbeing and activity evaluations remain attached to existing records in backups', async () => {
+  const app = await setup();
+  const recovery = { id: 'recovery', date: '2026-11-19', sleepHours: 7, digestionQuality: 4, wellbeingNotes: 'Confortável' };
+  const workout = { id: 'session', startedAt: '2026-11-19T15:00:00Z', recoveryAfter: 5, wellbeingNotes: 'Boa recuperação' };
+  const activity = { id: 'activity', date: '2026-11-19', modality: 'Bicicleta', time: '08:40', durationMinutes: 35, dispositionDuring: 3 };
+  app.data.dailyRecovery.push(recovery);
+  app.data.workoutSessions.push(workout);
+  app.data.activityDiary.push(activity);
+  const backup = await app.exportBackup();
+  app.data.dailyRecovery = [];
+  app.data.workoutSessions = [];
+  app.data.activityDiary = [];
+  await app.importBackup(backup);
+  assert.deepEqual(app.data.dailyRecovery, [recovery]);
+  assert.deepEqual(app.data.workoutSessions, [workout]);
+  assert.deepEqual(app.data.activityDiary, [activity]);
 });

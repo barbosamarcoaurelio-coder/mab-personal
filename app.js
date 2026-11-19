@@ -1152,9 +1152,25 @@ function assessmentForm() {
   }
 }
 
+function activityRatingSelect(name, label, value) {
+  return `<label class="field">${label}<select name="${name}"><option value="">Não informado</option>${[1, 2, 3, 4, 5].map(score => `<option value="${score}" ${Number(value) === score ? 'selected' : ''}>${score}</option>`).join('')}</select></label>`;
+}
+
 function activityForm(a = {}) {
-  const modalities = ['Pilates', 'Jiu Jitsu', 'Bicicleta', 'Esteira', 'Caminhada/Corrida', 'TRX', 'Outra'];
-  modalContent.innerHTML = `<form id="activityForm" class="stack"><div class="row"><h2>${a.id?'Editar':'Nova'} atividade</h2><button type="button" class="ghost" data-close>✕</button></div><label class="field">Modalidade<select name="modality">${modalities.map(m=>`<option ${a.modality===m?'selected':''}>${m}</option>`).join('')}</select></label><label class="field">Nome personalizado (use se escolher Outra)<input name="customModality" value="${esc(a.customModality||'')}"></label><div class="grid two" style="min-width:0;width:100%;box-sizing:border-box"><label class="field">Data<input name="date" type="date" required value="${a.date||new Date().toISOString().slice(0,10)}" style="min-width:0;width:100%;box-sizing:border-box"></label><label class="field">Duração (min)<input name="durationMinutes" type="number" inputmode="numeric" min="1" max="1440" required value="${a.durationMinutes??60}" ${a.id?'readonly style="opacity:0.7;cursor:not-allowed;background:#1a1a1a"':''}></label><label class="field">Distância (km, opcional)<input name="distanceKm" inputmode="decimal" value="${a.distanceKm??''}"></label><label class="field">Calorias (opcional)<input name="calories" inputmode="numeric" value="${a.calories??''}"></label></div><label class="field">Intensidade<select name="intensity"><option ${a.intensity==='Leve'?'selected':''}>Leve</option><option ${!a.intensity||a.intensity==='Moderada'?'selected':''}>Moderada</option><option ${a.intensity==='Intensa'?'selected':''}>Intensa</option></select></label><label class="field">Esforço geral (RPE · 1 a 10)<select name="sessionRpe"><option value="">Não informado</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(a.sessionRpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></label><label class="field">Fadiga após a atividade (1 a 5)<select name="fatigueAfter"><option value="">Não informado</option>${Array.from({length:5},(_,i)=>`<option value="${i+1}" ${Number(a.fatigueAfter)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></label><label class="field">Observações<textarea name="notes">${esc(a.notes||'')}</textarea></label><button class="primary">Salvar atividade</button>${a.id?'<button type="button" class="danger" id="deleteActivity">Excluir atividade</button>':''}</form>`;
+  const modalities = [
+    { value: 'Pilates', label: 'Pilates' },
+    { value: 'Jiu Jitsu', label: 'Jiu-jitsu' },
+    { value: 'Bicicleta', label: 'Bicicleta' },
+    { value: 'Esteira', label: 'Esteira' },
+    { value: 'Caminhada/Corrida', label: 'Caminhada/Corrida' },
+    { value: 'TRX', label: 'TRX' },
+    { value: 'Outra', label: 'Outra' }
+  ];
+  const knownModality = modalities.some(item => item.value === a.modality);
+  const activityDate = a.date || localDate();
+  const currentTime = new Date();
+  const activityTime = a.time || (activityDate === localDate() ? `${String(currentTime.getHours()).padStart(2, '0')}:${String(currentTime.getMinutes()).padStart(2, '0')}` : '');
+  modalContent.innerHTML = `<form id="activityForm" class="stack"><div class="row"><h2>${a.id?'Editar':'Nova'} atividade</h2><button type="button" class="ghost" data-close>✕</button></div><label class="field">Modalidade<select name="modality">${modalities.map(item => `<option value="${esc(item.value)}" ${knownModality ? a.modality === item.value ? 'selected' : '' : item.value === 'Outra' ? 'selected' : ''}>${esc(item.label)}</option>`).join('')}</select></label><label class="field">Nome personalizado (use se escolher Outra)<input name="customModality" value="${esc(a.customModality||'')}"></label><div class="grid two" style="min-width:0;width:100%;box-sizing:border-box"><label class="field">Data<input name="date" type="date" required value="${esc(activityDate)}" style="min-width:0;width:100%;box-sizing:border-box"></label><label class="field">Horário (opcional)<input name="time" type="time" value="${esc(activityTime)}"></label><label class="field">Duração (min)<input name="durationMinutes" type="number" inputmode="numeric" min="1" max="1440" required value="${a.durationMinutes??60}" ${a.id?'readonly style="opacity:0.7;cursor:not-allowed;background:#1a1a1a"':''}></label><label class="field">Distância (km, opcional)<input name="distanceKm" inputmode="decimal" value="${a.distanceKm??''}"></label><label class="field">Calorias (opcional)<input name="calories" inputmode="numeric" value="${a.calories??''}"></label></div><div class="grid two"><div>${activityRatingSelect('dispositionDuring','Disposição durante · 1–5',a.dispositionDuring)}</div><div>${activityRatingSelect('recoveryAfter','Recuperação após · 1–5',a.recoveryAfter)}</div></div><label class="field">Intensidade<select name="intensity"><option ${a.intensity==='Leve'?'selected':''}>Leve</option><option ${!a.intensity||a.intensity==='Moderada'?'selected':''}>Moderada</option><option ${a.intensity==='Intensa'?'selected':''}>Intensa</option></select></label><label class="field">Esforço geral (RPE · 1 a 10)<select name="sessionRpe"><option value="">Não informado</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(a.sessionRpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></label><label class="field">Fadiga após a atividade (1 a 5)<select name="fatigueAfter"><option value="">Não informado</option>${Array.from({length:5},(_,i)=>`<option value="${i+1}" ${Number(a.fatigueAfter)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></label><label class="field">Observações<textarea name="notes">${esc(a.notes||'')}</textarea></label><button class="primary">Salvar atividade</button>${a.id?'<button type="button" class="danger" id="deleteActivity">Excluir atividade</button>':''}</form>`;
   modal.showModal();
   modalContent.querySelector('[data-close]').onclick = () => modal.close();
   modalContent.querySelector('#deleteActivity')?.addEventListener('click', async () => {
@@ -1176,13 +1192,16 @@ function activityForm(a = {}) {
       modality: mod === 'Outra' ? (custom || 'Outra') : mod,
       customModality: custom,
       date: f.get('date'),
+      time: f.get('time') || null,
       durationMinutes: a.id ? (Number(a.durationMinutes) || 0) : number(f.get('durationMinutes'), 1, 1440),
       distanceKm: f.get('distanceKm') ? number(f.get('distanceKm'), 0, 10000) : null,
       calories: f.get('calories') ? number(f.get('calories'), 0, 100000) : null,
+      dispositionDuring: f.get('dispositionDuring') ? number(f.get('dispositionDuring'), 1, 5) : null,
+      recoveryAfter: f.get('recoveryAfter') ? number(f.get('recoveryAfter'), 1, 5) : null,
       intensity: f.get('intensity'),
       sessionRpe: f.get('sessionRpe') ? Number(f.get('sessionRpe')) : null,
       fatigueAfter: f.get('fatigueAfter') ? Number(f.get('fatigueAfter')) : null,
-      notes: f.get('notes'),
+      notes: String(f.get('notes') || '').trim(),
       createdAt: a.createdAt || now,
       updatedAt: now
     });

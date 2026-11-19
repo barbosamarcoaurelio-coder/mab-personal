@@ -30,12 +30,14 @@ test('calculates 4/4/9 energy, daily water, meals, and protein per meal', () => 
     { meal: 'cafe', protein: 12, kind: 'food' },
     { meal: 'cafe', protein: 3, kind: 'food' },
     { meal: 'almoco', protein: 30, kind: 'food' },
-    { kind: 'water', quantityMl: 250 }
+    { kind: 'water', quantityMl: 250 },
+    { kind: 'meal-feedback', meal: 'cafe', tolerance: 'comfortable' }
   ];
   assert.equal(macroCalories({ carbs: 10, protein: 20, fat: 5 }), 165);
   assert.equal(sumWater(items), 250);
   assert.equal(mealCount(items), 2);
   assert.deepEqual(plain(proteinByMeal(items)), { cafe: 15, almoco: 30 });
+  assert.deepEqual(plain(sumTotals(items)), { kcal: 0, carbs: 0, protein: 45, fat: 0 });
 });
 
 test('uses 4/4/9 kcal per gram, not the declared calories, and handles zero', () => {

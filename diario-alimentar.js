@@ -1,9 +1,10 @@
 import { all, get, remove, tx, uuid } from './db.js';
 import { route } from './router.js';
 import { esc, number } from './validators.js';
-import { sumTotals, scalePortions, macroCalories, macroPercentages, sumWater, mealCount, proteinByMeal, calorieBalance, localDate } from './nutrition-calc.js';
+import { sumTotals, scalePortions, macroCalories, macroPercentages, sumWater, mealCount, proteinByMeal, isNutritionItem, calorieBalance, localDate } from './nutrition-calc.js';
 import { scanBarcode } from './barcode-scanner.js';
 import { fetchOffProduct, searchOffProducts, isValidEan } from './off-client.js';
+import { sessionTimes } from './timer-service.js';
 
 const MEALS = {
   pre_treino: 'Pré-treino', cafe: 'Café da manhã', lanche_manha: 'Lanche da manhã',
@@ -11,6 +12,22 @@ const MEALS = {
 };
 const MACROS = { carbs: 'Carboidratos', protein: 'Proteína', fat: 'Gordura' };
 const COLORS = { carbs: '#f58220', protein: '#ffbf80', fat: '#9a6240' };
+const TOLERANCE = {
+  good: 'Bem',
+  comfortable: 'Satisfeito, mas confortável',
+  uncomfortable: 'Desconfortável ou muito cheio'
+};
+const WELLBEING_FIELDS = [
+  { key: 'generalDisposition', label: 'Disposição geral', low: 'Baixa', high: 'Alta' },
+  { key: 'mealSatiety', label: 'Saciedade após refeições', low: 'Pouca', high: 'Muita' },
+  { key: 'digestionQuality', label: 'Qualidade da digestão', low: 'Ruim', high: 'Boa' },
+  { key: 'dayHunger', label: 'Fome ao longo do dia', low: 'Pouca', high: 'Muita' },
+  { key: 'trainingEnergy', label: 'Energia durante os treinos', low: 'Baixa', high: 'Alta' }
+];
+const ACTIVITY_WELLBEING_FIELDS = [
+  { key: 'dispositionDuring', label: 'Disposição durante', low: 'Baixa', high: 'Alta' },
+  { key: 'recoveryAfter', label: 'Recuperação após', low: 'Baixa', high: 'Alta' }
+];
 let selectedDate = localDate();
 let viewingDate = false;
 let barcodeLookup;
@@ -43,15 +60,58 @@ function defaultTimeForDate(date) {
 }
 
 async function dayData(date) {
-  const [logs, setting, closure] = await Promise.all([all('foodLogs'), get('settings', 'nutritionGoals'), get('dayClosures', date)]);
+  const [logs, setting, closure, recoveries, sessions, activities] = await Promise.all([
+    all('foodLogs'), get('settings', 'nutritionGoals'), get('dayClosures', date),
+    all('dailyRecovery'), all('workoutSessions'), all('activityDiary')
+  ]);
   const dayLogs = logs.filter(item => item.date === date);
   const waterLogs = dayLogs.filter(item => item.kind === 'water');
-  const items = dayLogs.filter(item => item.kind !== 'water');
+  const toleranceLogs = dayLogs.filter(item => item.kind === 'meal-feedback');
+  const items = dayLogs.filter(isNutritionItem);
+  const toleranceByMeal = Object.fromEntries(toleranceLogs.map(item => [item.meal, item.tolerance]));
+  const workouts = sessions.filter(item => {
+    if (!item.startedAt) return false;
+    try { return localDate(item.startedAt) === date; } catch { return false; }
+  });
   return {
-    items, waterLogs, waterMl: closure?.waterMl ?? sumWater(waterLogs),
+    items, waterLogs, toleranceByMeal, workouts,
+    activities: activities.filter(item => item.date === date),
+    recovery: recoveries.find(item => item.date === date),
+    waterMl: closure?.waterMl ?? sumWater(waterLogs),
     consumed: closure?.consumed ?? sumTotals(items),
     goals: closure?.goals ?? setting?.value, closure
   };
+}
+
+function ratingScale(field, value, prefix = '') {
+  const name = `${prefix}${field.key}`;
+  return `<fieldset class="diet-rating-field"><legend>${esc(field.label)}</legend><div class="diet-rating-scale">${[1, 2, 3, 4, 5].map(score => `<label><input type="radio" name="${esc(name)}" data-rating="${esc(field.key)}" value="${score}" ${Number(value) === score ? 'checked' : ''}><span>${score}</span></label>`).join('')}</div><div class="row muted diet-rating-ends"><span>${esc(field.low)}</span><span>${esc(field.high)}</span></div></fieldset>`;
+}
+
+function toleranceChoices(selected, action, includeClear = false, meal = '') {
+  return `<div class="diet-tolerance-options">${Object.entries(TOLERANCE).map(([value, label]) => `<button type="button" class="ghost ${selected === value ? 'active' : ''}" data-diet="${action}" data-meal="${esc(meal)}" data-tolerance="${value}" aria-pressed="${selected === value}">${esc(label)}</button>`).join('')}${includeClear && selected ? `<button type="button" class="ghost" data-diet="${action}" data-meal="${esc(meal)}" data-tolerance="" aria-label="Limpar avaliação da refeição">Limpar</button>` : ''}</div>`;
+}
+
+function toleranceId(date, meal) {
+  return `meal-feedback:${date}:${encodeURIComponent(meal)}`;
+}
+
+function wellbeingCard(date, recovery) {
+  const count = WELLBEING_FIELDS.filter(field => recovery?.[field.key] != null).length;
+  return `<details class="card stack diet-wellbeing"><summary>Bem-estar diário · ${count ? `${count}/5 indicadores` : 'opcional'}</summary><form id="dietWellbeingForm" class="stack" data-date="${esc(date)}">${WELLBEING_FIELDS.map(field => ratingScale(field, recovery?.[field.key])).join('')}<label class="field">Observações (opcional)<textarea name="wellbeingNotes" maxlength="1000" placeholder="Desconfortos, dificuldade com proteínas, enjoo, refluxo...">${esc(recovery?.wellbeingNotes || '')}</textarea></label><button type="button" class="primary" data-diet="save-wellbeing">Salvar bem-estar</button></form></details>`;
+}
+
+function activitySection(date, workouts, activities) {
+  const workoutRows = workouts.map(session => {
+    const time = new Date(session.startedAt);
+    const timeText = Number.isFinite(time.getTime()) ? time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+    const duration = sessionTimes(session).total;
+    const durationText = duration == null ? (session.status === 'in_progress' ? 'Em andamento' : 'Duração indisponível') : `${n(duration / 60)} min`;
+    const label = `Musculação · Treino ${session.groupCode || ''}${timeText ? ` · ${timeText}` : ''} · ${durationText}`;
+    return `<details class="diet-activity-item"><summary>${esc(label)}</summary><form class="stack diet-session-wellbeing" data-session-id="${esc(session.id)}">${ACTIVITY_WELLBEING_FIELDS.map(field => ratingScale(field, session[field.key], `${session.id}-`)).join('')}<label class="field">Observações (opcional)<textarea name="wellbeingNotes" maxlength="1000" placeholder="Como foi o treino e a recuperação?">${esc(session.wellbeingNotes || '')}</textarea></label><button type="button" class="ghost" data-diet="save-session-wellbeing" data-id="${esc(session.id)}">Salvar avaliação</button></form></details>`;
+  }).join('');
+  const activityRows = activities.map(activity => `<div class="diet-activity-item"><div class="row"><strong>${esc(activity.modality || 'Outra atividade')}</strong><button type="button" class="ghost" data-action="edit-activity" data-id="${esc(activity.id)}">Editar</button></div><span class="muted">${esc(date)}${activity.time ? ` · ${esc(activity.time)}` : ''} · ${n(activity.durationMinutes || 0)} min${activity.dispositionDuring ? ` · Disposição ${n(activity.dispositionDuring)}/5` : ''}${activity.recoveryAfter ? ` · Recuperação ${n(activity.recoveryAfter)}/5` : ''}</span>${activity.notes ? `<p class="muted">${esc(activity.notes)}</p>` : ''}</div>`).join('');
+  return `<section class="card stack diet-activities"><div class="row"><h3>Atividades físicas</h3><button type="button" class="ghost" data-action="new-activity">+ Registrar atividade</button></div>${workoutRows}${activityRows}${!workoutRows && !activityRows ? '<p class="muted">Nenhuma atividade registrada nesta data.</p>' : ''}</section>`;
 }
 
 function progress(value, goal) {
@@ -86,7 +146,7 @@ function pie(consumed) {
 
 export async function dietView() {
   if (!viewingDate) selectedDate = localDate();
-  const { items, waterLogs, waterMl, consumed, goals, closure } = await dayData(selectedDate);
+  const { items, waterLogs, waterMl, consumed, goals, closure, toleranceByMeal, recovery, workouts, activities } = await dayData(selectedDate);
   const closures = (await all('dayClosures')).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7);
   const mealTypes = [...Object.entries(MEALS)];
   for (const meal of new Set(items.map(item => item.meal).filter(meal => meal && !MEALS[meal]))) {
@@ -101,10 +161,12 @@ export async function dietView() {
     <div class="row"><button class="ghost" data-diet="previous" aria-label="Dia anterior">‹</button><label class="field">Data<input id="dietDate" type="date" value="${esc(selectedDate)}"></label><button class="ghost" data-diet="next" aria-label="Próximo dia">›</button></div>
     <div class="card stack">${calorieSummary(consumed, goals)}${macroBars(consumed, goals)}${pie(consumed)}<button class="primary" data-diet="${closure ? 'reopen' : 'close-day'}">${closure ? 'Reabrir dia para editar' : 'Fechar dia'}</button>${closure ? `<p>Saldo: ${balanceLabel(closure.balance)}</p><p class="muted">Gasto em treinos/atividades: ${n(closure.burnedKcal)} kcal (estimado). Dia fechado com as metas da época. Reabra para alterar os registros.</p>` : `<button class="secondary" data-diet="register-meal">+ Registrar Refeição</button>`}</div>
     <div class="card stack diet-daily-details"><div class="grid two"><div class="metric"><span class="muted">Refeições registradas</span><strong>${mealCount(items)}</strong></div><div class="metric"><span class="muted">Água consumida</span><strong>${n(waterMl)} ml</strong>${closure ? '' : '<button type="button" class="ghost" data-diet="add-water">+ Registrar água</button>'}</div></div><div><h3>Proteína por refeição</h3>${mealProteinRows || '<p class="muted">Nenhuma refeição registrada.</p>'}</div>${waterRows ? `<div class="stack"><h3>Registros de água</h3>${waterRows}</div>` : ''}</div>
+    ${wellbeingCard(selectedDate, recovery)}
+    ${activitySection(selectedDate, workouts, activities)}
     ${mealTypes.map(([meal, label]) => {
       const rows = items.filter(item => item.meal === meal);
       const totals = sumTotals(rows);
-      return `<div class="card stack diet-meal-card"><div class="row diet-meal-heading"><div><h3>${esc(label)}</h3><span class="muted">${n(totals.kcal)} kcal · C ${n(totals.carbs)} g · P ${n(totals.protein)} g · G ${n(totals.fat)} g</span></div><button type="button" class="primary diet-meal-toggle" data-diet="toggle-meal" aria-expanded="false" aria-label="Expandir ${esc(label)}" aria-controls="meal-${esc(meal)}">+</button></div><div id="meal-${esc(meal)}" class="stack diet-meal-content" hidden>${rows.map(item => `<div class="diet-food-row stack"><strong>${esc(item.name)}</strong><span class="muted">${n(item.qty)} porções${item.quantity != null && item.unit !== 'porção' ? ` · ${n(item.quantity)} ${esc(item.unit || '')}${item.weightGrams != null && item.unit !== 'g' ? ` · ${n(item.weightGrams)} g` : ''}` : ''}${item.time ? ` · ${esc(item.time)}` : ''} · ${n(item.kcal)} kcal · C ${n(item.carbs)} g · P ${n(item.protein)} g · G ${n(item.fat)} g</span>${closure ? '' : `<div class="row"><button class="ghost" data-diet="edit-log" data-id="${esc(item.id)}">Editar</button><button class="ghost" data-diet="delete-log" data-id="${esc(item.id)}">Excluir</button></div>`}</div>`).join('') || '<p class="muted">Nenhum alimento registrado.</p>'}${closure ? '' : `<button class="ghost" data-diet="add" data-meal="${esc(meal)}">+ Adicionar alimentos</button><button class="ghost" data-diet="copy" data-meal="${esc(meal)}">Copiar refeição de ontem</button>`}</div></div>`;
+      return `<div class="card stack diet-meal-card"><div class="row diet-meal-heading"><div><h3>${esc(label)}</h3><span class="muted">${n(totals.kcal)} kcal · C ${n(totals.carbs)} g · P ${n(totals.protein)} g · G ${n(totals.fat)} g</span></div><button type="button" class="primary diet-meal-toggle" data-diet="toggle-meal" aria-expanded="false" aria-label="Expandir ${esc(label)}" aria-controls="meal-${esc(meal)}">+</button></div><div id="meal-${esc(meal)}" class="stack diet-meal-content" hidden>${rows.map(item => `<div class="diet-food-row stack"><strong>${esc(item.name)}</strong><span class="muted">${n(item.qty)} porções${item.quantity != null && item.unit !== 'porção' ? ` · ${n(item.quantity)} ${esc(item.unit || '')}${item.weightGrams != null && item.unit !== 'g' ? ` · ${n(item.weightGrams)} g` : ''}` : ''}${item.time ? ` · ${esc(item.time)}` : ''} · ${n(item.kcal)} kcal · C ${n(item.carbs)} g · P ${n(item.protein)} g · G ${n(item.fat)} g</span>${closure ? '' : `<div class="row"><button class="ghost" data-diet="edit-log" data-id="${esc(item.id)}">Editar</button><button class="ghost" data-diet="delete-log" data-id="${esc(item.id)}">Excluir</button></div>`}</div>`).join('') || '<p class="muted">Nenhum alimento registrado.</p>'}<div class="diet-meal-tolerance"><strong>Tolerância após a refeição · opcional</strong>${closure ? `<span class="muted">${esc(TOLERANCE[toleranceByMeal[meal]] || 'Não avaliada')}</span>` : toleranceChoices(toleranceByMeal[meal], 'save-tolerance', true, meal)}</div>${closure ? '' : `<button class="ghost" data-diet="add" data-meal="${esc(meal)}">+ Adicionar alimentos</button><button class="ghost" data-diet="copy" data-meal="${esc(meal)}">Copiar refeição de ontem</button>`}</div></div>`;
     }).join('')}
     <div class="card stack"><h3>Últimos 7 dias fechados</h3>${closures.map(day => `<button class="ghost" data-diet="show-date" data-date="${esc(day.date)}">${esc(day.date)} · ${balanceLabel(day.balance)}</button>`).join('') || '<p class="muted">Nenhum dia fechado.</p>'}</div>
   </section>`;
@@ -170,8 +232,10 @@ function mealPickerDialog() {
 async function addDialog(meal) {
   const date = selectedDate;
   await requireOpen(date);
-  const localFoods = (await all('foodItems')).sort((a, b) => Number(b.favorite) - Number(a.favorite) || (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '') || a.name.localeCompare(b.name));
-  mealDraft = { meal, date, time: defaultTimeForDate(date), items: [], localFoods, query: '', remoteFoods: [], searchMessage: '' };
+  const [foods, logs] = await Promise.all([all('foodItems'), all('foodLogs')]);
+  const localFoods = foods.sort((a, b) => Number(b.favorite) - Number(a.favorite) || (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '') || a.name.localeCompare(b.name));
+  const toleranceLog = logs.find(item => item.kind === 'meal-feedback' && item.date === date && item.meal === meal);
+  mealDraft = { meal, date, time: defaultTimeForDate(date), items: [], localFoods, query: '', remoteFoods: [], searchMessage: '', tolerance: toleranceLog?.tolerance || '', toleranceCreatedAt: toleranceLog?.createdAt || null, toleranceTouched: false };
   showDialog('Registrar refeição', '');
   renderMealBuilder();
 }
@@ -189,7 +253,7 @@ function renderMealBuilder() {
     return `<div class="diet-food-row stack"><div class="row"><strong>${esc(item.food.name)}</strong><button type="button" class="danger diet-remove-item" data-diet="builder-remove" data-id="${esc(item.draftId)}" aria-label="Excluir ${esc(item.food.name)}">Excluir</button></div><label class="field">Quantidade (${esc(item.food.servingUnit)} por porção)<input type="text" inputmode="decimal" autocomplete="off" value="${esc(item.qty)}" data-builder-qty="${esc(item.draftId)}" aria-label="Quantidade de ${esc(item.food.name)}"></label><span class="muted" data-builder-item-total="${esc(item.draftId)}">${mealNutritionText(totals)}</span><button type="button" class="ghost" data-diet="builder-edit" data-id="${esc(item.draftId)}">Editar alimento e nutrientes</button></div>`;
   }).join('');
   const totals = sumTotals(state.items.map(item => scalePortions(item.food, item.qty)));
-  content().innerHTML = `<div class="stack diet-dialog"><div class="row"><h2>${esc(MEALS[state.meal] || state.meal)}</h2><button type="button" class="ghost" data-diet="dismiss" aria-label="Cancelar refeição">✕</button></div><label class="field">Horário da refeição (opcional)<input id="dietMealTime" type="time" value="${esc(state.time)}"></label><label class="field">Buscar alimento por nome<input id="dietBuilderSearch" type="search" inputmode="search" autocomplete="off" placeholder="Ex.: leite integral" value="${esc(state.query)}"></label><div id="dietBuilderResults" class="stack" aria-live="polite"></div><button type="button" class="primary" data-diet="scan" data-meal="${esc(state.meal)}">Ler código de barras</button><button type="button" class="ghost" data-diet="builder-manual">+ Cadastrar alimento manualmente</button><h3>Alimentos desta refeição (${state.items.length})</h3><div id="dietBuilderItems" class="stack">${rows || '<p class="muted">Adicione um ou mais alimentos. Nada será salvo no diário até tocar em “Salvar Refeição”.</p>'}</div><div class="card stack"><strong>Total da refeição</strong><span id="dietBuilderTotal">${mealNutritionText(totals)}</span></div><button type="button" class="primary" data-diet="save-meal" ${state.items.length ? '' : 'disabled'}>Salvar Refeição</button><button type="button" class="ghost" data-diet="cancel-meal">Cancelar sem salvar</button></div>`;
+  content().innerHTML = `<div class="stack diet-dialog"><div class="row"><h2>${esc(MEALS[state.meal] || state.meal)}</h2><button type="button" class="ghost" data-diet="dismiss" aria-label="Cancelar refeição">✕</button></div><label class="field">Horário da refeição (opcional)<input id="dietMealTime" type="time" value="${esc(state.time)}"></label><div class="diet-meal-tolerance"><strong>Tolerância após a refeição · opcional</strong>${toleranceChoices(state.tolerance, 'draft-tolerance', true, state.meal)}</div><label class="field">Buscar alimento por nome<input id="dietBuilderSearch" type="search" inputmode="search" autocomplete="off" placeholder="Ex.: leite integral" value="${esc(state.query)}"></label><div id="dietBuilderResults" class="stack" aria-live="polite"></div><button type="button" class="primary" data-diet="scan" data-meal="${esc(state.meal)}">Ler código de barras</button><button type="button" class="ghost" data-diet="builder-manual">+ Cadastrar alimento manualmente</button><h3>Alimentos desta refeição (${state.items.length})</h3><div id="dietBuilderItems" class="stack">${rows || '<p class="muted">Adicione um ou mais alimentos. Nada será salvo no diário até tocar em “Salvar Refeição”.</p>'}</div><div class="card stack"><strong>Total da refeição</strong><span id="dietBuilderTotal">${mealNutritionText(totals)}</span></div><button type="button" class="primary" data-diet="save-meal" ${state.items.length ? '' : 'disabled'}>Salvar Refeição</button><button type="button" class="ghost" data-diet="cancel-meal">Cancelar sem salvar</button></div>`;
   content().querySelector('#dietMealTime').oninput = event => { state.time = event.target.value; };
   content().querySelector('#dietBuilderSearch').oninput = event => {
     state.query = event.target.value.trim();
@@ -334,12 +398,21 @@ async function saveMealDraft() {
       }
     }));
     await tx(['foodLogs', 'foodItems'], 'readwrite', stores => {
+      const logStore = stores.objectStore('foodLogs');
       for (const { item, log } of entries) {
-        stores.objectStore('foodLogs').put(log);
+        logStore.put(log);
         const food = item.isNew
           ? { ...item.food, updatedAt: now, lastUsedAt: now }
           : { ...item.food, lastUsedAt: now };
         stores.objectStore('foodItems').put(food);
+      }
+      if (state.toleranceTouched) {
+        const id = toleranceId(state.date, state.meal);
+        if (state.tolerance) {
+          logStore.put({ id, kind: 'meal-feedback', date: state.date, meal: state.meal, tolerance: state.tolerance, createdAt: state.toleranceCreatedAt || now, updatedAt: now });
+        } else {
+          logStore.delete(id);
+        }
       }
     });
     mealDraft = null;
@@ -477,6 +550,55 @@ async function saveWaterLog(amount, time, date = selectedDate, id = null) {
   await refresh();
 }
 
+async function saveWellbeing(form) {
+  const date = form.dataset.date;
+  const existing = (await all('dailyRecovery')).find(item => item.date === date);
+  const values = new FormData(form);
+  const record = {
+    ...(existing || {}), id: existing?.id || uuid(), date,
+    ...Object.fromEntries(WELLBEING_FIELDS.map(field => {
+      const value = values.get(field.key);
+      return [field.key, value ? number(value, 1, 5) : null];
+    })),
+    wellbeingNotes: String(values.get('wellbeingNotes') || '').trim() || null,
+    updatedAt: new Date().toISOString(), createdAt: existing?.createdAt || new Date().toISOString()
+  };
+  await tx(['dailyRecovery'], 'readwrite', stores => stores.objectStore('dailyRecovery').put(record));
+  toast('Bem-estar salvo');
+  await refresh();
+}
+
+async function saveSessionWellbeing(button) {
+  const session = await get('workoutSessions', button.dataset.id);
+  if (!session) throw new Error('Treino não encontrado.');
+  const form = button.closest('.diet-session-wellbeing');
+  if (!form) throw new Error('Formulário de avaliação não encontrado.');
+  for (const field of ACTIVITY_WELLBEING_FIELDS) {
+    const value = form.querySelector(`[data-rating="${field.key}"]:checked`)?.value;
+    session[field.key] = value ? number(value, 1, 5) : null;
+  }
+  session.wellbeingNotes = form.elements.namedItem('wellbeingNotes').value.trim() || null;
+  await tx(['workoutSessions'], 'readwrite', stores => stores.objectStore('workoutSessions').put(session));
+  toast('Avaliação do treino salva');
+  await refresh();
+}
+
+async function saveMealTolerance(date, meal, tolerance) {
+  await requireOpen(date);
+  if (tolerance && !Object.hasOwn(TOLERANCE, tolerance)) throw new Error('Avaliação de tolerância inválida.');
+  const id = toleranceId(date, meal);
+  if (tolerance) {
+    const current = await get('foodLogs', id);
+    await tx(['foodLogs'], 'readwrite', stores => stores.objectStore('foodLogs').put({
+      ...(current || {}), id, kind: 'meal-feedback', date, meal, tolerance,
+      updatedAt: new Date().toISOString(), createdAt: current?.createdAt || new Date().toISOString()
+    }));
+  } else {
+    await remove('foodLogs', id);
+  }
+  await refresh();
+}
+
 async function waterDialog(log = null) {
   const date = log?.date || selectedDate;
   await requireOpen(date);
@@ -547,6 +669,30 @@ document.addEventListener('click', guard(async event => {
     await refresh();
   }
   if (action === 'goals') await goalsDialog();
+  if (action === 'save-wellbeing') {
+    const form = document.querySelector('#dietWellbeingForm');
+    if (!form) throw new Error('Formulário de bem-estar não encontrado.');
+    await saveWellbeing(form);
+    return;
+  }
+  if (action === 'save-session-wellbeing') {
+    await saveSessionWellbeing(button);
+    return;
+  }
+  if (action === 'save-tolerance') {
+    await saveMealTolerance(selectedDate, meal, button.dataset.tolerance);
+    toast('Tolerância da refeição salva');
+    return;
+  }
+  if (action === 'draft-tolerance') {
+    if (!mealDraft) return;
+    const tolerance = button.dataset.tolerance;
+    if (tolerance && !Object.hasOwn(TOLERANCE, tolerance)) throw new Error('Avaliação de tolerância inválida.');
+    mealDraft.tolerance = tolerance;
+    mealDraft.toleranceTouched = true;
+    renderMealBuilder();
+    return;
+  }
   if (action === 'add-water') await waterDialog();
   if (action === 'water-preset') {
     const time = content().querySelector('#waterForm [name="time"]')?.value || '';
@@ -640,7 +786,7 @@ document.addEventListener('click', guard(async event => {
   if (action === 'copy') {
     const targetDate = selectedDate;
     await requireOpen(targetDate);
-    const rows = (await all('foodLogs')).filter(item => item.date === shiftDate(targetDate, -1) && item.meal === meal);
+    const rows = (await all('foodLogs')).filter(item => item.date === shiftDate(targetDate, -1) && item.meal === meal && isNutritionItem(item));
     if (!rows.length) { toast('Não há itens nessa refeição de ontem.'); return; }
     showDialog('Copiar refeição de ontem', `<p>Adicionar ${rows.length} item(ns) de ${esc(MEALS[meal] || meal)} a ${esc(targetDate)}? Os itens existentes serão mantidos.</p><button class="primary" id="dietConfirmCopy">Copiar refeição</button>`);
     content().querySelector('#dietConfirmCopy').onclick = guard(async () => {

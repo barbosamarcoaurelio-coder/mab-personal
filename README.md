@@ -2,6 +2,13 @@
 
 PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e backup/restauração em JSON.
 
+## Versão 4.8.0 — Bem-estar e atividades no diário
+
+- O diário oferece avaliações opcionais de disposição, saciedade, digestão, fome e energia, com observações editáveis armazenadas no registro diário existente.
+- Cada refeição aceita avaliação rápida de tolerância, inclusive durante a montagem da refeição. Esses registros não afetam calorias, macros nem a contagem de refeições.
+- Treinos de musculação existentes são exibidos e avaliados diretamente, sem duplicar sessões. Outras atividades podem ser registradas/editadas com data, horário, modalidade, duração e avaliações opcionais de disposição e recuperação.
+- Dados complementares são opcionais, reutilizam os stores existentes e mantêm os registros históricos; nenhum campo é exigido para fechar o dia.
+
 ## Versão 4.7.1 — Tempo ativo total do mês
 
 - O indicador da tela inicial soma o tempo de musculações e outras atividades registradas no mês local, exibindo o acumulado em `HH:MM:SS`.

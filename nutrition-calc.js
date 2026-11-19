@@ -1,7 +1,12 @@
 const KEYS = ['kcal', 'carbs', 'protein', 'fat'];
+const NUTRITIONAL_KINDS = new Set(['water', 'meal-feedback']);
+
+export function isNutritionItem(item) {
+  return !NUTRITIONAL_KINDS.has(item.kind);
+}
 
 export function sumTotals(items) {
-  return items.reduce((total, item) => {
+  return items.filter(isNutritionItem).reduce((total, item) => {
     for (const key of KEYS) total[key] += Number(item[key] ?? 0);
     return total;
   }, { kcal: 0, carbs: 0, protein: 0, fat: 0 });
@@ -16,12 +21,12 @@ export function sumWater(items) {
 }
 
 export function mealCount(items) {
-  return new Set(items.filter(item => item.kind !== 'water' && item.meal).map(item => item.meal)).size;
+  return new Set(items.filter(item => isNutritionItem(item) && item.meal).map(item => item.meal)).size;
 }
 
 export function proteinByMeal(items) {
   return items.reduce((totals, item) => {
-    if (item.kind !== 'water' && item.meal) totals[item.meal] = (totals[item.meal] || 0) + Number(item.protein ?? 0);
+    if (isNutritionItem(item) && item.meal) totals[item.meal] = (totals[item.meal] || 0) + Number(item.protein ?? 0);
     return totals;
   }, {});
 }
