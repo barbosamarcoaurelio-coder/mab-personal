@@ -218,7 +218,25 @@ async function evolution() {
     const d = Number(latest[key]) - Number(previous[key]);
     return `<div class="muted">${d>0?'+':''}${d.toFixed(1)}${u} vs anterior</div>`
   };
-  return `<div class="stack"><div class="row" style="flex-wrap:wrap;gap:8px"><h2>Evolução</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="primary" data-action="new-assessment">+ Peso/Bioimpedância</button></div></div><div class="card"><div class="row" style="flex-wrap:wrap;gap:8px"><h3>Atividades registradas</h3><select id="activityChartMetric" aria-label="Indicador do gráfico de atividades" style="background:#0e0e0e;color:#fff;border:1px solid #383838;border-radius:10px;padding:10px;max-width:100%;min-width:0;width:100%"><option value="duration">Tempo ativo (minutos)</option><option value="calories">Calorias (kcal)</option><option value="distance">Distância (km)</option><option value="frequency">Frequência de Atividades e Exercícios</option><option value="frequency_modalities">Frequência por modalidade</option><option value="frequency_exercises">Frequência por exercício</option></select></div><div id="activityChart"></div></div><div class="card"><h3>Composição corporal atual</h3><div class="grid two"><div class="metric"><span class="muted">Peso</span><strong>${fmtMetric(latest?.weight,' kg')}</strong>${delta('weight',' kg')}</div><div class="metric"><span class="muted">Músculo Esquelético</span><strong>${fmtMetric(latest?.leanMass,' kg')}</strong>${delta('leanMass',' kg')}</div><div class="metric"><span class="muted">Massa gorda</span><strong>${fmtMetric(latest?.fatMass,' kg')}</strong>${delta('fatMass',' kg')}</div><div class="metric"><span class="muted">Gordura corporal</span><strong>${fmtMetric(latest?.bodyFat,'%')}</strong>${delta('bodyFat',' p.p.')}</div><div class="metric"><span class="muted">Circunferência abdominal</span><strong>${fmtMetric(latest?.waistCm,' cm')}</strong>${delta('waistCm',' cm')}</div><div class="metric"><span class="muted">Data da avaliação</span><strong>${latest?.date||'--'}</strong></div></div></div><div class="card"><div class="row" style="flex-wrap:wrap;gap:8px"><h3>Evolução corporal</h3><select id="bodyChartMetric" aria-label="Indicador do gráfico" style="background:#0e0e0e;color:#fff;border:1px solid #383838;border-radius:10px;padding:10px;max-width:100%;min-width:0"><option value="weight">Peso</option><option value="leanMass">Músculo Esquelético</option><option value="fatMass">Massa gorda</option><option value="bodyFat">% gordura</option><option value="waistCm">Circunferência</option></select></div><div id="bodyChart"></div></div><div class="card"><h3>Histórico corporal</h3>${[...list].reverse().map(x=>`<div class="exercise-item"><div><strong>${x.weight!=null?`${x.weight} kg`:'— kg'}</strong><div class="muted">${esc(x.date)}</div><div class="muted">Músculo: ${fmtMetric(x.leanMass,' kg')} · Gorda: ${fmtMetric(x.fatMass,' kg')} · Abdômen: ${fmtMetric(x.waistCm,' cm')}</div></div><span>${fmtMetric(x.bodyFat,'% gordura')}</span></div>`).join('')||'<div class="empty">Sem avaliações.</div>'}</div><div class="card"><h3>Exportar para análise</h3><p class="muted">Gere um arquivo de texto com exercícios, séries, cargas e atividades por intervalo de datas.</p><button class="secondary" data-action="export-period">Exportar treinos por período</button></div></div>`
+  return `<div class="stack"><div class="row" style="flex-wrap:wrap;gap:8px"><h2>Evolução</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="primary" data-action="new-assessment">+ Peso/Bioimpedância</button></div></div><div class="card"><div class="row" style="flex-wrap:wrap;gap:8px"><h3>Atividades registradas</h3><select id="activityChartMetric" aria-label="Indicador do gráfico de atividades" style="background:#0e0e0e;color:#fff;border:1px solid #383838;border-radius:10px;padding:10px;max-width:100%;min-width:0;width:100%"><option value="duration">Tempo ativo (minutos)</option><option value="calories">Calorias (kcal)</option><option value="distance">Distância (km)</option><option value="frequency">Frequência de Atividades e Exercícios</option><option value="frequency_modalities">Frequência por modalidade</option><option value="frequency_exercises">Frequência por exercício</option></select></div><div id="activityChart"></div></div><div class="card"><h3>Composição corporal atual</h3><div class="grid two"><div class="metric"><span class="muted">Peso</span><strong>${fmtMetric(latest?.weight,' kg')}</strong>${delta('weight',' kg')}</div><div class="metric"><span class="muted">Músculo Esquelético</span><strong>${fmtMetric(latest?.leanMass,' kg')}</strong>${delta('leanMass',' kg')}</div><div class="metric"><span class="muted">Massa gorda</span><strong>${fmtMetric(latest?.fatMass,' kg')}</strong>${delta('fatMass',' kg')}</div><div class="metric"><span class="muted">Gordura corporal</span><strong>${fmtMetric(latest?.bodyFat,'%')}</strong>${delta('bodyFat',' p.p.')}</div><div class="metric"><span class="muted">Circunferência abdominal</span><strong>${fmtMetric(latest?.waistCm,' cm')}</strong>${delta('waistCm',' cm')}</div><div class="metric"><span class="muted">Data da avaliação</span><strong>${latest?.date||'--'}</strong></div></div></div><div class="card"><div class="row" style="flex-wrap:wrap;gap:8px"><h3>Evolução corporal</h3><select id="bodyChartMetric" aria-label="Indicador do gráfico" style="background:#0e0e0e;color:#fff;border:1px solid #383838;border-radius:10px;padding:10px;max-width:100%;min-width:0"><option value="weight">Peso</option><option value="leanMass">Músculo Esquelético</option><option value="fatMass">Massa gorda</option><option value="bodyFat">% gordura</option><option value="waistCm">Circunferência</option></select></div><div id="bodyChart"></div></div>
+  <div class="card"><h3 id="bodyHistoryHeading">Histórico corporal</h3>
+    ${list.length > 3 ? '<p class="muted body-history-hint">Role a lista para ver as avaliações anteriores.</p>' : ''}
+    <div ${list.length > 3 ? 'class="body-history-list" role="region" aria-labelledby="bodyHistoryHeading" tabindex="0"' : ''}>
+      ${[...list].reverse().map(x=>`<div class="exercise-item"><div><strong>${x.weight!=null?`${x.weight} kg`:'— kg'}</strong><div class="muted">${esc(x.date)}</div><div class="muted">Músculo: ${fmtMetric(x.leanMass,' kg')} · Gorda: ${fmtMetric(x.fatMass,' kg')} · Abdômen: ${fmtMetric(x.waistCm,' cm')}</div></div><span>${fmtMetric(x.bodyFat,'% gordura')}</span></div>`).join('')||'<div class="empty">Sem avaliações.</div>'}
+    </div>
+  </div>
+  <div class="card"><h3>Exportar para análise</h3><p class="muted">Gere um arquivo de texto com exercícios, séries, cargas e atividades por intervalo de datas.</p><button class="secondary" data-action="export-period">Exportar treinos por período</button></div></div>`
+}
+
+let bodyHistoryObserver;
+function fitBodyHistory(history) {
+  const recent = [...history.children].slice(0, 3);
+  const resize = () => {
+    history.style.maxHeight = `${recent[2].getBoundingClientRect().bottom - recent[0].getBoundingClientRect().top}px`;
+  };
+  resize();
+  bodyHistoryObserver = new ResizeObserver(resize);
+  recent.forEach(row => bodyHistoryObserver.observe(row));
 }
 
 function renderBodyChart(metric = 'weight') {
@@ -496,7 +514,11 @@ async function render() {
     evolution,
     diet: dietView
   };
-  app.innerHTML = await views[route()]();
+  const html = await views[route()]();
+  bodyHistoryObserver?.disconnect();
+  app.innerHTML = html;
+  const bodyHistory = app.querySelector('.body-history-list');
+  if (bodyHistory) fitBodyHistory(bodyHistory);
   if (route() === 'workout') tick = setInterval(async () => {
     const wt = document.querySelector('#workoutTimer'),
       rt = document.querySelector('#restTimer'),

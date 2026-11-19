@@ -2,6 +2,9 @@
 
 PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e backup/restauração em JSON.
 
+- Em **Dieta**, o botão **+** de cada card expande os detalhes da refeição.
+- Em **Evolução → Histórico corporal**, aparecem primeiro as três avaliações mais recentes. Role dentro da lista para consultar as anteriores.
+
 ## Versão 4.10.1 — Busca de alimentos
 
 - Removida a opção de consulta à TACO. A busca no Open Food Facts por nome e código de barras, o cadastro manual e os alimentos já salvos continuam disponíveis.
