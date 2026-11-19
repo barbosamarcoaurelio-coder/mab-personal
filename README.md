@@ -2,6 +2,13 @@
 
 PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e backup/restauração em JSON.
 
+## Versão 4.10.0 — Busca por nome na TACO
+
+- Na montagem da refeição, selecione **TACO — NEPA/UNICAMP** em **Fonte da busca por nome**. Pesquise pelo alimento e pelo preparo (ex.: `arroz integral cozido`) e confira os macronutrientes por 100 g antes de adicionar. A consulta não altera o histórico.
+- Fonte: [Tabela Brasileira de Composição de Alimentos (TACO), 4ª edição — NEPA/UNICAMP](https://nepa.unicamp.br/wp-content/uploads/sites/27/2023/10/taco_4_edicao_ampliada_e_revisada.pdf), via [API estática independente](https://brolesi.github.io/taco/api.dc.html), sem integração com a plataforma comercial Tabela TACO Online.
+- A TACO cobre alimentos genéricos, não produtos de marca por código de barras. Open Food Facts segue como fonte padrão por nome e para leitura de códigos. Sem resultado ou sem conexão, o cadastro manual continua disponível. Nutrientes não informados pela fonte ficam em branco para conferência.
+- A busca TACO é feita no navegador: a API recebe apenas requisições ao catálogo e à ficha selecionada, nunca o texto digitado ou os registros do diário.
+
 ## Versão 4.9.0 — Exportação do Diário Alimentar
 
 - Em **Dieta → Exportar CSV**, toque em **Últimos 7 dias** (inclui hoje) ou informe datas inicial e final, inclusive, e toque em **Preparar CSVs**. Baixe cada arquivo separadamente; os dados são lidos e processados no próprio aparelho.

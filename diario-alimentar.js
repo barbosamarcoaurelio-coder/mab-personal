@@ -5,6 +5,7 @@ import { MEALS, TOLERANCE, dayNutrition, workoutLocalDate, sumTotals, scalePorti
 import { buildDietCsv, DIET_CSV_STORES } from './nutrition-export.js';
 import { scanBarcode } from './barcode-scanner.js';
 import { fetchOffProduct, searchOffProducts, isValidEan } from './off-client.js';
+import { fetchTacoFood, searchTacoFoods } from './taco-client.js';
 import { sessionTimes } from './timer-service.js';
 
 const MACROS = { carbs: 'Carboidratos', protein: 'Proteína', fat: 'Gordura' };
@@ -293,7 +294,7 @@ async function addDialog(meal) {
   const [foods, logs] = await Promise.all([all('foodItems'), all('foodLogs')]);
   const localFoods = foods.sort((a, b) => Number(b.favorite) - Number(a.favorite) || (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '') || a.name.localeCompare(b.name));
   const toleranceLog = logs.find(item => item.kind === 'meal-feedback' && item.date === date && item.meal === meal);
-  mealDraft = { meal, date, time: defaultTimeForDate(date), items: [], localFoods, query: '', remoteFoods: [], searchMessage: '', tolerance: toleranceLog?.tolerance || '', toleranceCreatedAt: toleranceLog?.createdAt || null, toleranceTouched: false };
+  mealDraft = { meal, date, time: defaultTimeForDate(date), items: [], localFoods, query: '', searchSource: 'openfoodfacts', remoteFoods: [], searchMessage: '', tolerance: toleranceLog?.tolerance || '', toleranceCreatedAt: toleranceLog?.createdAt || null, toleranceTouched: false };
   showDialog('Registrar refeição', '');
   renderMealBuilder();
 }
@@ -313,7 +314,20 @@ function renderMealBuilder() {
   const totals = sumTotals(state.items.map(item => scalePortions(item.food, item.qty)));
   content().innerHTML = `<div class="stack diet-dialog"><div class="row"><h2>${esc(MEALS[state.meal] || state.meal)}</h2><button type="button" class="ghost" data-diet="dismiss" aria-label="Cancelar refeição">✕</button></div><label class="field">Horário da refeição (opcional)<input id="dietMealTime" type="time" value="${esc(state.time)}"></label><div class="diet-meal-tolerance"><strong>Tolerância após a refeição · opcional</strong>${toleranceChoices(state.tolerance, 'draft-tolerance', true, state.meal)}</div><label class="field">Buscar alimento por nome<input id="dietBuilderSearch" type="search" inputmode="search" autocomplete="off" placeholder="Ex.: leite integral" value="${esc(state.query)}"></label><div id="dietBuilderResults" class="stack" aria-live="polite"></div><button type="button" class="primary" data-diet="scan" data-meal="${esc(state.meal)}">Ler código de barras</button><button type="button" class="ghost" data-diet="builder-manual">+ Cadastrar alimento manualmente</button><h3>Alimentos desta refeição (${state.items.length})</h3><div id="dietBuilderItems" class="stack">${rows || '<p class="muted">Adicione um ou mais alimentos. Nada será salvo no diário até tocar em “Salvar Refeição”.</p>'}</div><div class="card stack"><strong>Total da refeição</strong><span id="dietBuilderTotal">${mealNutritionText(totals)}</span></div><button type="button" class="primary" data-diet="save-meal" ${state.items.length ? '' : 'disabled'}>Salvar Refeição</button><button type="button" class="ghost" data-diet="cancel-meal">Cancelar sem salvar</button></div>`;
   content().querySelector('#dietMealTime').oninput = event => { state.time = event.target.value; };
-  content().querySelector('#dietBuilderSearch').oninput = event => {
+  const search = content().querySelector('#dietBuilderSearch');
+  search.closest('label').insertAdjacentHTML('afterend', `<label class="field">Fonte da busca por nome<select id="dietBuilderSource">
+    <option value="openfoodfacts">Open Food Facts</option><option value="taco">TACO — NEPA/UNICAMP</option>
+    </select></label><small class="muted" id="dietSourceHint" hidden>TACO: alimentos genéricos, por nome e modo de preparo. Códigos de barras continuam na Open Food Facts.</small>`);
+  const source = content().querySelector('#dietBuilderSource');
+  const hint = content().querySelector('#dietSourceHint');
+  source.value = state.searchSource;
+  hint.hidden = source.value !== 'taco';
+  source.onchange = () => {
+    state.searchSource = source.value;
+    hint.hidden = source.value !== 'taco';
+    scheduleFoodSearch(state);
+  };
+  search.oninput = event => {
     state.query = event.target.value.trim();
     scheduleFoodSearch(state);
   };
@@ -329,7 +343,9 @@ function renderBuilderResults(state) {
   const query = state.query.toLocaleLowerCase('pt-BR');
   const local = state.localFoods.filter(food => !query || food.name.toLocaleLowerCase('pt-BR').includes(query));
   const localHtml = local.map(food => `<div class="diet-search-result"><strong>${esc(food.name)}</strong><span class="muted">${n(food.servingSize)} ${esc(food.servingUnit)} · ${n(food.kcal)} kcal${food.favorite ? ' · Favorito' : ''}</span><div class="row"><button type="button" class="ghost" data-diet="builder-add-local" data-id="${esc(food.id)}">Adicionar</button><button type="button" class="ghost" data-diet="builder-edit-local" data-id="${esc(food.id)}">Editar alimento</button><button type="button" class="ghost" data-diet="builder-favorite" data-id="${esc(food.id)}">${food.favorite ? 'Desfavoritar' : 'Favoritar'}</button></div></div>`).join('');
-  const remoteHtml = state.remoteFoods.map((food, index) => `<div class="diet-search-result"><strong>${esc(food.name)}</strong><span class="muted">${food.brand ? `${esc(food.brand)} · ` : ''}${mealNutritionText(food)} · Open Food Facts</span>${food.warnings.length ? `<span class="orange">${esc(food.warnings.join(' · '))}</span>` : ''}<button type="button" class="ghost" data-diet="builder-add-off" data-index="${index}">Conferir e adicionar</button></div>`).join('');
+  const remoteHtml = state.remoteFoods.map((food, index) => `<div class="diet-search-result"><strong>${esc(food.name)}</strong><span class="muted">${state.searchSource === 'taco'
+    ? 'TACO — NEPA/UNICAMP · valores por 100 g'
+    : `${food.brand ? `${esc(food.brand)} · ` : ''}${mealNutritionText(food)} · Open Food Facts`}</span>${food.warnings?.length ? `<span class="orange">${esc(food.warnings.join(' · '))}</span>` : ''}<button type="button" class="ghost" data-diet="builder-add-remote" data-index="${index}">Conferir e adicionar</button></div>`).join('');
   const queryNotice = state.searchMessage ? `<p class="muted" role="status">${esc(state.searchMessage)}</p>` : '';
   const empty = !local.length && !state.remoteFoods.length && state.query && !state.searchMessage
     ? '<p class="muted">Nenhum produto encontrado. Você pode cadastrar manualmente.</p>' : '';
@@ -343,24 +359,28 @@ function scheduleFoodSearch(state) {
   state.remoteFoods = [];
   state.searchMessage = '';
   const query = state.query.trim();
+  const taco = state.searchSource === 'taco';
+  const label = taco ? 'TACO' : 'Open Food Facts';
   if (query.length >= 2 && navigator.onLine === false) state.searchMessage = 'Sem conexão. Você ainda pode cadastrar o alimento manualmente.';
-  else if (query.length >= 2) state.searchMessage = 'Pesquisando na Open Food Facts…';
+  else if (query.length >= 2) state.searchMessage = `Pesquisando: ${label}…`;
   renderBuilderResults(state);
   if (query.length < 2 || navigator.onLine === false) return;
   foodSearchTimer = setTimeout(async () => {
     const controller = new AbortController();
     foodSearchController = controller;
     try {
-      const products = await searchOffProducts(query, { signal: controller.signal });
-      if (controller.signal.aborted || mealDraft !== state || state.query.trim() !== query) return;
+      const products = await (taco ? searchTacoFoods : searchOffProducts)(query, { signal: controller.signal });
+      if (controller.signal.aborted || mealDraft !== state) return;
       state.remoteFoods = products;
-      state.searchMessage = products.length ? '' : 'Nenhum produto encontrado na Open Food Facts. O cadastro manual continua disponível.';
+      state.searchMessage = products.length ? '' : `Nenhum alimento encontrado em ${label}. O cadastro manual continua disponível.`;
     } catch (error) {
-      if (controller.signal.aborted || mealDraft !== state || state.query.trim() !== query) return;
+      if (controller.signal.aborted || mealDraft !== state) return;
       state.searchMessage = `${error.message} Você ainda pode cadastrar manualmente.`;
     } finally {
-      if (foodSearchController === controller) foodSearchController = null;
-      renderBuilderResults(state);
+      if (foodSearchController === controller) {
+        foodSearchController = null;
+        renderBuilderResults(state);
+      }
     }
   }, 350);
 }
@@ -395,7 +415,7 @@ function addLocalFoodToDraft(food) {
 function builderFoodDialog(food = {}, draft = null, notice = '') {
   const state = mealDraft;
   if (!state) return;
-  const title = draft ? 'Editar alimento da refeição' : food.source === 'openfoodfacts' ? 'Conferir produto' : 'Novo alimento';
+  const title = draft ? 'Editar alimento da refeição' : ['openfoodfacts', 'taco'].includes(food.source) ? 'Conferir produto' : 'Novo alimento';
   const warning = notice || (food.warnings || []).join(' · ');
   showDialog(title, `${warning ? `<p class="orange" role="status">${esc(warning)}</p>` : ''}<form id="dietBuilderFoodForm" class="stack"><label class="field">Nome<input name="name" value="${esc(food.name)}" maxlength="160" required></label><label class="field">Marca (opcional)<input name="brand" value="${esc(food.brand)}" maxlength="200"></label><label class="field">Código de barras (opcional)<input name="barcode" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${esc(food.barcode)}"></label><p id="dietBarcodeWarning" class="orange" role="status"></p>${numericField('servingSize', 'Tamanho da porção', food.servingSize)}<label class="field">Unidade<select name="servingUnit">${['g', 'ml', 'un'].map(unit => `<option ${(food.servingUnit || 'g') === unit ? 'selected' : ''}>${unit}</option>`).join('')}</select></label>${numericField('qty', 'Quantidade consumida (porções)', draft?.qty ?? 1)}${numericField('kcal', 'kcal por porção', food.kcal)}${Object.entries(MACROS).map(([key, label]) => numericField(key, `${label} (g) por porção`, food[key])).join('')}<p class="muted">Confira o rótulo. Nutrientes não informados pela fonte precisam ser preenchidos; os valores não serão estimados.</p><button class="primary">${draft ? 'Atualizar alimento' : 'Adicionar à refeição'}</button><button type="button" class="ghost" data-diet="builder-return">Voltar sem adicionar</button></form>`);
   const form = content().querySelector('#dietBuilderFoodForm');
@@ -798,11 +818,33 @@ document.addEventListener('click', guard(async event => {
       .sort((a, b) => Number(b.favorite) - Number(a.favorite) || (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '') || a.name.localeCompare(b.name));
     renderBuilderResults(mealDraft);
   }
-  if (action === 'builder-add-off') {
-    const food = mealDraft?.remoteFoods[Number(button.dataset.index)];
+  if (action === 'builder-add-remote') {
+    const state = mealDraft;
+    const food = state?.remoteFoods[Number(button.dataset.index)];
     if (!food) throw new Error('Produto não encontrado. Pesquise novamente.');
-    builderFoodDialog({ ...food, source: 'openfoodfacts', offFetchedAt: new Date().toISOString() },
-      null, ['Fonte: Open Food Facts. Confira o rótulo e os valores por porção.', ...food.warnings].join(' · '));
+    if (state.searchSource === 'taco') {
+      foodSearchController?.abort();
+      const controller = new AbortController();
+      foodSearchController = controller;
+      button.disabled = true;
+      button.textContent = 'Carregando composição…';
+      try {
+        const detail = await fetchTacoFood(food.id, { signal: controller.signal });
+        if (controller.signal.aborted || mealDraft !== state || !button.isConnected || !modal().open) return;
+        builderFoodDialog(detail, null, ['Fonte: TACO, 4ª edição — NEPA/UNICAMP (API independente). Valores de referência por 100 g; confira o modo de preparo.', ...detail.warnings].join(' · '));
+      } catch (error) {
+        if (!controller.signal.aborted) throw error;
+      } finally {
+        if (foodSearchController === controller) foodSearchController = null;
+        if (button.isConnected) {
+          button.disabled = false;
+          button.textContent = 'Conferir e adicionar';
+        }
+      }
+    } else {
+      builderFoodDialog({ ...food, source: 'openfoodfacts', offFetchedAt: new Date().toISOString() },
+        null, ['Fonte: Open Food Facts. Confira o rótulo e os valores por porção.', ...food.warnings].join(' · '));
+    }
   }
   if (action === 'builder-edit') {
     const item = mealDraft?.items.find(entry => entry.draftId === id);
