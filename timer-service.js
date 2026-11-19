@@ -2,6 +2,7 @@ export function elapsed(startedAt,finishedAt){const end=finishedAt?new Date(fini
 export function remaining(targetEndAt){return Math.max(0,Math.ceil((new Date(targetEndAt).getTime()-Date.now())/1000))}
 export function fmt(sec){const m=Math.floor(sec/60),s=sec%60;return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`}
 export function fmtHms(sec){const total=Math.max(0,Math.floor(Number(sec)||0)),h=Math.floor(total/3600),m=Math.floor(total%3600/60),s=total%60;return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`}
+export function sumActiveSeconds(sessions, activities){return sessions.reduce((total,session)=>total+(sessionTimes(session).total??0),0)+activities.reduce((total,activity)=>total+Math.round(Number(activity.durationMinutes||0)*60),0)}
 
 export function sessionTimes(session, restTimers = [], executedSets = []) {
   const seconds = value => {

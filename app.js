@@ -11,6 +11,7 @@ import {
   remaining,
   fmt,
   fmtHms,
+  sumActiveSeconds,
   sessionTimes
 } from './timer-service.js';
 import {
@@ -49,16 +50,13 @@ async function dashboard() {
   const assessments = (await repo.all('bodyAssessments')).sort((a, b) => b.date.localeCompare(a.date));
   const sessions = (await repo.all('workoutSessions')).filter(s => s.status === 'completed');
   const activities = await repo.all('activityDiary');
-  const month = new Date().toISOString().slice(0, 7);
-  const today = localDate();
-  const monthly = sessions.filter(s => (s.startedAt || '').startsWith(month));
-  const monthlyActivities = activities.filter(a => (a.date || '').startsWith(month));
-  const isToday = value => {
-    try { return localDate(value) === today; } catch { return false; }
+  const month = localDate().slice(0, 7);
+  const isInMonth = value => {
+    try { return localDate(value).slice(0, 7) === month; } catch { return false; }
   };
-  const todaySeconds = sessions.filter(s => s.startedAt && isToday(s.startedAt))
-    .reduce((n, s) => n + (sessionTimes(s).total ?? 0), 0)
-    + activities.filter(a => a.date === today).reduce((n, a) => n + Math.round(Number(a.durationMinutes || 0) * 60), 0);
+  const monthly = sessions.filter(s => s.startedAt && isInMonth(s.startedAt));
+  const monthlyActivities = activities.filter(a => (a.date || '').startsWith(month));
+  const monthlyActiveSeconds = sumActiveSeconds(monthly, monthlyActivities);
   const cycle = await activeCycle();
   const planItems = await repo.all('planItems');
   const plannedGroups = new Set(
@@ -100,7 +98,7 @@ async function dashboard() {
     title: x.modality,
     detail: `${x.durationMinutes||0} min${x.distanceKm!=null?` · ${x.distanceKm} km`:''}`
   }))].sort((a, b) => b.sortDate.localeCompare(a.sortDate)).slice(0, 10);
-  return `<section class="grid dashboard-layout"><div class="stack"><div class="card"><div class="muted">PRÓXIMO TREINO</div><h2>Treino ${nextGroup}</h2><p class="muted">${cycle?esc(cycle.name):'Nenhum ciclo ativo'}</p><div class="stack"><button class="primary" data-action="start" data-group="${nextGroup}">▶ Iniciar musculação</button><button class="secondary" data-action="new-activity">+ Registrar outra atividade</button></div></div>${await dietCardHtml()}<div class="grid two"><div class="card metric"><span class="muted">Peso atual</span><strong>${assessments[0]?.weight??'--'} kg</strong></div><div class="card metric"><span class="muted">Musculações no mês</span><strong>${monthly.length}</strong></div><div class="card metric"><span class="muted">Outras atividades</span><strong>${monthlyActivities.length}</strong></div><div class="card metric"><span class="muted">Tempo ativo hoje</span><strong>${fmtHms(todaySeconds)}</strong></div></div></div><div class="card"><h3>Atividades recentes</h3><div class="recent-activities-list">${recent.map(a=>`<div class="exercise-item" data-detail-kind="${a.type}" data-detail-id="${a.id||''}" style="cursor:pointer"><div><strong>${esc(a.title)}</strong><div class="muted">${esc(a.date)} · ${esc(a.detail)}</div></div><button class="ghost" data-action="view-detail" data-kind="${a.type}" data-id="${a.id}">Ver detalhes</button></div>`).join('')||'<div class="empty">Nenhuma atividade concluída ainda.</div>'}</div><div class="stack" style="margin-top:12px"><button class="ghost" data-route="plan">Editar plano de treino</button><button class="ghost" data-route="exercises">Biblioteca de exercícios</button><button class="ghost" data-route="evolution">Evolução e histórico</button></div></div></section>`
+  return `<section class="grid dashboard-layout"><div class="stack"><div class="card"><div class="muted">PRÓXIMO TREINO</div><h2>Treino ${nextGroup}</h2><p class="muted">${cycle?esc(cycle.name):'Nenhum ciclo ativo'}</p><div class="stack"><button class="primary" data-action="start" data-group="${nextGroup}">▶ Iniciar musculação</button><button class="secondary" data-action="new-activity">+ Registrar outra atividade</button></div></div>${await dietCardHtml()}<div class="grid two"><div class="card metric"><span class="muted">Peso atual</span><strong>${assessments[0]?.weight??'--'} kg</strong></div><div class="card metric"><span class="muted">Musculações no mês</span><strong>${monthly.length}</strong></div><div class="card metric"><span class="muted">Outras atividades</span><strong>${monthlyActivities.length}</strong></div><div class="card metric"><span class="muted">Tempo ativo total no mês</span><strong>${fmtHms(monthlyActiveSeconds)}</strong></div></div></div><div class="card"><h3>Atividades recentes</h3><div class="recent-activities-list">${recent.map(a=>`<div class="exercise-item" data-detail-kind="${a.type}" data-detail-id="${a.id||''}" style="cursor:pointer"><div><strong>${esc(a.title)}</strong><div class="muted">${esc(a.date)} · ${esc(a.detail)}</div></div><button class="ghost" data-action="view-detail" data-kind="${a.type}" data-id="${a.id}">Ver detalhes</button></div>`).join('')||'<div class="empty">Nenhuma atividade concluída ainda.</div>'}</div><div class="stack" style="margin-top:12px"><button class="ghost" data-route="plan">Editar plano de treino</button><button class="ghost" data-route="exercises">Biblioteca de exercícios</button><button class="ghost" data-route="evolution">Evolução e histórico</button></div></div></section>`
 }
 
 async function workout() {

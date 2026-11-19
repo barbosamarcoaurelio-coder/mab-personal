@@ -2,6 +2,11 @@
 
 PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e backup/restauração em JSON.
 
+## Versão 4.7.1 — Tempo ativo total do mês
+
+- O indicador da tela inicial soma o tempo de musculações e outras atividades registradas no mês local, exibindo o acumulado em `HH:MM:SS`.
+- A formatação aceita acumulados acima de 24 horas.
+
 ## Versão 4.7.0 — Resumo nutricional ampliado
 
 - Registros alimentares passam a guardar horário local, quantidade consumida e unidade; quando a porção é medida em gramas, o peso consumido também é armazenado. Os campos são opcionais quando a medida não se aplica.

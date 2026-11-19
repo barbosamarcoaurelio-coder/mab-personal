@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../timer-service.js', import.meta.url), 'utf8');
-const { sessionTimes, fmtHms } = await import(`data:text/javascript,${encodeURIComponent(source)}`);
+const { sessionTimes, fmtHms, sumActiveSeconds } = await import(`data:text/javascript,${encodeURIComponent(source)}`);
 const session = {
   id: 'a',
   startedAt: '2026-11-18T18:00:00Z',
@@ -52,4 +52,15 @@ test('formats active time as hours, minutes, and seconds', () => {
   assert.equal(fmtHms(86399), '23:59:59');
   assert.equal(fmtHms(3600), '01:00:00');
   assert.equal(fmtHms(3723), '01:02:03');
+  assert.equal(fmtHms(90061), '25:01:01');
+});
+
+test('sums active seconds from every monthly workout and other activity', () => {
+  const sessions = [
+    { ...session, finishedAt: '2026-11-18T18:30:00Z' },
+    { id: 'b', durationSeconds: 900, warmupSeconds: 120, warmupSkipped: true },
+    { id: 'c' }
+  ];
+  const activities = [{ durationMinutes: 45 }, { durationMinutes: 20.5 }];
+  assert.equal(sumActiveSeconds(sessions, activities), 1800 + 900 + 45 * 60 + 20.5 * 60);
 });
