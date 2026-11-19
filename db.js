@@ -1,6 +1,6 @@
 export const DB_NAME='mab_personal_db';
-export const DB_VERSION=2;
-export const STORES=['settings','exercises','cycles','workoutGroups','planItems','workoutSessions','executedSets','bodyAssessments','activityDiary','restTimers','dailyRecovery'];
+export const DB_VERSION=3;
+export const STORES=['settings','exercises','cycles','workoutGroups','planItems','workoutSessions','executedSets','bodyAssessments','activityDiary','restTimers','dailyRecovery','foodItems','foodLogs','dayClosures'];
 let dbPromise;
 export function uuid(){return crypto.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`}
 export function openDatabase(){
@@ -21,6 +21,9 @@ export function openDatabase(){
       s=make('activityDiary'); if(!s.indexNames.contains('date'))s.createIndex('date','date');
       s=make('restTimers'); if(!s.indexNames.contains('sessionId'))s.createIndex('sessionId','sessionId'); if(!s.indexNames.contains('status'))s.createIndex('status','status');
       s=make('dailyRecovery'); if(!s.indexNames.contains('date'))s.createIndex('date','date',{unique:true});
+      make('foodItems');
+      s=make('foodLogs'); if(!s.indexNames.contains('date'))s.createIndex('date','date');
+      make('dayClosures','date');
     };
     req.onsuccess=()=>{const db=req.result;db.onversionchange=()=>{db.close();dbPromise=null};resolve(db)};
     req.onerror=()=>{dbPromise=null;reject(req.error)};

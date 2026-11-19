@@ -39,13 +39,17 @@ export function downloadBackup(obj, prefix = 'mab-personal-backup') {
 export async function importBackup(obj, mode = 'replace') {
   validateBackup(obj);
   const snapshot = await exportBackup();
-  const incoming = Object.fromEntries(STORES.map(store => [store, Array.isArray(obj.data[store]) ? obj.data[store] : []]));
+  const stores = STORES.filter(store => Object.hasOwn(obj.data, store));
+  for (const store of stores) {
+    if (!Array.isArray(obj.data[store])) throw new Error(`Store inválido no backup: ${store}`);
+  }
+  const incoming = obj.data;
   let created = 0,
     updated = 0;
-  for (const store of STORES) {
-    const keys = new Set(mode === 'replace' ? [] : snapshot.data[store].map(item => item.id ?? item.key));
+  for (const store of stores) {
+    const keys = new Set(mode === 'replace' ? [] : snapshot.data[store].map(item => item.id ?? item.key ?? item.date));
     for (const item of incoming[store]) {
-      const key = item.id ?? item.key;
+      const key = item.id ?? item.key ?? item.date;
       if (keys.has(key)) updated++;
       else created++;
       keys.add(key)
@@ -53,9 +57,14 @@ export async function importBackup(obj, mode = 'replace') {
   }
   try {
     await tx(STORES, 'readwrite', transaction => {
-      for (const store of STORES) {
+      for (const store of stores) {
         const objectStore = transaction.objectStore(store);
         if (mode === 'replace') objectStore.clear();
+        if (mode === 'replace' && store === 'settings' && !stores.includes('foodLogs') &&
+            !incoming.settings.some(item => item.key === 'nutritionGoals')) {
+          const goals = snapshot.data.settings.find(item => item.key === 'nutritionGoals');
+          if (goals) objectStore.put(goals);
+        }
         for (const item of incoming[store]) objectStore.put(item)
       }
     })

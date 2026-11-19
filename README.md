@@ -42,6 +42,19 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
        - Soma de Kg levantados (Volume Load: soma de repetições × kg).
        - Esforço médio por grupo muscular (RIR médio ou RPE da sessão).
 
+## Versão 4.4.0 — Diário de alimentação
+
+- Nova aba **Dieta** e card **DIETA · HOJE** após Próximo treino: metas, calorias e macros compartilhando os mesmos totais.
+- Seis refeições por data local, cadastro manual de alimentos, favoritos/recentes, busca, porções com prévia, edição/exclusão e cópia da refeição de ontem. Valores aceitam vírgula.
+- Cada registro guarda um snapshot nutricional; editar o cadastro do alimento não muda o histórico.
+- Metas em kcal e gramas, aviso não bloqueante de divergência dos macros (4/4/9 kcal/g), barras e pizza SVG.
+- Fechamento/reabertura de dia com metas e totais congelados, saldo **consumido − meta** e últimos sete fechamentos. Gasto dos treinos/atividades é estimado e apenas informativo, sem descontar do saldo; horários são convertidos para data local.
+- IndexedDB v3 com migração aditiva. Backup inclui o diário; restauração em modo substituir preserva stores ausentes e metas alimentares ao importar backups antigos.
+- Totalmente offline, sem rede, leitura de código de barras ou bibliotecas adicionais. O campo barcode fica reservado para versão futura.
+- Testes: `node --experimental-vm-modules --test tests/*.test.mjs` — 27 testes aprovados.
+- Validação no navegador: migração real v2→v3 preservando os 11 stores anteriores, backup antigo sem apagar diário/metas, seis abas em 390px (alvos de 63×44px, sem estouro), totais iguais no card/diário, snapshots, edição, cópia, exclusão e fechamento/reabertura. Recarga e gravação offline verificadas com o servidor desligado. Formulário de atividade, check-in de musculação e detalhes por botão/clique na linha preservados.
+- Validar também em iPhone/Android reais o teclado, safe-area, GPS, tela ativa e compartilhamento nativo; a verificação de navegador não substitui esses testes físicos.
+
 ## Versão 4.3.6 — Encerramento e tempos da musculação
 
 - **Fechar sem salvar** e **✕** dispensam o resumo sem concluir o treino. O resumo não reabre automaticamente nessa sessão; **Finalizar** continua disponível.

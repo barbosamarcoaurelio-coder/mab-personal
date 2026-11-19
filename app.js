@@ -22,6 +22,7 @@ import {
   importBackup
 } from './backup-service.js';
 import { setWorkoutScreenActive, screenWakeLockStatus } from './screen-wake-lock.js';
+import { dietView, dietCardHtml } from './diario-alimentar.js';
 
 const app = document.querySelector('#app'),
   modal = document.querySelector('#modal'),
@@ -92,7 +93,7 @@ async function dashboard() {
     title: x.modality,
     detail: `${x.durationMinutes||0} min${x.distanceKm!=null?` · ${x.distanceKm} km`:''}`
   }))].sort((a, b) => b.sortDate.localeCompare(a.sortDate)).slice(0, 10);
-  return `<section class="grid dashboard-layout"><div class="stack"><div class="card"><div class="muted">PRÓXIMO TREINO</div><h2>Treino ${nextGroup}</h2><p class="muted">${cycle?esc(cycle.name):'Nenhum ciclo ativo'}</p><div class="stack"><button class="primary" data-action="start" data-group="${nextGroup}">▶ Iniciar musculação</button><button class="secondary" data-action="new-activity">+ Registrar outra atividade</button></div></div><div class="grid two"><div class="card metric"><span class="muted">Peso atual</span><strong>${assessments[0]?.weight??'--'} kg</strong></div><div class="card metric"><span class="muted">Musculações no mês</span><strong>${monthly.length}</strong></div><div class="card metric"><span class="muted">Outras atividades</span><strong>${monthlyActivities.length}</strong></div><div class="card metric"><span class="muted">Tempo ativo</span><strong>${fmt(total+activityMinutes*60)}</strong></div></div></div><div class="card"><h3>Atividades recentes</h3><div class="recent-activities-list">${recent.map(a=>`<div class="exercise-item" data-detail-kind="${a.type}" data-detail-id="${a.id||''}" style="cursor:pointer"><div><strong>${esc(a.title)}</strong><div class="muted">${esc(a.date)} · ${esc(a.detail)}</div></div><button class="ghost" data-action="view-detail" data-kind="${a.type}" data-id="${a.id}">Ver detalhes</button></div>`).join('')||'<div class="empty">Nenhuma atividade concluída ainda.</div>'}</div><div class="stack" style="margin-top:12px"><button class="ghost" data-route="plan">Editar plano de treino</button><button class="ghost" data-route="exercises">Biblioteca de exercícios</button><button class="ghost" data-route="evolution">Evolução e histórico</button></div></div></section>`
+  return `<section class="grid dashboard-layout"><div class="stack"><div class="card"><div class="muted">PRÓXIMO TREINO</div><h2>Treino ${nextGroup}</h2><p class="muted">${cycle?esc(cycle.name):'Nenhum ciclo ativo'}</p><div class="stack"><button class="primary" data-action="start" data-group="${nextGroup}">▶ Iniciar musculação</button><button class="secondary" data-action="new-activity">+ Registrar outra atividade</button></div></div>${await dietCardHtml()}<div class="grid two"><div class="card metric"><span class="muted">Peso atual</span><strong>${assessments[0]?.weight??'--'} kg</strong></div><div class="card metric"><span class="muted">Musculações no mês</span><strong>${monthly.length}</strong></div><div class="card metric"><span class="muted">Outras atividades</span><strong>${monthlyActivities.length}</strong></div><div class="card metric"><span class="muted">Tempo ativo</span><strong>${fmt(total+activityMinutes*60)}</strong></div></div></div><div class="card"><h3>Atividades recentes</h3><div class="recent-activities-list">${recent.map(a=>`<div class="exercise-item" data-detail-kind="${a.type}" data-detail-id="${a.id||''}" style="cursor:pointer"><div><strong>${esc(a.title)}</strong><div class="muted">${esc(a.date)} · ${esc(a.detail)}</div></div><button class="ghost" data-action="view-detail" data-kind="${a.type}" data-id="${a.id}">Ver detalhes</button></div>`).join('')||'<div class="empty">Nenhuma atividade concluída ainda.</div>'}</div><div class="stack" style="margin-top:12px"><button class="ghost" data-route="plan">Editar plano de treino</button><button class="ghost" data-route="exercises">Biblioteca de exercícios</button><button class="ghost" data-route="evolution">Evolução e histórico</button></div></div></section>`
 }
 
 async function workout() {
@@ -487,7 +488,8 @@ async function render() {
     workout,
     plan,
     exercises,
-    evolution
+    evolution,
+    diet: dietView
   };
   app.innerHTML = await views[route()]();
   if (route() === 'workout') tick = setInterval(async () => {
