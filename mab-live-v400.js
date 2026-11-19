@@ -1,7 +1,7 @@
 // MAB Training v4.0.0 — atividade ao vivo (cronômetro + GPS opcional) e detalhe de execução.
 import {repo} from './repositories.js';
 import {navigate} from './router.js';
-import {fmt, elapsed} from './timer-service.js';
+import {fmt, sessionTimes} from './timer-service.js';
 import {openActivityShare} from './activity-share.js';
 
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -262,9 +262,11 @@ async function openDetail(kind, id) {
     const exercises = await repo.all('exercises');
     const groups = await repo.all('workoutGroups');
     const groupDesc = groups.find(g => g.cycleId === s.cycleId && g.code === s.groupCode)?.description || '';
-    const totalSec = s.durationSeconds ?? elapsed(s.startedAt, s.finishedAt);
+    const { total, warmup, execution, rest } = sessionTimes(s, await repo.all('restTimers'), sets);
+    const formatTime = seconds => seconds == null ? '—' : fmt(seconds);
+    const duration = s.durationSeconds ?? total;
     const exIds = [...new Set(sets.map(x => x.exerciseId))];
-    const avgPerEx = exIds.length ? Math.round(totalSec / exIds.length) : null;
+    const avgPerEx = exIds.length && duration != null ? Math.round(duration / exIds.length) : null;
     const primary = new Set(), secondary = new Set();
     exIds.forEach(eid => { const ex = exercises.find(e => e.id === eid); const primaries = ex?.primaryMuscleGroups?.length ? ex.primaryMuscleGroups : (ex?.primaryMuscleGroup ? [ex.primaryMuscleGroup] : []); primaries.forEach(g => primary.add(g)); (ex?.secondaryMuscleGroups || []).forEach(g => secondary.add(g)) });
     primary.forEach(g => secondary.delete(g));
@@ -273,7 +275,7 @@ async function openDetail(kind, id) {
     detailShell(
       `Treino ${s.groupCode || ''}${groupDesc ? ' · ' + groupDesc : ''}`,
       (s.startedAt || '').slice(0, 10),
-      `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${metric('Tempo total', fmt(totalSec))}${metric('Média por exercício', avgPerEx != null ? fmt(avgPerEx) : '—')}${metric('Calorias', s.calories != null ? `${s.calories} kcal` : '—')}${metric('Esforço (RPE)', stars(s.sessionRpe, 10))}${metric('Fadiga', stars(s.fatigueAfter, 5))}${metric('Grupo', `Treino ${s.groupCode || '—'}`)}</div><div style="margin-top:10px">${bodySvg(primary, secondary)}</div><div class="muted" style="font-size:11px;text-align:center;margin-top:4px">${legend}</div>${s.notes ? `<div class="muted" style="font-size:12px;margin-top:8px">Obs.: ${esc(s.notes)}</div>` : ''}`,
+      `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${metric('Tempo total', formatTime(total))}${metric('Total aquecimento', formatTime(warmup))}${metric('Total execução', formatTime(execution))}${metric('Total descanso', formatTime(rest))}${metric('Média por exercício', formatTime(avgPerEx))}${metric('Calorias', s.calories != null ? `${s.calories} kcal` : '—')}${metric('Esforço (RPE)', stars(s.sessionRpe, 10))}${metric('Fadiga', stars(s.fatigueAfter, 5))}${metric('Grupo', `Treino ${s.groupCode || '—'}`)}</div><div style="margin-top:10px">${bodySvg(primary, secondary)}</div><div class="muted" style="font-size:11px;text-align:center;margin-top:4px">${legend}</div>${s.notes ? `<div class="muted" style="font-size:12px;margin-top:8px">Obs.: ${esc(s.notes)}</div>` : ''}`,
       footer
     );
     bindDetailShare(kind, id, `Treino ${s.groupCode || ''}`);
@@ -422,4 +424,4 @@ document.addEventListener('click', e => {
 }, true);
 
 window.openDetail = openDetail;
-window.MABLive = { version: '4.3.5', openDetail, chooseActivityMode };
+window.MABLive = { version: '4.3.6', openDetail, chooseActivityMode };

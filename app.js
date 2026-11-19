@@ -9,7 +9,8 @@ import {
 import {
   elapsed,
   remaining,
-  fmt
+  fmt,
+  sessionTimes
 } from './timer-service.js';
 import {
   esc,
@@ -48,7 +49,7 @@ async function dashboard() {
   const month = new Date().toISOString().slice(0, 7);
   const monthly = sessions.filter(s => (s.startedAt || '').startsWith(month));
   const monthlyActivities = activities.filter(a => (a.date || '').startsWith(month));
-  const total = monthly.reduce((n, s) => n + elapsed(s.startedAt, s.finishedAt), 0);
+  const total = monthly.reduce((n, s) => n + (sessionTimes(s).total ?? 0), 0);
   const activityMinutes = monthlyActivities.reduce((n, a) => n + Number(a.durationMinutes || 0), 0);
   const cycle = await activeCycle();
   const planItems = await repo.all('planItems');
@@ -73,14 +74,17 @@ async function dashboard() {
       nextGroup = ALL_GROUPS.find(g => plannedGroups.has(g)) || 'A';
     }
   }
-  const recent = [...sessions.map(x => ({
-    type: 'strength',
-    id: x.id,
-    date: (x.startedAt || '').slice(0, 10),
-    sortDate: x.startedAt || '',
-    title: `Musculação · Treino ${x.groupCode||''}`,
-    detail: `${fmt(elapsed(x.startedAt,x.finishedAt))}`
-  })), ...activities.map(x => ({
+  const recent = [...sessions.map(x => {
+    const { total } = sessionTimes(x);
+    return {
+      type: 'strength',
+      id: x.id,
+      date: (x.startedAt || '').slice(0, 10),
+      sortDate: x.startedAt || '',
+      title: `Musculação · Treino ${x.groupCode||''}`,
+      detail: total == null ? '—' : fmt(total)
+    };
+  }), ...activities.map(x => ({
     type: 'activity',
     id: x.id,
     date: x.date || '',
@@ -390,8 +394,7 @@ async function renderActivityChart(metric = 'duration') {
     }
 
     const strengthItems = sessions.map(s => {
-      const durSec = elapsed(s.startedAt, s.finishedAt);
-      const minutes = Math.round((durSec > 0 ? durSec : (Number(s.durationSeconds) || 0)) / 60);
+      const minutes = Math.round((sessionTimes(s).total ?? 0) / 60);
       return {
         date: (s.startedAt || '').slice(0, 10),
         modality: 'Musculação',

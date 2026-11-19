@@ -42,6 +42,11 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
        - Soma de Kg levantados (Volume Load: soma de repetições × kg).
        - Esforço médio por grupo muscular (RIR médio ou RPE da sessão).
 
+## Versão 4.3.6 — Encerramento e tempos da musculação
+
+- **Fechar sem salvar** e **✕** dispensam o resumo sem concluir o treino. O resumo não reabre automaticamente nessa sessão; **Finalizar** continua disponível.
+- **Atividades recentes** e **Ver detalhes** agora mostram o mesmo tempo total. O detalhe e a imagem compartilhada também mostram aquecimento, execução e descanso. Dados indisponíveis aparecem como **—**, sem alterar o histórico salvo.
+
 ## Versão 4.3.5 — Compartilhamento simplificado
 
 - Removido o botão separado Baixar PNG. O painel mantém Instagram / WhatsApp e Salvar imagem; sem compartilhamento nativo, Salvar imagem continua permitindo baixar o arquivo.

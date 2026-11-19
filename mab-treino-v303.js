@@ -319,6 +319,9 @@ async function maybePromptBackupReminder() {
 function closeSummaryModal() {
   document.querySelector('#mabFinishOverlay')?.remove()
 }
+let dismissedFinishSessionId = null;
+const canAutoFinish = session => !window.__mabFinishPending && dismissedFinishSessionId !== session.id;
+
 async function saveWorkoutSummary(session) {
   const caloriesEl = document.querySelector('#mabFinishCalories');
   const sourceEl = document.querySelector('#mabFinishSource');
@@ -354,11 +357,12 @@ async function saveWorkoutSummary(session) {
   document.querySelector('.bottom-nav [data-route="dashboard"]')?.click();
   await maybePromptBackupReminder();
 }
-async function openWorkoutSummary(session) {
+async function openWorkoutSummary(session, automatic = false) {
   if (document.querySelector('#mabFinishOverlay')) return;
-  session.finishedAt = session.finishedAt || new Date().toISOString();
+  const draft = { ...session, finishedAt: session.finishedAt || new Date().toISOString() };
   const weight = await currentWeight();
-  const seconds = sessionSeconds(session);
+  if (document.querySelector('#mabFinishOverlay') || (automatic && !canAutoFinish(session))) return;
+  const seconds = sessionSeconds(draft);
   const estimated = estimateCalories(weight, seconds);
   const overlay = document.createElement('div');
   overlay.id = 'mabFinishOverlay';
@@ -370,8 +374,42 @@ async function openWorkoutSummary(session) {
   contextFields.style.cssText = 'display:grid;gap:10px;margin:14px 0;padding:14px;background:#0d0d0d;border:1px solid #333;border-radius:14px';
   contextFields.innerHTML = `<div style="color:#aaa;font-size:12px">Contexto opcional · pode concluir sem preencher</div><label style="display:grid;gap:6px;color:#bbb">Esforço geral da sessão (RPE)<span style="font-size:11px;color:#888">Percepção de esforço do treino: 1 = muito leve · 10 = esforço máximo</span><select id="mabFinishRpe" style="background:#111;color:#fff;border:1px solid #444;border-radius:10px;padding:12px"><option value="">Não informado</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}</select></label><label style="display:grid;gap:6px;color:#bbb">Fadiga após o treino · 1–5<select id="mabFinishFatigue" style="background:#111;color:#fff;border:1px solid #444;border-radius:10px;padding:12px"><option value="">Não informado</option>${Array.from({length:5},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}</select></label><strong style="font-size:13px">Dor ou desconforto</strong><label style="display:grid;gap:6px;color:#bbb">Região<select id="mabFinishPainRegion" style="background:#111;color:#fff;border:1px solid #444;border-radius:10px;padding:12px"><option value="">Nenhum / não informar</option><option>Ombro</option><option>Cotovelo</option><option>Punho</option><option>Peitoral</option><option>Costas</option><option>Lombar</option><option>Quadril</option><option>Joelho</option><option>Tornozelo</option><option>Bíceps</option><option>Tríceps</option><option>Coxa</option><option>Panturrilha</option><option>Outra</option></select></label><label style="display:grid;gap:6px;color:#bbb">Intensidade · 1–5<select id="mabFinishPainIntensity" style="background:#111;color:#fff;border:1px solid #444;border-radius:10px;padding:12px"><option value="">Não informado</option>${Array.from({length:5},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}</select></label><label style="display:grid;gap:6px;color:#bbb">Observação sobre o desconforto<input id="mabFinishPainNotes" placeholder="Opcional" style="background:#111;color:#fff;border:1px solid #444;border-radius:10px;padding:12px"></label>`;
   overlay.querySelector('#mabFinishNotes').before(contextFields);
+  const dismiss = () => {
+    dismissedFinishSessionId = session.id;
+    window.__mabFinishPending = false;
+    overlay.remove();
+  };
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.className = 'ghost';
+  closeButton.textContent = '✕';
+  closeButton.setAttribute('aria-label', 'Fechar sem salvar');
+  closeButton.style.float = 'right';
+  closeButton.onclick = dismiss;
+  overlay.firstElementChild.prepend(closeButton);
+
+  const saveButton = overlay.querySelector('#mabSaveFinish');
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px';
+  const dismissButton = document.createElement('button');
+  dismissButton.type = 'button';
+  dismissButton.className = 'secondary';
+  dismissButton.textContent = 'Fechar sem salvar';
+  dismissButton.onclick = dismiss;
+  saveButton.style.marginTop = '0';
+  saveButton.before(actions);
+  actions.append(dismissButton, saveButton);
+
   document.body.appendChild(overlay);
-  document.querySelector('#mabSaveFinish').onclick = () => saveWorkoutSummary(session).catch(console.error)
+  saveButton.onclick = async () => {
+    saveButton.disabled = dismissButton.disabled = closeButton.disabled = true;
+    try {
+      await saveWorkoutSummary(draft);
+    } catch (error) {
+      console.error(error);
+      saveButton.disabled = dismissButton.disabled = closeButton.disabled = false;
+    }
+  };
 }
 async function isLastSeriesComplete() {
   const ctx = await getWorkoutContext();
@@ -381,15 +419,12 @@ async function isLastSeriesComplete() {
 }
 async function maybeFinishAfterRestLegacy() {
   const session = (await repo.all('workoutSessions')).find(x => x.status === 'in_progress');
-  if (!session) return false;
+  if (!session || !canAutoFinish(session)) return false;
   if (!(await isLastSeriesComplete())) return false;
   const running = (await repo.all('restTimers')).find(x => x.sessionId === session.id && x.status === 'running');
-  if (running && remaining(running.targetEndAt) > 0) return false;
-  if (running) {
-    running.status = 'completed';
-    await repo.put('restTimers', running)
-  }
-  await openWorkoutSummary(session);
+  // O timer do treino conclui o descanso e registra a duração real.
+  if (running || !canAutoFinish(session)) return false;
+  await openWorkoutSummary(session, true);
   return true
 }
 const maybeFinishAfterRest = maybeFinishAfterRestLegacy;
@@ -406,15 +441,17 @@ document.addEventListener('click', async e => {
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-action="finish"]');
   if (!b || b.dataset[FINISH_PATCH]) return;
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+  if (window.__mabFinishPending || document.querySelector('#mabFinishOverlay')) return;
   window.__mabFinishPending = true;
   const session = (await repo.all('workoutSessions')).find(x => x.status === 'in_progress');
   if (!session) {
     window.__mabFinishPending = false;
     return
   }
-  e.preventDefault();
-  e.stopPropagation();
-  e.stopImmediatePropagation();
+  dismissedFinishSessionId = null;
   const seconds = sessionSeconds(session);
   if (seconds < SHORT_WORKOUT_SECONDS) {
     const keep = confirm(`Este treino teve apenas ${fmtShort(seconds)}. Deseja manter o registro?\n\nOK = manter\nCancelar = apagar o treino iniciado por engano`);
