@@ -2,6 +2,8 @@ import { all, get, remove, tx, uuid } from './db.js';
 import { route } from './router.js';
 import { esc, number } from './validators.js';
 import { sumTotals, scalePortions, macroPercentages, calorieBalance, localDate } from './nutrition-calc.js';
+import { scanBarcode } from './barcode-scanner.js';
+import { fetchOffProduct, isValidEan } from './off-client.js';
 
 const MEALS = {
   cafe: 'Café da manhã', lanche_manha: 'Lanche da manhã', almoco: 'Almoço',
@@ -11,6 +13,7 @@ const MACROS = { carbs: 'Carboidratos', protein: 'Proteína', fat: 'Gordura' };
 const COLORS = { carbs: '#f58220', protein: '#ffbf80', fat: '#9a6240' };
 let selectedDate = localDate();
 let viewingDate = false;
+let barcodeLookup;
 const n = value => Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 const modal = () => document.querySelector('#modal');
 const content = () => document.querySelector('#modalContent');
@@ -87,6 +90,8 @@ async function refresh() {
 }
 
 function showDialog(title, html) {
+  barcodeLookup?.abort();
+  barcodeLookup = null;
   content().innerHTML = `<div class="stack diet-dialog"><div class="row"><h2>${esc(title)}</h2><button type="button" class="ghost" data-diet="dismiss" aria-label="Fechar">✕</button></div>${html}</div>`;
   if (!modal().open) modal().showModal();
 }
@@ -133,7 +138,7 @@ async function addDialog(meal) {
   const date = selectedDate;
   await requireOpen(date);
   const foods = (await all('foodItems')).sort((a, b) => Number(b.favorite) - Number(a.favorite) || (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '') || a.name.localeCompare(b.name));
-  showDialog(`Adicionar · ${MEALS[meal]}`, `<label class="field">Buscar alimentos<input id="dietSearch" type="search" placeholder="Nome do alimento"></label><button class="primary" data-diet="new-food" data-meal="${meal}">Novo alimento</button><div id="dietFoods" class="stack"></div>`);
+  showDialog(`Adicionar · ${MEALS[meal]}`, `<label class="field">Buscar alimentos<input id="dietSearch" type="search" placeholder="Nome do alimento"></label><button class="primary" data-diet="scan" data-meal="${meal}">Ler código de barras</button><button class="ghost" data-diet="new-food" data-meal="${meal}">Novo alimento</button><div id="dietFoods" class="stack"></div>`);
   const renderFoods = () => {
     const search = content().querySelector('#dietSearch').value.toLocaleLowerCase('pt-BR');
     content().querySelector('#dietFoods').innerHTML = foods.filter(food => food.name.toLocaleLowerCase('pt-BR').includes(search)).map(food => `<div class="diet-food-row stack"><strong>${esc(food.name)}</strong><span class="muted">${n(food.servingSize)} ${esc(food.servingUnit)} · ${n(food.kcal)} kcal${food.favorite ? ' · Favorito' : ''}</span><button class="primary" data-diet="select-food" data-meal="${meal}" data-id="${esc(food.id)}">Usar alimento</button><div class="row"><button class="ghost" data-diet="edit-food" data-meal="${meal}" data-id="${esc(food.id)}">Editar alimento</button><button class="ghost" data-diet="favorite" data-meal="${meal}" data-id="${esc(food.id)}">${food.favorite ? 'Desfavoritar' : 'Favoritar'}</button></div></div>`).join('') || '<p class="muted">Nenhum alimento encontrado. Cadastre um novo.</p>';
@@ -142,17 +147,58 @@ async function addDialog(meal) {
   renderFoods();
 }
 
-async function foodDialog(meal, id) {
-  const food = id ? await get('foodItems', id) : {};
+async function lookupBarcode(meal) {
+  const date = selectedDate;
+  await requireOpen(date);
+  const code = await scanBarcode();
+  if (!code || route() !== 'diet' || selectedDate !== date) return;
+  const local = (await all('foodItems')).find(food => food.barcode === code);
+  if (local) { await portionDialog(meal, local); return; }
+  if (!navigator.onLine) {
+    await foodDialog(meal, undefined, { barcode: code }, 'Sem conexão e código não cadastrado neste aparelho. Preencha o alimento manualmente; ele ficará disponível offline.');
+    return;
+  }
+  showDialog('Consultando Open Food Facts', '<p role="status">Buscando produto… Somente o código de barras é enviado.</p>');
+  const controller = new AbortController();
+  barcodeLookup = controller;
+  try {
+    const product = await fetchOffProduct(code, { signal: controller.signal });
+    if (controller.signal.aborted || !modal().open || route() !== 'diet' || selectedDate !== date) return;
+    barcodeLookup = null;
+    await foodDialog(meal, undefined, { ...product, barcode: code, source: 'openfoodfacts', offFetchedAt: new Date().toISOString() },
+      ['Fonte: Open Food Facts. Confira o rótulo e os valores por porção antes de confirmar.', ...product.warnings].join(' · '));
+  } catch (error) {
+    if (controller.signal.aborted || !modal().open || route() !== 'diet' || selectedDate !== date) return;
+    barcodeLookup = null;
+    await foodDialog(meal, undefined, { barcode: code }, `${error.message} Preencha o alimento manualmente; o código será salvo para uso offline.`);
+  } finally {
+    if (barcodeLookup === controller) barcodeLookup = null;
+  }
+}
+
+async function foodDialog(meal, id, draft = {}, notice = '') {
+  const food = id ? await get('foodItems', id) : draft;
   if (!food) throw new Error('Alimento não encontrado.');
-  showDialog(id ? 'Editar alimento' : 'Novo alimento', `<form class="stack"><label class="field">Nome<input name="name" value="${esc(food.name)}" maxlength="160" required></label>${numericField('servingSize', 'Tamanho da porção', food.servingSize)}<label class="field">Unidade<select name="servingUnit">${['g', 'ml', 'un'].map(unit => `<option ${food.servingUnit === unit ? 'selected' : ''}>${unit}</option>`).join('')}</select></label>${numericField('kcal', 'kcal por porção', food.kcal)}${Object.entries(MACROS).map(([key, label]) => numericField(key, `${label} (g) por porção`, food[key])).join('')}<p class="muted">Editar o alimento não altera refeições já registradas.</p><button class="primary">Salvar alimento</button></form>`);
+  const confirmation = !id && food.source === 'openfoodfacts';
+  showDialog(id ? 'Editar alimento' : confirmation ? 'Conferir produto' : 'Novo alimento', `${notice ? `<p class="orange" role="status">${esc(notice)}</p>` : ''}<form class="stack"><label class="field">Código de barras<input name="barcode" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${esc(food.barcode)}"></label><p id="dietBarcodeWarning" class="orange" role="status"></p><label class="field">Nome<input name="name" value="${esc(food.name)}" maxlength="160" required></label><label class="field">Marca (opcional)<input name="brand" value="${esc(food.brand)}" maxlength="200"></label>${numericField('servingSize', 'Tamanho da porção', food.servingSize)}<label class="field">Unidade<select name="servingUnit">${['g', 'ml', 'un'].map(unit => `<option ${food.servingUnit === unit ? 'selected' : ''}>${unit}</option>`).join('')}</select></label>${numericField('kcal', 'kcal por porção', food.kcal)}${Object.entries(MACROS).map(([key, label]) => numericField(key, `${label} (g) por porção`, food[key])).join('')}<p class="muted">Editar o alimento não altera refeições já registradas.</p><button class="primary">${confirmation ? 'Confirmar alimento' : 'Salvar alimento'}</button></form>`);
   const form = content().querySelector('form');
+  const barcodeInput = form.elements.namedItem('barcode');
+  const barcodeWarning = () => {
+    barcodeInput.value = barcodeInput.value.replace(/\D/g, '');
+    content().querySelector('#dietBarcodeWarning').textContent = barcodeInput.value && !isValidEan(barcodeInput.value)
+      ? 'Dígito verificador EAN/UPC inválido ou formato não reconhecido. Confira o código; você pode salvar assim mesmo.' : '';
+  };
+  barcodeInput.oninput = barcodeWarning;
+  barcodeWarning();
   form.onsubmit = guard(async event => {
     event.preventDefault();
     const name = form.elements.namedItem('name').value.trim();
     if (!name) throw new Error('Informe o nome do alimento.');
     const now = new Date().toISOString();
-    const saved = { ...food, id: food.id || uuid(), name, servingSize: readNumber(form, 'servingSize', 0.000001), servingUnit: form.elements.namedItem('servingUnit').value, ...readNutrition(form), barcode: null, favorite: food.favorite ?? false, lastUsedAt: food.lastUsedAt ?? null, createdAt: food.createdAt || now, updatedAt: now };
+    const barcode = barcodeInput.value.trim();
+    if (barcode && !/^\d+$/.test(barcode)) throw new Error('O código de barras deve conter somente dígitos.');
+    const { warnings, ...fields } = food;
+    const saved = { ...fields, id: food.id || uuid(), name, brand: form.elements.namedItem('brand').value.trim(), source: food.source || 'manual', servingSize: readNumber(form, 'servingSize', 0.000001), servingUnit: form.elements.namedItem('servingUnit').value, ...readNutrition(form), barcode: barcode || null, favorite: food.favorite ?? false, lastUsedAt: food.lastUsedAt ?? null, createdAt: food.createdAt || now, updatedAt: now };
     await tx(['foodItems'], 'readwrite', t => t.objectStore('foodItems').put(saved));
     await portionDialog(meal, saved);
   });
@@ -217,7 +263,7 @@ document.addEventListener('click', guard(async event => {
   const button = event.target.closest('[data-diet]');
   if (!button) return;
   const { diet: action, meal, id, date } = button.dataset;
-  if (action === 'dismiss') { modal().close(); return; }
+  if (action === 'dismiss') { barcodeLookup?.abort(); barcodeLookup = null; modal().close(); return; }
   if (action === 'previous' || action === 'next' || action === 'show-date') {
     selectedDate = date || shiftDate(selectedDate, action === 'previous' ? -1 : 1);
     viewingDate = true;
@@ -225,6 +271,7 @@ document.addEventListener('click', guard(async event => {
   }
   if (action === 'goals') await goalsDialog();
   if (action === 'add') await addDialog(meal);
+  if (action === 'scan') await lookupBarcode(meal);
   if (action === 'new-food' || action === 'edit-food') await foodDialog(meal, id);
   if (action === 'select-food') {
     const food = await get('foodItems', id);
@@ -272,4 +319,7 @@ document.addEventListener('click', guard(async event => {
   }
 }));
 
-window.addEventListener('routechange', () => { if (route() !== 'diet') viewingDate = false; });
+window.addEventListener('routechange', () => {
+  if (route() !== 'diet') { viewingDate = false; barcodeLookup?.abort(); barcodeLookup = null; }
+});
+modal().addEventListener('cancel', () => { barcodeLookup?.abort(); barcodeLookup = null; });

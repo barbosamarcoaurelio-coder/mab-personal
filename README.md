@@ -42,6 +42,20 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
        - Soma de Kg levantados (Volume Load: soma de repetições × kg).
        - Esforço médio por grupo muscular (RIR médio ou RPE da sessão).
 
+## Versão 4.5.0 — Código de barras na alimentação
+
+- **Dieta → + Adicionar → Ler código de barras**: câmera traseira em overlay, duas leituras consecutivas para confirmar e opção **Digitar código**. Permissão negada/ausência de câmera oferece digitação com aviso. A câmera para ao fechar, sair da rota ou ocultar o app.
+- Busca primeiro no cadastro local por código, inclusive offline. Produtos novos consultam a [Open Food Facts](https://world.openfoodfacts.org/) com timeout de 8 segundos. Uma tela de conferência mostra nome, marca e nutrientes editáveis; nada é cadastrado antes de **Confirmar alimento**.
+- Somente o código de barras é enviado à Open Food Facts (sem credenciais, referência da página, imagens, diário, metas ou dados pessoais). Não há analytics nem outros serviços de consulta. O Service Worker não intercepta nem armazena respostas desse domínio.
+- Falha de rede, produto ausente ou modo offline abre o cadastro manual com o código preenchido e aviso claro. O alimento salvo será encontrado localmente na próxima leitura. Alimentos sem código continuam funcionando.
+- Campo de código opcional, somente dígitos, com aviso não bloqueante de EAN/UPC inválido. Dados incompletos não viram zero: precisam ser preenchidos na conferência. Valores suspeitos por 100 g ou divergentes dos macros geram aviso para conferir o rótulo.
+- Leitura nativa apenas se suportar EAN-13, EAN-8, UPC-A e UPC-E; nos demais casos, ZXing WASM **3.1.7**, distribuído localmente em `vendor/zxing` (MIT e ZXing-C++ Apache-2.0, licenças incluídas). JS e WASM são pré-armazenados para leitura offline; sem CDN. Pacote npm fixado, integridade SHA-512 verificada antes da cópia.
+- IndexedDB permanece em **v3**. `source`, `brand` e `offFetchedAt` são opcionais e acompanham o backup JSON; snapshots das refeições permanecem inalterados.
+- Requer HTTPS (ou localhost) e permissão de câmera. No iPhone, permitir a câmera tanto no Safari quanto no app adicionado à Tela de Início. **Validação física em iPhone standalone ainda necessária**; testes simulados não comprovam a câmera real fora do Safari.
+- Testes: `node --experimental-vm-modules --test tests/*.test.mjs` — 43 aprovados, incluindo normalização, limites nutricionais, EAN/UPC, timeout, câmera simulada, cancelamento e backup.
+- Navegador: leitura de EAN-13 com WASM real e vídeo sintético, consulta real à API, conferência antes de gravar, campos incompletos/escape de texto, busca local sem rede, cadastro manual com código, legado sem código e cancelamento da consulta verificados. Overlay em 390px sem estouro, fonte de 16px e controles de pelo menos 44px.
+- Com o servidor desligado, recarga do diário, inicialização do WASM e busca local por código continuaram funcionando. Backup/restauração real preservou os novos campos; metas, fechamento/reabertura, totais do card e formulário/detalhes de atividades também foram verificados.
+
 ## Versão 4.4.0 — Diário de alimentação
 
 - Nova aba **Dieta** e card **DIETA · HOJE** após Próximo treino: metas, calorias e macros compartilhando os mesmos totais.

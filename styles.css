@@ -11,6 +11,12 @@
 .diet-food-row{padding:12px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
 .diet-pie{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .diet-pie svg{width:110px;height:110px;flex-shrink:0}
+.barcode-scanner{width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;border:0;border-radius:0;padding:calc(16px + var(--safe-top)) 16px calc(16px + var(--safe-bottom));background:#080808}
+.barcode-scanner [hidden]{display:none!important}
+.barcode-scanner video{display:block;width:100%;max-height:55dvh;object-fit:cover;border:1px solid var(--orange);border-radius:16px;background:#111}
+.barcode-scanner h2{font-size:20px;margin:0}
+.barcode-scanner input{font-size:16px}
+.barcode-scanner::backdrop{background:#080808}
 .recent-activities-list::-webkit-scrollbar{width:4px}
 .recent-activities-list::-webkit-scrollbar-thumb{background:#383838;border-radius:4px}
 .grid.two > * { min-width: 0; }

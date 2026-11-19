@@ -67,3 +67,14 @@ test('invalid supplied store fails explicitly before changing data', async () =>
   assert.equal(exported.metadata.databaseVersion, 3);
   assert.equal(exported.data.foodLogs[0].id, 'log');
 });
+
+test('barcode provenance fields survive export and replace without affecting legacy foods', async () => {
+  const app = await setup();
+  const scanned = { id: 'scanned', name: 'Produto', barcode: '036000291452', brand: 'Marca', source: 'openfoodfacts', offFetchedAt: '2026-11-18T12:00:00Z' };
+  app.data.foodItems.push(scanned);
+  const backup = await app.exportBackup();
+  app.data.foodItems = [];
+  await app.importBackup(backup);
+  assert.deepEqual(app.data.foodItems.find(item => item.id === 'scanned'), scanned);
+  assert.deepEqual(app.data.foodItems.find(item => item.id === 'food'), { id: 'food', name: 'Arroz' });
+});
