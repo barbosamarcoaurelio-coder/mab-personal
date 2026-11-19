@@ -1,8 +1,29 @@
 const KEYS = ['kcal', 'carbs', 'protein', 'fat'];
 const NUTRITIONAL_KINDS = new Set(['water', 'meal-feedback']);
 
+export const MEALS = {
+  pre_treino: 'Pré-treino', cafe: 'Café da manhã', lanche_manha: 'Lanche da manhã',
+  almoco: 'Almoço', lanche_tarde: 'Lanche da tarde', jantar: 'Jantar', ceia: 'Ceia', outra: 'Outra'
+};
+export const TOLERANCE = {
+  good: 'Bem',
+  comfortable: 'Satisfeito, mas confortável',
+  uncomfortable: 'Desconfortável ou muito cheio'
+};
+
 export function isNutritionItem(item) {
   return !NUTRITIONAL_KINDS.has(item.kind);
+}
+
+export function dayNutrition(logs, closure) {
+  const items = logs.filter(isNutritionItem);
+  const waterLogs = logs.filter(item => item.kind === 'water');
+  return {
+    items, waterLogs,
+    toleranceByMeal: Object.fromEntries(logs.filter(item => item.kind === 'meal-feedback').map(item => [item.meal, item.tolerance])),
+    waterMl: closure?.waterMl ?? sumWater(waterLogs),
+    consumed: closure?.consumed ?? sumTotals(items)
+  };
 }
 
 export function sumTotals(items) {
@@ -49,4 +70,9 @@ export function localDate(value = new Date()) {
   const date = value instanceof Date ? value : new Date(value);
   if (!Number.isFinite(date.getTime())) throw new Error('Data inválida.');
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+export function workoutLocalDate(session) {
+  if (!session.startedAt || !Number.isFinite(Date.parse(session.startedAt))) return null;
+  return localDate(session.startedAt);
 }

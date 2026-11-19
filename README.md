@@ -2,6 +2,13 @@
 
 PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e backup/restauração em JSON.
 
+## Versão 4.9.0 — Exportação do Diário Alimentar
+
+- Em **Dieta → Exportar CSV**, toque em **Últimos 7 dias** (inclui hoje) ou informe datas inicial e final, inclusive, e toque em **Preparar CSVs**. Baixe cada arquivo separadamente; os dados são lidos e processados no próprio aparelho.
+- `MAB_Diario_Alimentar.csv`: uma linha por alimento registrado. `MAB_Resumo_Diario.csv`: uma linha por data do período, inclusive dias sem registros. Dias fechados usam os mesmos totais congelados exibidos no app. Medidas ausentes ficam vazias; zero registrado permanece zero.
+- Cada arquivo começa com uma linha de metadados (data de exportação em UTC, versão e período), seguida pelos cabeçalhos. No Excel, se necessário, use **Dados → De Texto/CSV**, selecione **UTF-8** e delimitador **ponto e vírgula**. Para análise tabular, pule a primeira linha. Os valores numéricos em colunas usam vírgula decimal.
+- Proteína por refeição, avaliações de tolerância e atividades são listas JSON dentro de células do resumo. Cada atividade mantém seus próprios dados de modalidade, horário, duração, disposição, recuperação e observações; campos ausentes na lista ficam como `null`.
+
 ## Versão 4.8.0 — Bem-estar e atividades no diário
 
 - O diário oferece avaliações opcionais de disposição, saciedade, digestão, fome e energia, com observações editáveis armazenadas no registro diário existente.

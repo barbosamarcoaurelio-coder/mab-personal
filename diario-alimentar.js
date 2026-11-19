@@ -1,22 +1,14 @@
 import { all, get, remove, tx, uuid } from './db.js';
 import { route } from './router.js';
 import { esc, number } from './validators.js';
-import { sumTotals, scalePortions, macroCalories, macroPercentages, sumWater, mealCount, proteinByMeal, isNutritionItem, calorieBalance, localDate } from './nutrition-calc.js';
+import { MEALS, TOLERANCE, dayNutrition, workoutLocalDate, sumTotals, scalePortions, macroCalories, macroPercentages, mealCount, proteinByMeal, isNutritionItem, calorieBalance, localDate } from './nutrition-calc.js';
+import { buildDietCsv, DIET_CSV_STORES } from './nutrition-export.js';
 import { scanBarcode } from './barcode-scanner.js';
 import { fetchOffProduct, searchOffProducts, isValidEan } from './off-client.js';
 import { sessionTimes } from './timer-service.js';
 
-const MEALS = {
-  pre_treino: 'Pré-treino', cafe: 'Café da manhã', lanche_manha: 'Lanche da manhã',
-  almoco: 'Almoço', lanche_tarde: 'Lanche da tarde', jantar: 'Jantar', ceia: 'Ceia', outra: 'Outra'
-};
 const MACROS = { carbs: 'Carboidratos', protein: 'Proteína', fat: 'Gordura' };
 const COLORS = { carbs: '#f58220', protein: '#ffbf80', fat: '#9a6240' };
-const TOLERANCE = {
-  good: 'Bem',
-  comfortable: 'Satisfeito, mas confortável',
-  uncomfortable: 'Desconfortável ou muito cheio'
-};
 const WELLBEING_FIELDS = [
   { key: 'generalDisposition', label: 'Disposição geral', low: 'Baixa', high: 'Alta' },
   { key: 'mealSatiety', label: 'Saciedade após refeições', low: 'Pouca', high: 'Muita' },
@@ -64,21 +56,11 @@ async function dayData(date) {
     all('foodLogs'), get('settings', 'nutritionGoals'), get('dayClosures', date),
     all('dailyRecovery'), all('workoutSessions'), all('activityDiary')
   ]);
-  const dayLogs = logs.filter(item => item.date === date);
-  const waterLogs = dayLogs.filter(item => item.kind === 'water');
-  const toleranceLogs = dayLogs.filter(item => item.kind === 'meal-feedback');
-  const items = dayLogs.filter(isNutritionItem);
-  const toleranceByMeal = Object.fromEntries(toleranceLogs.map(item => [item.meal, item.tolerance]));
-  const workouts = sessions.filter(item => {
-    if (!item.startedAt) return false;
-    try { return localDate(item.startedAt) === date; } catch { return false; }
-  });
   return {
-    items, waterLogs, toleranceByMeal, workouts,
+    ...dayNutrition(logs.filter(item => item.date === date), closure),
+    workouts: sessions.filter(item => workoutLocalDate(item) === date),
     activities: activities.filter(item => item.date === date),
     recovery: recoveries.find(item => item.date === date),
-    waterMl: closure?.waterMl ?? sumWater(waterLogs),
-    consumed: closure?.consumed ?? sumTotals(items),
     goals: closure?.goals ?? setting?.value, closure
   };
 }
@@ -157,7 +139,7 @@ export async function dietView() {
     .map(([meal, label]) => `<div class="row"><span>${esc(label)}</span><strong>${n(proteinTotals[meal])} g</strong></div>`).join('');
   const waterRows = waterLogs.map(item => `<div class="row water-log-row"><span>Água · ${n(item.quantityMl)} ml${item.time ? ` · ${esc(item.time)}` : ''}</span>${closure ? '' : `<div class="row"><button class="ghost" data-diet="edit-water" data-id="${esc(item.id)}" aria-label="Editar registro de água">Editar</button><button class="ghost" data-diet="delete-water" data-id="${esc(item.id)}" aria-label="Excluir registro de água">Excluir</button></div>`}</div>`).join('');
   return `<section id="dietView" class="stack">
-    <div class="row"><h2>Diário de alimentação</h2><button class="ghost" data-diet="goals">Metas</button></div>
+    <div class="row"><h2>Diário de alimentação</h2><div class="row"><button class="ghost" data-diet="goals">Metas</button><button class="ghost" data-diet="export">Exportar CSV</button></div></div>
     <div class="row"><button class="ghost" data-diet="previous" aria-label="Dia anterior">‹</button><label class="field">Data<input id="dietDate" type="date" value="${esc(selectedDate)}"></label><button class="ghost" data-diet="next" aria-label="Próximo dia">›</button></div>
     <div class="card stack">${calorieSummary(consumed, goals)}${macroBars(consumed, goals)}${pie(consumed)}<button class="primary" data-diet="${closure ? 'reopen' : 'close-day'}">${closure ? 'Reabrir dia para editar' : 'Fechar dia'}</button>${closure ? `<p>Saldo: ${balanceLabel(closure.balance)}</p><p class="muted">Gasto em treinos/atividades: ${n(closure.burnedKcal)} kcal (estimado). Dia fechado com as metas da época. Reabra para alterar os registros.</p>` : `<button class="secondary" data-diet="register-meal">+ Registrar Refeição</button>`}</div>
     <div class="card stack diet-daily-details"><div class="grid two"><div class="metric"><span class="muted">Refeições registradas</span><strong>${mealCount(items)}</strong></div><div class="metric"><span class="muted">Água consumida</span><strong>${n(waterMl)} ml</strong>${closure ? '' : '<button type="button" class="ghost" data-diet="add-water">+ Registrar água</button>'}</div></div><div><h3>Proteína por refeição</h3>${mealProteinRows || '<p class="muted">Nenhuma refeição registrada.</p>'}</div>${waterRows ? `<div class="stack"><h3>Registros de água</h3>${waterRows}</div>` : ''}</div>
@@ -184,6 +166,82 @@ function showDialog(title, html) {
   foodSearchController = null;
   content().innerHTML = `<div class="stack diet-dialog"><div class="row"><h2>${esc(title)}</h2><button type="button" class="ghost" data-diet="dismiss" aria-label="Fechar">✕</button></div>${html}</div>`;
   if (!modal().open) modal().showModal();
+}
+
+function exportDietDialog() {
+  const end = localDate();
+  const start = shiftDate(end, -6);
+  showDialog('Exportar diário alimentar', `<form class="stack">
+    <button type="button" class="ghost" id="dietExportWeek">Últimos 7 dias</button>
+    <div class="grid two"><label class="field">De<input type="date" name="start" value="${start}" required></label>
+    <label class="field">Até<input type="date" name="end" value="${end}" required></label></div>
+    <button type="submit" class="primary">Preparar CSVs</button>
+    <div class="stack" id="dietExportLinks" aria-live="polite"></div>
+  </form>`);
+  const form = content().querySelector('form');
+  const links = form.querySelector('#dietExportLinks');
+  const submit = form.querySelector('[type="submit"]');
+  const startInput = form.elements.namedItem('start');
+  const endInput = form.elements.namedItem('end');
+  let urls = [];
+  const clearLinks = () => {
+    urls.forEach(url => URL.revokeObjectURL(url));
+    urls = [];
+    links.replaceChildren();
+  };
+  modal().addEventListener('close', clearLinks, { once: true });
+  form.oninput = () => {
+    endInput.setCustomValidity('');
+    clearLinks();
+  };
+  form.onsubmit = guard(async event => {
+    event.preventDefault();
+    clearLinks();
+    const from = startInput.value, to = endInput.value;
+    if (from > to) {
+      endInput.setCustomValidity('A data final não pode ser anterior à inicial.');
+      endInput.reportValidity();
+      return;
+    }
+    const version = window.MABRelease?.version;
+    if (!version) throw new Error('Não foi possível identificar a versão do app. Recarregue e tente novamente.');
+    submit.disabled = true;
+    links.textContent = 'Preparando arquivos…';
+    try {
+      const data = await tx(DIET_CSV_STORES, 'readonly', transaction => {
+        const snapshot = {};
+        for (const store of DIET_CSV_STORES) {
+          const request = transaction.objectStore(store).getAll();
+          request.onsuccess = () => { snapshot[store] = request.result; };
+        }
+        return snapshot;
+      });
+      if (!modal().open || !form.isConnected || from !== startInput.value || to !== endInput.value) return;
+      const files = buildDietCsv(data, { from, to, version });
+      links.replaceChildren();
+      for (const file of files) {
+        const url = URL.createObjectURL(new Blob([file.csv], { type: 'text/csv;charset=utf-8' }));
+        urls.push(url);
+        const link = document.createElement('a');
+        link.className = 'ghost diet-export-link';
+        link.href = url;
+        link.download = file.name;
+        link.textContent = file.label;
+        links.append(link);
+      }
+    } catch (error) {
+      clearLinks();
+      throw error;
+    } finally {
+      submit.disabled = false;
+    }
+  });
+  form.querySelector('#dietExportWeek').onclick = () => {
+    startInput.value = start;
+    endInput.value = end;
+    endInput.setCustomValidity('');
+    if (!submit.disabled) form.requestSubmit();
+  };
 }
 
 function numericField(key, label, value = '', required = true) {
@@ -669,6 +727,7 @@ document.addEventListener('click', guard(async event => {
     await refresh();
   }
   if (action === 'goals') await goalsDialog();
+  if (action === 'export') exportDietDialog();
   if (action === 'save-wellbeing') {
     const form = document.querySelector('#dietWellbeingForm');
     if (!form) throw new Error('Formulário de bem-estar não encontrado.');
