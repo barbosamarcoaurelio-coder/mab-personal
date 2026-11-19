@@ -11,7 +11,7 @@ async function setup(overrides = {}) {
   await module.evaluate();
   return module.namespace;
 }
-const { normalizeOffProduct, isValidEan } = await setup();
+const { normalizeOffProduct, isValidEan, searchOffProducts } = await setup();
 const product = (nutriments, extra = {}) => ({ status: 1, product: { product_name: 'Arroz', brands: 'Marca', nutriments, ...extra } });
 const base = { 'energy-kcal_100g': 100, carbohydrates_100g: 20, proteins_100g: 5, fat_100g: 0 };
 const plain = value => JSON.parse(JSON.stringify(value));
@@ -98,6 +98,39 @@ test('fetch sends only the code and fixed field selection with no credentials or
   assert.equal(options.redirect, 'error');
   await assert.rejects(client.fetchOffProduct('123/abc'), /somente dígitos/);
   assert.equal(calls.length, 1);
+});
+
+test('searches Open Food Facts by text and preserves unknown nutrients', async () => {
+  const calls = [];
+  const client = await setup({
+    fetch: async (...args) => {
+      calls.push(args);
+      return { ok: true, json: async () => ({ products: [
+        { product_name: 'Leite integral', code: '123', nutriments: { proteins_100g: 3.2 } },
+        { product_name: '', nutriments: base }
+      ] }) };
+    }
+  });
+  const results = await client.searchOffProducts('  leite integral  ');
+  assert.equal(results.length, 1);
+  assert.equal(results[0].name, 'Leite integral');
+  assert.equal(results[0].barcode, '123');
+  assert.equal(results[0].protein, 3.2);
+  assert.equal(results[0].kcal, '');
+  assert.ok(results[0].warnings.includes('dados incompletos'));
+  const [url, options] = calls[0];
+  assert.match(url, /cgi\/search\.pl\?search_terms=leite%20integral/);
+  assert.match(url, /page_size=8/);
+  assert.equal(options.credentials, 'omit');
+  await assert.rejects(client.searchOffProducts(' '), /pelo menos 2 caracteres/);
+  assert.equal(calls.length, 1);
+});
+
+test('reports non-JSON responses from Open Food Facts clearly', async () => {
+  const client = await setup({
+    fetch: async () => ({ ok: true, headers: { get: () => 'text/html' }, json: async () => { throw new Error('Unexpected token <'); } })
+  });
+  await assert.rejects(client.searchOffProducts('leite integral'), /não está em formato JSON/);
 });
 
 test('times out at eight seconds, aborts the request and surfaces HTTP errors', async () => {

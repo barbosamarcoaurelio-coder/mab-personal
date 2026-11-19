@@ -2,6 +2,15 @@
 
 PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e backup/restauração em JSON.
 
+## Versão 4.6.0 — Registro rápido de refeições
+
+- Cards das refeições começam recolhidos; o cabeçalho mantém kcal e macros, e cada alimento continua editável/excluível.
+- **+ Registrar Refeição** permite escolher uma categoria e montar vários alimentos em uma lista temporária. Quantidades e totais são atualizados antes de salvar; os registros e novos alimentos só são gravados juntos ao tocar em **Salvar Refeição**. Cancelar descarta a lista.
+- Pesquisa textual por nome no Open Food Facts complementa a busca local e a leitura por código de barras já existente. Produtos selecionados podem ser conferidos e corrigidos; nutrientes ausentes permanecem vazios e precisam ser preenchidos. Cadastro manual segue disponível sem conexão ou sem resultados.
+- Pesquisar envia o termo digitado à Open Food Facts; a integração não envia dados do diário ou dados pessoais. A consulta é opcional e limitada a 8 resultados, com timeout de 8 segundos.
+- O indicador **Tempo ativo hoje** exibe `hh:mm:ss` e soma treinos e outras atividades registrados na data local.
+- IndexedDB v3 e snapshots nutricionais históricos preservados.
+
 ## Roadmap
 
 - **Migração para Banco em Nuvem (Cloudflare D1 + Workers - Offline-First)** *(Planejado / Aguardando credenciais)*:

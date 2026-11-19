@@ -34,6 +34,7 @@ export function normalizeOffProduct(json) {
   const result = {
     name: typeof product.product_name === 'string' ? product.product_name.trim() : '',
     brand: typeof product.brands === 'string' ? product.brands.trim() : '',
+    barcode: typeof product.code === 'string' ? product.code.trim() : '',
     servingSize, servingUnit: 'g'
   };
   for (const [key, offKey] of Object.entries({ kcal: 'energy-kcal', carbs: 'carbohydrates', protein: 'proteins', fat: 'fat' })) {
@@ -59,8 +60,7 @@ export function normalizeOffProduct(json) {
   return result;
 }
 
-export async function fetchOffProduct(code, { signal } = {}) {
-  if (!/^\d+$/.test(code)) throw new Error('O código de barras deve conter somente dígitos.');
+async function requestOffJson(url, { signal } = {}) {
   const controller = new AbortController();
   const cancel = () => controller.abort();
   signal?.addEventListener('abort', cancel, { once: true });
@@ -68,12 +68,13 @@ export async function fetchOffProduct(code, { signal } = {}) {
   let timedOut = false;
   const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 8000);
   try {
-    const fields = 'code,product_name,brands,serving_size,serving_quantity,nutriments';
-    const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${fields}`, {
+    const response = await fetch(url, {
       signal: controller.signal, credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store', redirect: 'error'
     });
     if (!response.ok) throw new Error(`Open Food Facts indisponível (HTTP ${response.status}).`);
-    return normalizeOffProduct(await response.json());
+    const contentType = response.headers?.get?.('content-type');
+    if (contentType && !contentType.includes('json')) throw new Error('A resposta da Open Food Facts não está em formato JSON.');
+    return await response.json();
   } catch (error) {
     if (signal?.aborted) throw error;
     if (timedOut) throw new Error('A consulta à Open Food Facts excedeu 8 segundos.');
@@ -82,4 +83,28 @@ export async function fetchOffProduct(code, { signal } = {}) {
     clearTimeout(timeout);
     signal?.removeEventListener('abort', cancel);
   }
+}
+
+const OFF_FIELDS = 'code,product_name,brands,serving_size,serving_quantity,nutriments';
+
+export async function fetchOffProduct(code, options = {}) {
+  if (!/^\d+$/.test(code)) throw new Error('O código de barras deve conter somente dígitos.');
+  const json = await requestOffJson(
+    `https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${OFF_FIELDS}`,
+    options
+  );
+  return normalizeOffProduct(json);
+}
+
+export async function searchOffProducts(term, options = {}) {
+  const query = typeof term === 'string' ? term.trim() : '';
+  if (query.length < 2) throw new Error('Digite pelo menos 2 caracteres para pesquisar.');
+  const fields = OFF_FIELDS;
+  const json = await requestOffJson(
+    `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=8&fields=${fields}`,
+    options
+  );
+  return (Array.isArray(json?.products) ? json.products : [])
+    .filter(product => typeof product?.product_name === 'string' && product.product_name.trim())
+    .map(product => normalizeOffProduct({ status: 1, product }));
 }

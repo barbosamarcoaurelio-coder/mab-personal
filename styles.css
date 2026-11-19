@@ -26,6 +26,14 @@
 .mab-muscle-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .mab-muscle-chip{background:var(--card2);color:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;touch-action:manipulation;transition:all .15s;user-select:none}
 .mab-muscle-chip.active{background:#ff851b;color:#080808;border-color:#ff851b;font-weight:700}
+.diet-meal-heading{align-items:center}
+.diet-meal-heading h3{margin:0 0 5px}
+.diet-meal-toggle{flex:0 0 48px;min-width:48px;padding:8px;font-size:23px}
+#dietView .diet-meal-content[hidden]{display:none}
+.diet-search-result{display:grid;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card2);overflow-wrap:anywhere}
+.diet-search-result button{min-height:44px}
+.diet-search-result .row{flex-wrap:wrap;justify-content:flex-start}
+.diet-dialog button:disabled{opacity:.5}
 .mab-add-group-chip{border-style:dashed;border-color:#ff851b;color:#ff851b;background:rgba(255,133,27,.08);font-weight:600}
 .mab-add-group-chip:hover,.mab-add-group-chip:active{background:rgba(255,133,27,.18)}
 .plan-exercise-item{display:flex;flex-direction:column;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}
