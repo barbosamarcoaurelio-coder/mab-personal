@@ -1,6 +1,6 @@
 (()=>{
   'use strict';
-  const VERSION='Beta 0.2.0';
+  const VERSION='Beta 0.2.1';
   const SOUND_KEY='mab-rest-sound-enabled';
   const soundEnabled=()=>localStorage.getItem(SOUND_KEY)!=='false';
   let audioCtx=null,lastRestEnded=false,lastRestSec=null,beepAudio=null;
@@ -150,7 +150,7 @@
     if(sec===0&&!lastRestEnded){lastRestEnded=true;softBeep()}
   },250);
   function aboutHtml(){return `<div class="stack mab-about-panel"><div class="row"><div><div class="muted">SOBRE</div><h2>MAB Training</h2></div><button type="button" class="ghost" data-mab-about-close>✕</button></div><div class="mab-about-version"><strong>Versão ${VERSION}</strong><span>TREINO · ATIVIDADE · EVOLUÇÃO</span></div>
-    <div class="card mab-about-card"><h3>Nesta versão: pronto para loja</h3><p>Etapa B1 concluída: conformidade para lojas e web com Termos de Uso, Política de Privacidade e Exclusão de Dados; consentimento obrigatório no primeiro acesso; opções de privacidade com exportação e exclusão total de dados nas configurações.</p></div>
+    <div class="card mab-about-card"><h3>Nesta versão: limpeza do projeto (sem mudança de funcionalidades)</h3><p>Limpeza de arquivos sem uso, remoção de scripts obsoletos e organização do projeto, mantendo todas as funcionalidades e o visual inalterados.</p></div>
     <div class="card mab-about-card"><h3>Aviso de saúde</h3><p>O app não substitui orientação de médico, nutricionista ou educador físico.</p></div>
     <div class="card mab-about-card"><h3>Contato e Responsável</h3><p><strong>Responsável:</strong> &lt;SEU NOME COMPLETO OU NOME DA EMPRESA&gt;<br><strong>E-mail:</strong> &lt;SEU E-MAIL DE CONTATO PÚBLICO&gt;</p></div>
     <div class="card mab-about-card"><h3>Créditos</h3><p>Dados de produtos: Open Food Facts (ODbL)</p></div>

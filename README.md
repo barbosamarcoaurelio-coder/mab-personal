@@ -5,6 +5,72 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
 - Em **Dieta**, o botão **+** de cada card expande os detalhes da refeição.
 - Em **Evolução → Histórico corporal**, aparecem primeiro as três avaliações mais recentes. Role dentro da lista para consultar as anteriores.
 
+## Versão Beta 0.2.1 — Limpeza do projeto
+
+- Limpeza geral de arquivos sem uso, excluindo scripts de versões antigas, pastas de teste/backup sem referência (`dashboard/`, `atualizacao-mab/`), guias obsoletos e duplicatas, sem alterar funcionalidades nem a identidade visual.
+- Trava de integridade automatizada em `tests/assets.test.mjs`, garantindo que todos os itens de cache, scripts, folhas de estilo e imports existam e que não haja scripts `.js` órfãos na raiz.
+- Service Worker atualizado para a versão de cache `mab-beta-v0.2.1`.
+
+## Estrutura do Projeto
+
+Lista dos arquivos mantidos e a finalidade de cada um:
+
+### Páginas e Configurações Principais
+- `index.html`: Página única da aplicação (SPA) e montagem da interface principal.
+- `manifest.webmanifest`: Manifesto PWA (nome, cores de tema, ícones e parâmetros de instalação).
+- `service-worker.js`: Gerenciamento de cache offline e ciclo de vida do PWA (cache `mab-beta-v0.2.1`).
+- `privacidade.html`: Página estática da Política de Privacidade (conformidade LGPD).
+- `termos.html`: Página estática dos Termos de Uso.
+- `exclusao-de-dados.html`: Página com orientações e mecanismo de exclusão completa de dados.
+- `.gitignore`: Configuração de arquivos ignorados pelo Git.
+- `copilot-instructions.md`: Instruções de desenvolvimento para o assistente.
+- `README.md`: Documentação técnica e histórico de versões do projeto.
+
+### Estilos e Identidade Visual
+- `styles.css`: Folha de estilos base do aplicativo (layout, componentes e temas).
+- `mab-brand-v301.css`: Estilos de identidade visual MAB Training (cores, tipografia e tema).
+- `mab-brand-v301.js`: Aplicação de marca, título dinâmico, selo de versão e tela inicial (splash).
+- `mab-icon.svg`: Ícone vetorial oficial do aplicativo.
+- `mab-logo.svg`: Logotipo vetorial oficial do MAB Training.
+- `apple-touch-icon.png`: Ícone para tela de início em dispositivos Apple (iOS/iPadOS).
+- `icons/icon-192.png`, `icons/icon-512.png`: Ícones de alta resolução para navegadores e Android.
+- `assets/body-front.webp`, `assets/body-back.webp`: Figuras anatômicas base do corpo (frente e costas).
+- `assets/zones/*.webp` (13 arquivos): Camadas visuais transparentes para destaque muscular no mapa corporal.
+
+### Núcleo da Aplicação e Treino
+- `app.js`: Inicialização da SPA, vinculação de eventos, montagem de abas e registro de Service Worker.
+- `router.js`: Gerenciador de navegação e histórico entre as rotas internas.
+- `db.js`: Camada de abstração e acesso ao banco IndexedDB (`mab_personal_db`).
+- `repositories.js`: Operações de persistência para treinos, planos, exercícios e configurações.
+- `validators.js`: Funções de validação de esquemas e entradas de formulários.
+- `timer-service.js`: Controle de tempo de treino, descansos entre séries e histórico de pausas.
+- `screen-wake-lock.js`: Mantém a tela ativa durante a execução de treinos (Screen Wake Lock API).
+- `backup-service.js`: Exportação e importação de backups completos dos dados em formato JSON.
+- `activity-share.js`: Renderização de imagem do treino/atividade para compartilhamento em redes sociais.
+- `proximo-treino-v282.js`: Sugestão inteligente e rotativa do próximo treino do plano (A a G).
+- `mab-treino-v303.js`: Gestão de execução dos treinos, séries, repetições e cargas.
+- `mab-list-sync-v305.js`: Sincronização e ordenação visual das listagens de treinos.
+- `mab-stability-v304.js`: Monitoramento de erros em runtime e estabilização de estado.
+- `mab-release-v305.js`: Painel Sobre, configurações adicionais e aviso sonoro de descanso.
+- `mab-v306.js`: Utilitários auxiliares de interface e comportamento.
+- `mab-live-v400.js`: Acompanhamento de treino ao vivo e renderização do mapa de esforço muscular.
+
+### Diário Alimentar e Nutrição
+- `diario-alimentar.js`: Gestão de refeições, ingestão de água, tolerância alimentar e histórico do dia.
+- `nutrition-calc.js`: Funções de cálculo nutricional (macronutrientes, porções e regra 4/4/9 kcal).
+- `nutrition-export.js`: Geração e exportação dos relatórios do diário alimentar em CSV.
+- `barcode-scanner.js`: Leitor de código de barras pela câmera usando WebAssembly.
+- `off-client.js`: Cliente de integração e busca com a API Open Food Facts.
+
+### Dependências Locais (vendor/)
+- `vendor/html2canvas/`: Biblioteca de captura de canvas para compartilhamento da atividade (com licença).
+- `vendor/leaflet/`: Biblioteca de mapas para exibição de trajetos de atividades ao ar livre.
+- `vendor/zxing/`: Biblioteca WebAssembly para leitura rápida de códigos de barras (com licenças).
+
+### Testes Automatizados (tests/)
+- `tests/*.test.mjs`: Testes de unidade e integração cobrindo compartilhamento, scanner, backup, cálculos, exportação, cliente OFF, consentimento, wake lock, tempos de sessão e conclusão de treino.
+- `tests/assets.test.mjs`: Teste de trava de integridade dos assets do cache, referências HTML, imports e scripts na raiz.
+
 ## Versão Beta 0.2.0 — Pronto para loja
 
 - Páginas estáticas legais na raiz do projeto: Política de Privacidade (`privacidade.html`), Termos de Uso (`termos.html`) e Exclusão de Dados (`exclusao-de-dados.html`), cobrindo dados tratados (treino, atividades, medidas, sono, bem-estar, alimentação e água), armazenamento local no aparelho, ausência de anúncios, telemetria ou venda de dados, e direitos do titular sob a LGPD.
