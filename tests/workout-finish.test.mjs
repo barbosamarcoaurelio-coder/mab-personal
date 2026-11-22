@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import { createContext, SourceTextModule, SyntheticModule } from 'node:vm';
 
 const source = readFileSync(new URL('../mab-treino-v303.js', import.meta.url), 'utf8');
+const timerSource = readFileSync(new URL('../timer-service.js', import.meta.url), 'utf8');
+const timer = await import(`data:text/javascript,${encodeURIComponent(timerSource)}`);
 
 async function setup() {
   let overlay;
@@ -56,7 +58,17 @@ async function setup() {
     setInterval(callback) { tick = callback; }
   });
   const module = new SourceTextModule(source, { context });
-  await module.link(() => new SyntheticModule(['repo'], function () { this.setExport('repo', repo); }, { context }));
+  await module.link(specifier => specifier === './repositories.js'
+    ? new SyntheticModule(['repo'], function () { this.setExport('repo', repo); }, { context })
+    : specifier === './db.js'
+    ? new SyntheticModule(['tx'], function () {
+      this.setExport('tx', async (_stores, _mode, work) => work({
+        objectStore: store => ({ put: record => writes.push({ store, record }) })
+      }));
+    }, { context })
+    : new SyntheticModule(['workoutSeconds', 'isWorkoutPaused', 'activeIntervalSeconds'], function () {
+      for (const name of ['workoutSeconds', 'isWorkoutPaused', 'activeIntervalSeconds']) this.setExport(name, timer[name]);
+    }, { context }));
   await module.evaluate();
   return {
     session, rows, writes, window, control,
@@ -117,4 +129,22 @@ test('closing the manual summary with X does not stop or write the running rest'
   app.rows.executedSets[0].sessionId = app.session.id;
   await app.tick();
   assert.ok(app.overlay(), 'dismissal does not carry over to another session');
+});
+
+test('a paused session does not automatically finish and saving it closes its rest', async () => {
+  const app = await setup();
+  app.session.pauses = [{ startedAt: new Date(Date.now() - 300000).toISOString(), endedAt: null }];
+  await app.tick();
+  assert.equal(app.overlay(), undefined);
+  const rest = { sessionId: app.session.id, status: 'running', startedAt: new Date(Date.now() - 360000).toISOString() };
+  app.rows.restTimers.push(rest);
+  await app.tick();
+  assert.equal(app.overlay(), undefined);
+  await app.finish();
+  await app.control('#mabSaveFinish').onclick();
+  assert.equal(app.writes[0].store, 'restTimers');
+  assert.equal(app.writes[0].record.status, 'cancelled');
+  assert.ok(app.writes[0].record.actualDurationSeconds >= 59 && app.writes[0].record.actualDurationSeconds <= 61);
+  assert.equal(app.writes[1].record.status, 'completed');
+  assert.ok(app.writes[1].record.durationSeconds >= 299 && app.writes[1].record.durationSeconds <= 301);
 });

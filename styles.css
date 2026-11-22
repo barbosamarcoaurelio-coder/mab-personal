@@ -4,6 +4,10 @@
 .body-history-hint{margin:0 0 8px;font-size:.85rem}
 .body-history-list{overflow-y:auto;scrollbar-gutter:stable;padding-right:4px}
 .body-history-list:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+.workout-header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.workout-header-actions{display:flex;gap:8px;flex-wrap:wrap}
+.workout-controls{margin:0;padding:0;border:0;min-width:0}
+.workout-controls:disabled{opacity:.65}
 .bottom-nav{grid-template-columns:repeat(6,minmax(0,1fr))}
 .bottom-nav button{min-width:0;min-height:44px;padding:2px}
 .bottom-nav span{font-size:10.5px;white-space:nowrap}

@@ -1,6 +1,8 @@
 import {
   repo
 } from './repositories.js';
+import { tx } from './db.js';
+import { workoutSeconds, isWorkoutPaused, activeIntervalSeconds } from './timer-service.js';
 const VERSION = '3.0.3';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function getWorkoutContext() {
@@ -205,9 +207,7 @@ async function deleteWorkoutSession(session) {
 }
 
 function sessionSeconds(session) {
-  const start = Date.parse(session.startedAt || '');
-  const end = Date.parse(session.finishedAt || new Date().toISOString());
-  return Number.isFinite(start) && Number.isFinite(end) ? Math.max(0, Math.floor((end - start) / 1000)) : 0;
+  return workoutSeconds(session);
 }
 async function handleShortWorkoutFinish(event) {
   const button = event.target.closest('[data-action="finish"]');
@@ -351,7 +351,17 @@ async function saveWorkoutSummary(session) {
   session.durationSeconds = Math.max(0, sessionSeconds(session) - (session.warmupSkipped ? 0 : session.warmupSeconds || 0));
   session.status = 'completed';
   session.finishedAt = session.finishedAt || new Date().toISOString();
-  await repo.put('workoutSessions', session);
+  const runningRests = (await repo.all('restTimers')).filter(r => r.sessionId === session.id && r.status === 'running');
+  for (const rest of runningRests) {
+    rest.status = 'cancelled';
+    rest.endedAt = session.finishedAt;
+    rest.actualDurationSeconds = activeIntervalSeconds(session, rest.startedAt, rest.endedAt);
+    rest.endReason = 'workout_finished';
+  }
+  await tx(['workoutSessions', 'restTimers'], 'readwrite', transaction => {
+    for (const rest of runningRests) transaction.objectStore('restTimers').put(rest);
+    transaction.objectStore('workoutSessions').put(session);
+  });
   window.__mabFinishPending = false;
   closeSummaryModal();
   document.querySelector('.bottom-nav [data-route="dashboard"]')?.click();
@@ -406,7 +416,8 @@ async function openWorkoutSummary(session, automatic = false) {
     try {
       await saveWorkoutSummary(draft);
     } catch (error) {
-      console.error(error);
+      console.error('Não foi possível concluir o treino.', error);
+      alert('Não foi possível salvar o treino. Tente novamente.');
       saveButton.disabled = dismissButton.disabled = closeButton.disabled = false;
     }
   };
@@ -419,12 +430,13 @@ async function isLastSeriesComplete() {
 }
 async function maybeFinishAfterRestLegacy() {
   const session = (await repo.all('workoutSessions')).find(x => x.status === 'in_progress');
-  if (!session || !canAutoFinish(session)) return false;
+  if (!session || isWorkoutPaused(session) || !canAutoFinish(session)) return false;
   if (!(await isLastSeriesComplete())) return false;
   const running = (await repo.all('restTimers')).find(x => x.sessionId === session.id && x.status === 'running');
   // O timer do treino conclui o descanso e registra a duração real.
-  if (running || !canAutoFinish(session)) return false;
-  await openWorkoutSummary(session, true);
+  const latest = (await repo.all('workoutSessions')).find(x => x.id === session.id && x.status === 'in_progress');
+  if (running || !latest || isWorkoutPaused(latest) || !canAutoFinish(latest)) return false;
+  await openWorkoutSummary(latest, true);
   return true
 }
 const maybeFinishAfterRest = maybeFinishAfterRestLegacy;
@@ -805,7 +817,7 @@ async function workoutProgressV303() {
 async function goToExerciseV303(index) {
   if (MAB303.changing) return false;
   const data = await workoutProgressV303();
-  if (!data) return false;
+  if (!data || isWorkoutPaused(data.current)) return false;
   const target = Number(index);
   if (!Number.isInteger(target) || target < 0 || target >= data.progress.length || target === data.index) return false;
   MAB303.changing = true;

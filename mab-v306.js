@@ -1,6 +1,6 @@
 import {repo} from './repositories.js';
 import {navigate,route} from './router.js';
-import {elapsed,fmt} from './timer-service.js';
+import {elapsed,fmt,sessionTimes} from './timer-service.js';
 import {esc,number} from './validators.js';
 import {setWorkoutScreenActive,screenWakeLockStatus} from './screen-wake-lock.js';
 
@@ -301,7 +301,7 @@ async function getPeriodData(start,end,scope){
   return {sessions,sets,exercises,assessments:assessments.filter(x=>inRange(x.date,start,end)).sort((a,b)=>a.date.localeCompare(b.date)),recoveries:recoveries.filter(x=>inRange(x.date,start,end)).sort((a,b)=>a.date.localeCompare(b.date)),activities:activities.filter(x=>inRange(x.date,start,end)).sort((a,b)=>a.date.localeCompare(b.date)),restTimers:restTimers.filter(x=>sessionIds.has(x.sessionId)),scope}
 }
 
-function formatSessionDuration(session){return Math.max(0,Math.round((Date.parse(session.finishedAt||'')-Date.parse(session.startedAt||''))/1000))||Number(session.durationSeconds)||0}
+function formatSessionDuration(session){return sessionTimes(session).total ?? 0}
 function formatRestSeconds(timer){return timer.actualDurationSeconds==null?null:Number(timer.actualDurationSeconds)}
 function average(values){const valid=values.map(Number).filter(Number.isFinite);return valid.length?valid.reduce((sum,value)=>sum+value,0)/valid.length:null}
 

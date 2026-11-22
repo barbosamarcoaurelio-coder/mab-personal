@@ -5,6 +5,11 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
 - Em **Dieta**, o botão **+** de cada card expande os detalhes da refeição.
 - Em **Evolução → Histórico corporal**, aparecem primeiro as três avaliações mais recentes. Role dentro da lista para consultar as anteriores.
 
+## Versão 4.11.0 — Pausa no treino
+
+- Na musculação, toque em **Pausar** ao lado de **Finalizar** e em **Retomar** para continuar. O exercício, as séries e os campos preenchidos na tela são mantidos.
+- O cronômetro do treino e o descanso ficam parados durante a pausa, inclusive ao sair e voltar ao aplicativo. A pausa não entra na duração, nos relatórios ou na estimativa de calorias; é possível finalizar mesmo pausado.
+
 ## Versão 4.10.1 — Busca de alimentos
 
 - Removida a opção de consulta à TACO. A busca no Open Food Facts por nome e código de barras, o cadastro manual e os alimentos já salvos continuam disponíveis.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../timer-service.js', import.meta.url), 'utf8');
-const { sessionTimes, fmtHms, sumActiveSeconds } = await import(`data:text/javascript,${encodeURIComponent(source)}`);
+const { sessionTimes, fmtHms, sumActiveSeconds, workoutSeconds, restRemaining, activeIntervalSeconds } = await import(`data:text/javascript,${encodeURIComponent(source)}`);
 const session = {
   id: 'a',
   startedAt: '2026-11-18T18:00:00Z',
@@ -63,4 +63,33 @@ test('sums active seconds from every monthly workout and other activity', () => 
   ];
   const activities = [{ durationMinutes: 45 }, { durationMinutes: 20.5 }];
   assert.equal(sumActiveSeconds(sessions, activities), 1800 + 900 + 45 * 60 + 20.5 * 60);
+});
+
+test('excludes multiple pauses, including an ongoing pause, from workout and history', () => {
+  const paused = {
+    ...session,
+    pauses: [
+      { startedAt: '2026-11-18T18:05:00Z', endedAt: '2026-11-18T18:07:00Z' },
+      { startedAt: '2026-11-18T18:20:00Z', endedAt: null }
+    ]
+  };
+  assert.equal(workoutSeconds(paused, Date.parse('2026-11-18T18:28:00Z')), 1080);
+  assert.deepEqual(sessionTimes(paused, [{ sessionId: 'a', actualDurationSeconds: 60 }]),
+    { total: 1080, warmup: 300, execution: 720, rest: 60 });
+  assert.equal(sumActiveSeconds([paused], []), 1080);
+});
+
+test('freezes rest across pauses and excludes only overlapping pause time', () => {
+  const paused = {
+    pauses: [
+      { startedAt: '2026-11-18T18:00:00Z', endedAt: '2026-11-18T18:01:00Z' },
+      { startedAt: '2026-11-18T18:02:30Z', endedAt: '2026-11-18T18:04:30Z' },
+      { startedAt: '2026-11-18T18:05:00Z', endedAt: null }
+    ]
+  };
+  const rest = { startedAt: '2026-11-18T18:02:00Z', targetEndAt: '2026-11-18T18:04:00Z' };
+  assert.equal(restRemaining(rest, paused, Date.parse('2026-11-18T18:03:30Z')), 90);
+  assert.equal(restRemaining(rest, paused, Date.parse('2026-11-18T18:05:30Z')), 60);
+  assert.equal(activeIntervalSeconds(paused, rest.startedAt, '2026-11-18T18:05:30Z'), 60);
+  assert.equal(restRemaining(rest, { pauses: paused.pauses.slice(0, 2) }, Date.parse('2026-11-18T18:06:00Z')), 0);
 });

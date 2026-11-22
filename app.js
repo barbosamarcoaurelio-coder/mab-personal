@@ -7,12 +7,14 @@ import {
   route
 } from './router.js';
 import {
-  elapsed,
-  remaining,
   fmt,
   fmtHms,
   sumActiveSeconds,
-  sessionTimes
+  sessionTimes,
+  workoutSeconds,
+  isWorkoutPaused,
+  restRemaining,
+  activeIntervalSeconds
 } from './timer-service.js';
 import {
   esc,
@@ -110,7 +112,9 @@ async function workout() {
   const sets = await repo.all('executedSets');
   const rest = await activeRest();
   const current = items[Math.min(s.currentIndex || 0, items.length - 1)];
-  if (!current) return `<div class="card">Nenhum exercício ativo neste grupo.</div>`;
+  const paused = isWorkoutPaused(s);
+  const header = `<div class="card workout-header"><div><span class="muted">TREINO ${esc(s.groupCode)}</span><div class="muted" id="wakeStatus">${screenWakeLockStatus()}</div><div id="workoutTimer" class="timer">${fmt(workoutSeconds(s))}</div><div id="workoutPauseStatus" class="orange" role="status" ${paused?'':'hidden'}>Treino pausado</div></div><div class="workout-header-actions"><button type="button" class="primary" data-action="pause-workout" aria-pressed="${paused}">${paused?'▶ Retomar':'⏸ Pausar'}</button><button class="danger" data-action="finish">Finalizar</button></div></div>`;
+  if (!current) return `<div class="stack">${header}<div class="card">Nenhum exercício ativo neste grupo.</div></div>`;
   const ex = exercises.find(e => e.id === current.exerciseId);
   const exSets = sets.filter(x => x.sessionId === s.id && x.exerciseId === ex.id);
   const rows = Array.from({
@@ -119,7 +123,7 @@ async function workout() {
     const saved = exSets.find(x => x.setNumber === i + 1) || {};
     return `<div class="set-row"><strong>${i+1}</strong><label>REPS<input inputmode="numeric" data-set="reps" data-n="${i+1}" value="${saved.reps??''}"></label><label>KG<input inputmode="decimal" data-set="weight" data-n="${i+1}" value="${saved.weight??''}"></label><label>RIR<input inputmode="numeric" data-set="rir" data-n="${i+1}" value="${saved.rir??''}"></label><button class="done" data-action="save-set" data-n="${i+1}">${saved.completed?'✓':'○'}</button></div>`
   }).join('');
-  return `<div class="stack"><div class="card row"><div><span class="muted">TREINO ${s.groupCode}</span><div class="muted" id="wakeStatus">${screenWakeLockStatus()}</div><div id="workoutTimer" class="timer">${fmt(elapsed(s.startedAt))}</div></div><button class="danger" data-action="finish">Finalizar</button></div>${rest?`<div class="card"><span class="orange">DESCANSO</span><div id="restTimer" class="timer">${fmt(remaining(rest.targetEndAt))}</div><div class="chips"><button class="chip" data-action="rest" data-sec="60">60 s</button><button class="chip" data-action="rest" data-sec="90">90 s</button><button class="chip" data-action="rest" data-sec="120">120 s</button><button class="chip" data-action="skip-rest">Pular</button></div></div>`:''}<div class="card"><div class="row"><div><span class="muted">${(s.currentIndex||0)+1}/${items.length}</span><h2>${esc(ex.name)}</h2></div><span class="orange">${current.minReps}-${current.maxReps} reps · RIR ${current.rirTarget}</span></div><div class="stack">${rows}</div><p class="muted">Descanso padrão: ${current.restSeconds}s</p><div class="row"><button class="ghost" data-action="prev">← Anterior</button><button class="primary" data-action="next">Próximo →</button></div></div></div>`
+  return `<div class="stack">${header}<fieldset id="workoutControls" class="workout-controls stack" ${paused?'disabled':''}>${rest?`<div class="card"><span class="orange">DESCANSO</span><div id="restTimer" class="timer">${fmt(restRemaining(rest,s))}</div><div class="chips"><button class="chip" data-action="rest" data-sec="60">60 s</button><button class="chip" data-action="rest" data-sec="90">90 s</button><button class="chip" data-action="rest" data-sec="120">120 s</button><button class="chip" data-action="skip-rest">Pular</button></div></div>`:''}<div class="card"><div class="row"><div><span class="muted">${(s.currentIndex||0)+1}/${items.length}</span><h2>${esc(ex.name)}</h2></div><span class="orange">${current.minReps}-${current.maxReps} reps · RIR ${current.rirTarget}</span></div><div class="stack">${rows}</div><p class="muted">Descanso padrão: ${current.restSeconds}s</p><div class="row"><button class="ghost" data-action="prev">← Anterior</button><button class="primary" data-action="next">Próximo →</button></div></div></fieldset></div>`
 }
 
 async function plan() {
@@ -524,14 +528,14 @@ async function render() {
       rt = document.querySelector('#restTimer'),
       s = (await openSessions())[0],
       r = await activeRest();
-    if (wt && s) wt.textContent = fmt(elapsed(s.startedAt));
-    if (rt && r) {
-      const rem = remaining(r.targetEndAt);
+    if (wt && s) wt.textContent = fmt(workoutSeconds(s));
+    if (rt && r && s && r.sessionId === s.id) {
+      const rem = restRemaining(r, s);
       rt.textContent = fmt(rem);
-      if (rem <= 0) {
+      if (rem <= 0 && !isWorkoutPaused(s)) {
         r.status = 'completed';
         r.endedAt = new Date().toISOString();
-        r.actualDurationSeconds = Math.max(0, Math.round((Date.parse(r.endedAt) - Date.parse(r.startedAt)) / 1000));
+        r.actualDurationSeconds = activeIntervalSeconds(s, r.startedAt, r.endedAt);
         r.endReason = 'timer';
         await repo.put('restTimers', r);
         showToast('Pronto para a próxima série');
@@ -631,7 +635,7 @@ async function saveSet(n) {
   const previousSet = sets.filter(x => x.sessionId === s.id && x.exerciseId === item.exerciseId && x.completed === true && x.setNumber < n).sort((a, b) => b.setNumber - a.setNumber)[0];
   const completedAt = new Date().toISOString();
   const previousCompletedAt = Date.parse(previousSet?.completedAt || '');
-  const restSecondsBefore = Number.isFinite(previousCompletedAt) ? Math.max(0, Math.round((Date.parse(completedAt) - previousCompletedAt) / 1000)) : null;
+  const restSecondsBefore = Number.isFinite(previousCompletedAt) ? activeIntervalSeconds(s, previousSet.completedAt, completedAt) : null;
   await repo.put('executedSets', {
     id: old?.id || repo.uuid(),
     sessionId: s.id,
@@ -653,7 +657,7 @@ async function beginRest(sec, s, item) {
   for (const r of (await repo.all('restTimers')).filter(x => x.status === 'running')) {
     r.status = 'cancelled';
     r.endedAt = started.toISOString();
-    r.actualDurationSeconds = Math.max(0, Math.round((Date.parse(r.endedAt) - Date.parse(r.startedAt)) / 1000));
+    r.actualDurationSeconds = activeIntervalSeconds(s, r.startedAt, r.endedAt);
     r.endReason = 'restarted';
     await repo.put('restTimers', r)
   }
@@ -2467,6 +2471,35 @@ document.addEventListener('click', async e => {
   }
   const a = b.dataset.action;
   if (a === 'start') start(b.dataset.group);
+  if (a === 'pause-workout') {
+    b.disabled = true;
+    try {
+      const session = (await openSessions())[0];
+      if (!session) throw new Error('Treino ativo não encontrado.');
+      const now = new Date().toISOString();
+      const pauses = (session.pauses || []).map(pause => ({ ...pause }));
+      const openPause = pauses.find(pause => !pause.endedAt);
+      if (openPause) openPause.endedAt = now;
+      else pauses.push({ startedAt: now, endedAt: null });
+      session.pauses = pauses;
+      await repo.put('workoutSessions', session);
+      const paused = isWorkoutPaused(session);
+      b.textContent = paused ? '▶ Retomar' : '⏸ Pausar';
+      b.setAttribute('aria-pressed', String(paused));
+      const status = document.querySelector('#workoutPauseStatus');
+      if (status) status.hidden = !paused;
+      const controls = document.querySelector('#workoutControls');
+      if (controls) controls.disabled = paused;
+      const timer = document.querySelector('#workoutTimer');
+      if (timer) timer.textContent = fmt(workoutSeconds(session));
+    } catch (error) {
+      console.error('Não foi possível alterar a pausa do treino.', error);
+      showToast('Não foi possível alterar a pausa. Tente novamente.');
+    } finally {
+      b.disabled = false;
+    }
+    return;
+  }
   if (a === 'save-set') saveSet(Number(b.dataset.n)).catch(x => showToast(x.message));
   if (a === 'next' || a === 'prev') {
     const s = (await openSessions())[0];
@@ -2486,10 +2519,11 @@ document.addEventListener('click', async e => {
   }
   if (a === 'skip-rest') {
     const r = await activeRest();
+    const s = (await openSessions())[0];
     if (r) {
       r.status = 'cancelled';
       r.endedAt = new Date().toISOString();
-      r.actualDurationSeconds = Math.max(0, Math.round((Date.parse(r.endedAt) - Date.parse(r.startedAt)) / 1000));
+      r.actualDurationSeconds = activeIntervalSeconds(s, r.startedAt, r.endedAt);
       r.endReason = 'skipped';
       await repo.put('restTimers', r);
       render()
