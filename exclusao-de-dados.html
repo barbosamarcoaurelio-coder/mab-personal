@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080808">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" href="mab-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <title>Exclusão de Dados · MAB Training</title>
+  <style>
+    :root {
+      --bg: #080808;
+      --card: #171717;
+      --card2: #222222;
+      --line: #303030;
+      --text: #ffffff;
+      --muted: #aaaaaa;
+      --orange: #ff851b;
+      --orange-soft: rgba(255, 133, 27, 0.14);
+      --danger: #d84a4a;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      padding: calc(16px + var(--safe-top)) 16px calc(32px + var(--safe-bottom));
+    }
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    .top-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    a.btn-nav, button.btn-nav {
+      color: var(--text);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 13px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color .15s, background .15s;
+    }
+    a.btn-nav:hover, a.btn-nav.active {
+      border-color: var(--orange);
+      color: var(--orange);
+    }
+    a.btn-primary {
+      background: var(--orange);
+      color: #080808;
+      font-weight: 700;
+      border: 0;
+    }
+    .banner-aviso {
+      background: #251608;
+      border: 1px solid var(--orange);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 24px;
+      color: #ffbf80;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .banner-aviso strong {
+      color: #fff;
+    }
+    h1 {
+      font-size: 26px;
+      margin: 0 0 6px;
+      color: #fff;
+    }
+    .meta-doc {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 24px;
+    }
+    .section-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+    .section-card h2 {
+      font-size: 18px;
+      color: var(--orange);
+      margin: 0 0 12px;
+    }
+    .section-card h3 {
+      font-size: 15px;
+      color: #fff;
+      margin: 16px 0 6px;
+    }
+    .section-card p, .section-card ul, .section-card ol {
+      margin: 0 0 10px;
+      color: #ddd;
+      font-size: 14px;
+    }
+    .section-card ul, .section-card ol {
+      padding-left: 20px;
+    }
+    .section-card li {
+      margin-bottom: 8px;
+    }
+    .step-badge {
+      display: inline-block;
+      background: var(--orange);
+      color: #080808;
+      font-weight: 800;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 12px;
+      margin-right: 6px;
+    }
+    .alert-box {
+      background: rgba(255, 133, 27, 0.1);
+      border-left: 4px solid var(--orange);
+      padding: 12px 14px;
+      border-radius: 0 8px 8px 0;
+      margin: 12px 0;
+      font-size: 13px;
+      color: #eee;
+    }
+    .danger-box {
+      background: rgba(216, 74, 74, 0.15);
+      border-left: 4px solid var(--danger);
+      padding: 12px 14px;
+      border-radius: 0 8px 8px 0;
+      margin: 12px 0;
+      font-size: 13px;
+      color: #ff9999;
+    }
+    code {
+      background: #000;
+      color: var(--orange);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    footer {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+    footer a {
+      color: var(--orange);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="top-nav" aria-label="Navegação secundária">
+      <a href="./index.html" class="btn-nav btn-primary">◀ Voltar ao App</a>
+      <div class="nav-links">
+        <a href="./privacidade.html" class="btn-nav">Privacidade</a>
+        <a href="./termos.html" class="btn-nav">Termos de Uso</a>
+        <a href="./exclusao-de-dados.html" class="btn-nav active">Exclusão de Dados</a>
+      </div>
+    </nav>
+
+    <div class="banner-aviso" role="alert">
+      <strong>AVISO IMPORTANTE:</strong> MODELO, revisar com advogado antes de cobrar.
+    </div>
+
+    <header>
+      <h1>Exclusão de Dados e Eliminação de Registros</h1>
+      <div class="meta-doc">
+        MAB Training · Versão Beta 0.2.0 · Data: Novembro de 2026
+      </div>
+    </header>
+
+    <main>
+      <div class="section-card">
+        <h2>1. Compromisso com a Autonomia do Usuário</h2>
+        <p>No <strong>MAB Training</strong>, você tem total controle sobre seus dados. Em respeito à sua privacidade e em cumprimento à Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018), garantimos meios simples, diretos e imediatos para a exclusão irreversível de todos os seus registros.</p>
+        <p><strong>Responsável:</strong> &lt;SEU NOME COMPLETO OU NOME DA EMPRESA&gt;</p>
+        <p><strong>E-mail de contato público:</strong> &lt;SEU E-MAIL DE CONTATO PÚBLICO&gt;</p>
+      </div>
+
+      <div class="section-card">
+        <h2>2. Onde Seus Dados Ficam e o Que é Excluído</h2>
+        <p><strong>Armazenamento atual (no aparelho):</strong> O MAB Training opera localmente. Todos os dados guardados (treinos de musculação, outras atividades esportivas, medidas corporais e bioimpedância, horas de sono, notas de bem-estar, refeições do diário alimentar e consumo de água) ficam armazenados exclusivamente no banco de dados interno <strong>IndexedDB</strong> do seu navegador web.</p>
+        <p>Ao solicitar a exclusão de dados, <strong>todas</strong> as tabelas (stores) do banco de dados local são apagadas por completo, juntamente com os caches do aplicativo armazenados pelo Service Worker:</p>
+        <ul>
+          <li>Histórico completo de treinos, séries executadas, cargas e repetições;</li>
+          <li>Planos de treino e ciclos ativos;</li>
+          <li>Biblioteca de exercícios e grupos musculares personalizados;</li>
+          <li>Registros de atividades físicas complementares;</li>
+          <li>Histórico de avaliações corporais e peso;</li>
+          <li>Diário alimentar, alimentos cadastrados e fechamentos diários;</li>
+          <li>Registros de água e bem-estar diário;</li>
+          <li>Preferências de configurações e registro de consentimento prévio.</li>
+        </ul>
+        <p><strong>Sem retenção externa:</strong> Como não mantemos cópias dos seus dados em servidores remotos, a exclusão local elimina de forma permanente e irrecuperável todas as informações do seu dispositivo.</p>
+      </div>
+
+      <div class="section-card">
+        <h2>3. Como Excluir Seus Dados no Próprio Aplicativo</h2>
+        <p>Você pode apagar todos os seus dados a qualquer momento diretamente pela interface do MAB Training, seguindo o passo a passo abaixo:</p>
+        <ol>
+          <li><span class="step-badge">Passo 1</span> Abra o aplicativo <strong>MAB Training</strong> no seu navegador ou tela inicial.</li>
+          <li><span class="step-badge">Passo 2</span> No canto superior direito da tela, toque no ícone de configurações (<strong>⚙</strong>).</li>
+          <li><span class="step-badge">Passo 3</span> Na janela aberta, localize a seção <strong>PRIVACIDADE</strong>.</li>
+          <li><span class="step-badge">Passo 4</span> Toque no botão vermelho <strong>"Excluir todos os meus dados"</strong>.</li>
+          <li><span class="step-badge">Passo 5</span> Na caixa de confirmação exibida pelo navegador, digite exatamente a palavra <code>EXCLUIR</code> em letras maiúsculas e confirme.</li>
+          <li><span class="step-badge">Passo 6</span> O aplicativo apagará instantaneamente todos os bancos do IndexedDB, removerá os arquivos em cache do Service Worker e recarregará a aplicação, retornando o app ao estado inicial (primeira abertura).</li>
+        </ol>
+        <div class="danger-box">
+          <strong>Atenção:</strong> A exclusão é irreversível. Se desejar guardar uma cópia do seu histórico antes de excluir, toque em <em>"Exportar meus dados"</em> para baixar o arquivo de backup em JSON.
+        </div>
+      </div>
+
+      <div class="section-card">
+        <h2>4. Exclusão Manual Através do Navegador ou Aparelho</h2>
+        <p>Caso não consiga acessar o aplicativo ou prefira limpar todos os dados diretamente pelas ferramentas do sistema operacional ou navegador:</p>
+        <ul>
+          <li><strong>No Google Chrome / Edge:</strong> abra <em>Configurações → Privacidade e segurança → Limpar dados de navegação</em> (ou <em>Dados de sites</em>), localize o endereço do MAB Training e selecione <em>"Excluir dados"</em>.</li>
+          <li><strong>No Safari (iPhone/iPad/Mac):</strong> acesse <em>Ajustes → Safari → Avançado → Dados dos Sites</em>, procure pelo domínio do aplicativo e toque em <em>Apagar</em>.</li>
+          <li><strong>No Android (App instalado na tela inicial):</strong> acesse <em>Configurações do sistema → Aplicativos → MAB Training → Armazenamento → Limpar dados e Limpar cache</em>.</li>
+        </ul>
+      </div>
+
+      <div class="section-card">
+        <h2>5. Futura Sincronização em Nuvem</h2>
+        <p>Quando a funcionalidade de sincronização em nuvem com login for disponibilizada (conforme planejado em nosso Roadmap), a opção de exclusão excluirá simultaneamente os dados locais do dispositivo e todos os registros associados à sua conta nos servidores de banco de dados, com exclusão permanente e encerramento de conta com um único clique.</p>
+      </div>
+
+      <div class="section-card">
+        <h2>6. Consultas Externas e Terceiros</h2>
+        <p>O aplicativo não envia dados pessoais a terceiros. As consultas opcionais à base pública do <strong>Open Food Facts</strong> (feitas via leitura de código de barras ou busca por nome de produto) transmitem exclusivamente o código ou termo pesquisado, sem identificar o usuário ou registrar perfil.</p>
+        <p>Não há venda de dados, publicidade ou telemetria no MAB Training.</p>
+      </div>
+
+      <div class="section-card">
+        <h2>7. Contato e Suporte</h2>
+        <p>Caso tenha qualquer dúvida técnica ou queira confirmar questões relacionadas à exclusão e tratamento de dados, envie uma mensagem para o canal de atendimento:</p>
+        <p><strong>E-mail de contato:</strong> &lt;SEU E-MAIL DE CONTATO PÚBLICO&gt;<br>
+        <strong>Responsável:</strong> &lt;SEU NOME COMPLETO OU NOME DA EMPRESA&gt;</p>
+      </div>
+    </main>
+
+    <footer>
+      <p>MAB Training · Versão Beta 0.2.0 · <a href="./privacidade.html">Política de Privacidade</a> · <a href="./termos.html">Termos de Uso</a></p>
+      <p>Dados de produtos: Open Food Facts (ODbL)</p>
+    </footer>
+  </div>
+</body>
+</html>

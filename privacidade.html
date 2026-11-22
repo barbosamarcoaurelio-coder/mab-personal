@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080808">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" href="mab-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <title>Política de Privacidade · MAB Training</title>
+  <style>
+    :root {
+      --bg: #080808;
+      --card: #171717;
+      --card2: #222222;
+      --line: #303030;
+      --text: #ffffff;
+      --muted: #aaaaaa;
+      --orange: #ff851b;
+      --orange-soft: rgba(255, 133, 27, 0.14);
+      --danger: #d84a4a;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      padding: calc(16px + var(--safe-top)) 16px calc(32px + var(--safe-bottom));
+    }
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    .top-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    a.btn-nav, button.btn-nav {
+      color: var(--text);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 13px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color .15s, background .15s;
+    }
+    a.btn-nav:hover, a.btn-nav.active {
+      border-color: var(--orange);
+      color: var(--orange);
+    }
+    a.btn-primary {
+      background: var(--orange);
+      color: #080808;
+      font-weight: 700;
+      border: 0;
+    }
+    .banner-aviso {
+      background: #251608;
+      border: 1px solid var(--orange);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 24px;
+      color: #ffbf80;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .banner-aviso strong {
+      color: #fff;
+    }
+    h1 {
+      font-size: 26px;
+      margin: 0 0 6px;
+      color: #fff;
+    }
+    .meta-doc {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 24px;
+    }
+    .section-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+    .section-card h2 {
+      font-size: 18px;
+      color: var(--orange);
+      margin: 0 0 12px;
+    }
+    .section-card h3 {
+      font-size: 15px;
+      color: #fff;
+      margin: 16px 0 6px;
+    }
+    .section-card p, .section-card ul {
+      margin: 0 0 10px;
+      color: #ddd;
+      font-size: 14px;
+    }
+    .section-card ul {
+      padding-left: 20px;
+    }
+    .section-card li {
+      margin-bottom: 6px;
+    }
+    .alert-box {
+      background: rgba(255, 133, 27, 0.1);
+      border-left: 4px solid var(--orange);
+      padding: 12px 14px;
+      border-radius: 0 8px 8px 0;
+      margin: 12px 0;
+      font-size: 13px;
+      color: #eee;
+    }
+    footer {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+    footer a {
+      color: var(--orange);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="top-nav" aria-label="Navegação secundária">
+      <a href="./index.html" class="btn-nav btn-primary">◀ Voltar ao App</a>
+      <div class="nav-links">
+        <a href="./privacidade.html" class="btn-nav active">Privacidade</a>
+        <a href="./termos.html" class="btn-nav">Termos de Uso</a>
+        <a href="./exclusao-de-dados.html" class="btn-nav">Exclusão de Dados</a>
+      </div>
+    </nav>
+
+    <div class="banner-aviso" role="alert">
+      <strong>AVISO IMPORTANTE:</strong> MODELO, revisar com advogado antes de cobrar.
+    </div>
+
+    <header>
+      <h1>Política de Privacidade</h1>
+      <div class="meta-doc">
+        MAB Training · Versão Beta 0.2.0 · Data: Novembro de 2026
+      </div>
+    </header>
+
+    <main>
+      <div class="section-card">
+        <h2>1. Identificação do Responsável</h2>
+        <p><strong>Responsável pelo tratamento:</strong> &lt;SEU NOME COMPLETO OU NOME DA EMPRESA&gt;</p>
+        <p><strong>E-mail de contato público:</strong> &lt;SEU E-MAIL DE CONTATO PÚBLICO&gt;</p>
+        <p>Esta Política de Privacidade descreve como o aplicativo <strong>MAB Training</strong> trata as informações fornecidas e registradas por você durante o uso da plataforma.</p>
+      </div>
+
+      <div class="section-card">
+        <h2>2. Dados Coletados e Armazenados</h2>
+        <p>O MAB Training permite que você registre e acompanhe diferentes aspectos da sua rotina de treinamento e saúde. Os dados tratados incluem exclusivamente as informações que você escolhe registrar:</p>
+        <ul>
+          <li><strong>Treino de musculação:</strong> exercícios, séries, repetições, carga/peso em kg, intervalo de descanso, repetições em reserva (RIR), tempo total da sessão e notas de execução;</li>
+          <li><strong>Atividades físicas complementares:</strong> modalidade (corrida, esteira, bicicleta, pilates, jiu-jitsu, etc.), data, horário de início, duração em minutos, distância em km, estimativa de calorias, percepção subjetiva de esforço (RPE · 1 a 10), fadiga pós-atividade e observações;</li>
+          <li><strong>Medidas e avaliação corporal:</strong> data, peso corporal (kg), composição corporal (% de gordura, massa gorda e músculo esquelético) e circunferências corporais (abdômen, cintura, quadril, bíceps, antebraço, coxa e panturrilha);</li>
+          <li><strong>Sono:</strong> horas e minutos de sono na noite anterior, informados voluntariamente no check-in pré-treino ou na rotina diária;</li>
+          <li><strong>Bem-estar e recuperação:</strong> notas subjetivas (1 a 5) de disposição antes e durante o treino, recuperação após a atividade, saciedade, digestão, fome e nível de energia;</li>
+          <li><strong>Alimentação e nutrição:</strong> registros do diário alimentar divididos por refeições diárias, horários de consumo, alimentos cadastrados pelo usuário, quantidades consumidas (gramas ou porções), valores calóricos e de macronutrientes (proteínas, carboidratos e gorduras) e avaliações de tolerância digestiva por refeição;</li>
+          <li><strong>Consumo de água:</strong> quantidade diária de água ingerida em mililitros (ml).</li>
+        </ul>
+      </div>
+
+      <div class="section-card">
+        <h2>3. Onde os Dados Ficam Armazenados</h2>
+        <p><strong>Armazenamento no aparelho (atual):</strong> Atualmente, o MAB Training funciona segundo a filosofia <em>local-first</em>. Todos os dados cadastrados e registrados ficam armazenados exclusivamente no seu próprio dispositivo (navegador web / Progressive Web App), utilizando o banco de dados interno <strong>IndexedDB</strong>.</p>
+        <p>Isso significa que suas informações pessoais e registros de treino <strong>não são transmitidos automaticamente para servidores externos</strong> nem compartilhados com terceiros.</p>
+        <p><strong>Sincronização na nuvem (planejada para o futuro):</strong> Está planejada uma versão com sincronização em nuvem segura, onde o usuário poderá criar uma conta com login próprio para sincronizar seus dados entre múltiplos dispositivos de forma criptografada e controlada.</p>
+      </div>
+
+      <div class="section-card">
+        <h2>4. Consultas Opcionais ao Open Food Facts</h2>
+        <p>Para facilitar o cadastro de alimentos e a consulta nutricional, o aplicativo conta com integração opcional com a base de dados pública e aberta <strong>Open Food Facts</strong> (disponibilizada sob licença Open Database License - ODbL).</p>
+        <p>Quando você utiliza as funcionalidades de:</p>
+        <ul>
+          <li><strong>Leitura de código de barras:</strong> o aplicativo envia única e exclusivamente o número do código de barras escaneado para a API da Open Food Facts;</li>
+          <li><strong>Busca de alimentos por nome:</strong> o aplicativo envia apenas o termo textual digitado na busca.</li>
+        </ul>
+        <div class="alert-box">
+          <strong>Privacidade garantida nas consultas:</strong> Nenhuma informação do seu diário alimentar, metas nutricionais, registros de treino, localização ou identificação pessoal é transmitida ao Open Food Facts. As respostas não são associadas ao seu perfil.
+        </div>
+      </div>
+
+      <div class="section-card">
+        <h2>5. Sem Venda de Dados, Sem Anúncios, Sem Telemetria</h2>
+        <ul>
+          <li><strong>Sem venda de dados:</strong> O MAB Training não comercializa, não aluga e não repassa seus dados pessoais ou biométricos para nenhuma empresa, anunciante ou parceiro.</li>
+          <li><strong>Sem publicidade de terceiros:</strong> O aplicativo não exibe banners, anúncios programáticos ou rastreadores de conversão publicitária.</li>
+          <li><strong>Sem telemetria ou analytics invasivos:</strong> O aplicativo não inclui ferramentas externas de rastreamento de navegação, captura de comportamento ou analytics em segundo plano.</li>
+        </ul>
+      </div>
+
+      <div class="section-card">
+        <h2>6. Direitos do Titular de Dados (LGPD)</h2>
+        <p>Em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018), você possui controle integral sobre seus dados:</p>
+        <ul>
+          <li><strong>Acesso:</strong> você tem acesso imediato e transparente a todas as suas informações gravadas no aplicativo em suas respectivas abas (Início, Treino, Plano, Exercícios, Evolução e Dieta);</li>
+          <li><strong>Correção:</strong> você pode editar e retificar qualquer dado de treino, medida corporal, refeição ou alimento cadastrado a qualquer instante;</li>
+          <li><strong>Exportação e portabilidade:</strong> você pode extrair uma cópia completa de todos os seus dados a qualquer momento em <em>Configurações → Exportar meus dados</em> (arquivo JSON completo) e em <em>Dieta → Exportar CSV</em> (relatórios compatíveis com planilhas Excel);</li>
+          <li><strong>Exclusão definitiva:</strong> você pode apagar todos os seus dados e zerar o aplicativo a qualquer momento em <em>Configurações → Excluir todos os meus dados</em> (digitando <code>EXCLUIR</code> para confirmação) ou limpando os dados de navegação do site no seu navegador.</li>
+        </ul>
+      </div>
+
+      <div class="section-card">
+        <h2>7. Aviso de Saúde e Orientação Profissional</h2>
+        <div class="alert-box">
+          <strong>Aviso legal e sanitário:</strong> O app não substitui orientação de médico, nutricionista ou educador físico.
+        </div>
+        <p>O MAB Training é uma ferramenta de suporte para registro e organização pessoal de rotinas de exercícios e alimentação. Os cálculos, resumos e estimativas calóricas são puramente informativos. Consulte sempre profissionais de saúde habilitados antes de iniciar, alterar ou intensificar rotinas de treinamento ou dietas alimentares.</p>
+      </div>
+
+      <div class="section-card">
+        <h2>8. Contato e Dúvidas</h2>
+        <p>Para dúvidas, sugestões ou solicitações relativas a esta Política de Privacidade ou ao tratamento de dados no aplicativo, entre em contato através do e-mail:</p>
+        <p><strong>E-mail:</strong> &lt;SEU E-MAIL DE CONTATO PÚBLICO&gt;<br>
+        <strong>Responsável:</strong> &lt;SEU NOME COMPLETO OU NOME DA EMPRESA&gt;</p>
+      </div>
+    </main>
+
+    <footer>
+      <p>MAB Training · Versão Beta 0.2.0 · <a href="./termos.html">Termos de Uso</a> · <a href="./exclusao-de-dados.html">Exclusão de Dados</a></p>
+      <p>Dados de produtos: Open Food Facts (ODbL)</p>
+    </footer>
+  </div>
+</body>
+</html>
