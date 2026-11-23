@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><title>Teste MAB v2.8</title>
+<script src="proximo-treino-hotfix.js"></script>
+<script>
+const casos = [
+  [[], 'A'],
+  [[{tipo:'Musculação', treino:'Treino A', concluido:true, data:'2026-10-31T08:00:00'}], 'B'],
+  [[{tipo:'Musculação', treino:'Treino B', concluido:true, data:'2026-10-31T08:00:00'}], 'C'],
+  [[{tipo:'Musculação', treino:'Treino C', concluido:true, data:'2026-10-31T08:00:00'}], 'D'],
+  [[{tipo:'Musculação', treino:'Treino D', concluido:true, data:'2026-10-31T08:00:00'}], 'A'],
+  [[{tipo:'Musculação', treino:'Treino B', concluido:true, data:'2026-10-31T08:00:00'}, {tipo:'Corrida', concluido:true, data:'2026-10-31T09:00:00'}], 'C']
+];
+document.body.innerHTML = '<h1>Teste da rotação A/B/C/D</h1>' + casos.map(([dados, esperado], i) => {
+  const obtido = MABProximoTreino.obterProximoTreino(dados);
+  return `<p>Caso ${i+1}: ${obtido === esperado ? 'OK' : 'ERRO'} - esperado ${esperado}, obtido ${obtido}</p>`;
+}).join('');
+</script>
