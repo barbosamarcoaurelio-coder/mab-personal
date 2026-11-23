@@ -506,85 +506,8 @@ async function renderActivityChart(metric = 'duration') {
   }
 }
 
-export async function hasConsent() {
-  try {
-    const record = await repo.get('settings', 'consentVersion');
-    return record?.value === '1';
-  } catch {
-    return false;
-  }
-}
-
-export function showConsentDialog(onConsent) {
-  let overlay = document.querySelector('#mabConsentOverlay');
-  if (overlay) return;
-  overlay = document.createElement('div');
-  overlay.id = 'mabConsentOverlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#080808;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;overflow-y:auto';
-  overlay.innerHTML = `
-    <div class="card stack" style="width:min(520px,100%);max-height:92dvh;overflow-y:auto;background:#171717;border:1px solid #383838;border-radius:18px;padding:24px;box-sizing:border-box;box-shadow:0 16px 40px rgba(0,0,0,0.85)">
-      <div>
-        <div class="muted" style="font-size:12px;font-weight:700;color:var(--orange,#ff851b);letter-spacing:.08em">TERMOS E PRIVACIDADE</div>
-        <h2 style="margin:4px 0 0;font-size:22px">Bem-vindo ao MAB Training</h2>
-      </div>
-
-      <div class="card" style="background:#251608;border-color:rgba(255,133,27,0.4);padding:14px;border-radius:12px">
-        <p style="margin:0;font-size:13px;line-height:1.5;color:#ffbf80;font-weight:600">
-          ⚠️ O app não substitui orientação de médico, nutricionista ou educador físico.
-        </p>
-      </div>
-
-      <p class="muted" style="font-size:13px;line-height:1.5;margin:0">
-        Para utilizar o aplicativo, é necessário ler e aceitar nossa Política de Privacidade e nossos Termos de Uso. Seus dados (treino, atividades, medidas, sono, bem-estar, alimentação e água) ficam armazenados apenas no seu aparelho.
-      </p>
-
-      <div class="stack" style="gap:6px">
-        <div class="muted" style="font-size:11px;font-weight:700;letter-spacing:.05em">DOCUMENTOS LEGAIS:</div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <a href="privacidade.html" target="_blank" rel="noopener" class="ghost" style="text-align:center;text-decoration:none;padding:10px;border-radius:10px;font-size:13px">📄 Política de Privacidade</a>
-          <a href="termos.html" target="_blank" rel="noopener" class="ghost" style="text-align:center;text-decoration:none;padding:10px;border-radius:10px;font-size:13px">📜 Termos de Uso</a>
-          <a href="exclusao-de-dados.html" target="_blank" rel="noopener" class="ghost" style="text-align:center;text-decoration:none;padding:10px;border-radius:10px;font-size:13px">🗑️ Exclusão de Dados</a>
-        </div>
-      </div>
-
-      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-top:6px;padding:8px 0">
-        <input type="checkbox" id="mabConsentCheckbox" style="width:20px;height:20px;accent-color:var(--orange,#ff851b);margin-top:2px;cursor:pointer;flex-shrink:0">
-        <span style="font-size:13px;line-height:1.45;color:#eee">
-          Li e concordo com a <a href="privacidade.html" target="_blank" rel="noopener" style="color:var(--orange,#ff851b)">Política de Privacidade</a> e os <a href="termos.html" target="_blank" rel="noopener" style="color:var(--orange,#ff851b)">Termos de Uso</a>, e estou ciente de que o app não substitui orientação profissional de saúde.
-        </span>
-      </label>
-
-      <button type="button" class="primary" id="mabConsentSubmit" disabled style="width:100%;font-size:15px;padding:14px;cursor:not-allowed;opacity:0.5;transition:opacity .15s">Aceitar e continuar</button>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-
-  const checkbox = overlay.querySelector('#mabConsentCheckbox');
-  const btn = overlay.querySelector('#mabConsentSubmit');
-
-  checkbox.addEventListener('change', () => {
-    btn.disabled = !checkbox.checked;
-    btn.style.opacity = checkbox.checked ? '1' : '0.5';
-    btn.style.cursor = checkbox.checked ? 'pointer' : 'not-allowed';
-  });
-
-  btn.addEventListener('click', async () => {
-    if (!checkbox.checked) return;
-    const now = new Date().toISOString();
-    await repo.put('settings', { key: 'consentAt', value: now });
-    await repo.put('settings', { key: 'consentVersion', value: '1' });
-    overlay.remove();
-    if (typeof onConsent === 'function') onConsent();
-  });
-}
-
 async function render() {
   clearInterval(tick);
-  const consent = await hasConsent();
-  if (!consent) {
-    showConsentDialog(() => render());
-    return;
-  }
   setNav();
   await setWorkoutScreenActive((await openSessions()).length > 0);
   const views = {
@@ -1415,16 +1338,13 @@ function settings() {
     exportPeriodForm()
   };
   modalContent.querySelector('#eraseBtn').onclick = async () => {
-    if (prompt('Digite EXCLUIR para confirmar a exclusão de todos os dados:') !== 'EXCLUIR') return;
+    if (prompt('Digite APAGAR para confirmar') !== 'APAGAR') return;
     for (const s of repo.stores) await (await import('./db.js')).clear(s);
-    if ('caches' in window) {
-      try {
-        const keys = await caches.keys();
-        for (const k of keys) await caches.delete(k);
-      } catch (_) {}
-    }
-    window.location.reload();
-  };
+    modal.close();
+    await seed();
+    render();
+    showToast('Dados apagados')
+  }
 }
 
 function parseTextWorkout(text) {
@@ -2525,7 +2445,6 @@ async function importPersonalTraining(obj) {
 }
 
 document.addEventListener('click', async e => {
-  if (document.querySelector('#mabConsentOverlay')) return;
   const b = e.target.closest('button');
   if (!b) return;
   if (b.dataset.actPeriod) {
@@ -2674,14 +2593,8 @@ document.addEventListener('click', async e => {
     importExercisesModal();
   }
 });
-document.querySelectorAll('.bottom-nav button').forEach(b => b.onclick = () => {
-  if (document.querySelector('#mabConsentOverlay')) return;
-  navigate(b.dataset.route);
-});
-document.querySelector('#settingsBtn').onclick = () => {
-  if (document.querySelector('#mabConsentOverlay')) return;
-  settings();
-};
+document.querySelectorAll('.bottom-nav button').forEach(b => b.onclick = () => navigate(b.dataset.route));
+document.querySelector('#settingsBtn').onclick = settings;
 document.querySelector('#importInput').onchange = async e => {
   try {
     const file = e.target.files[0];
@@ -2754,7 +2667,6 @@ document.addEventListener('visibilitychange', async () => {
 });
 window.activityForm = activityForm;
 window.render = render;
-window.MABConsent = { hasConsent, showConsentDialog };
 await seed();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js');
 if (navigator.storage?.persist) navigator.storage.persist();

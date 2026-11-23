@@ -5,14 +5,6 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
 - Em **Dieta**, o botão **+** de cada card expande os detalhes da refeição.
 - Em **Evolução → Histórico corporal**, aparecem primeiro as três avaliações mais recentes. Role dentro da lista para consultar as anteriores.
 
-## Versão Beta 0.2.0 — Pronto para loja
-
-- Páginas estáticas legais na raiz do projeto: Política de Privacidade (`privacidade.html`), Termos de Uso (`termos.html`) e Exclusão de Dados (`exclusao-de-dados.html`), cobrindo dados tratados (treino, atividades, medidas, sono, bem-estar, alimentação e água), armazenamento local no aparelho, ausência de anúncios, telemetria ou venda de dados, e direitos do titular sob a LGPD.
-- Diálogo de consentimento obrigatório na primeira abertura do app: exige confirmação via caixa de seleção e botão "Aceitar e continuar" com links para os documentos legais e o aviso explícito de que o app não substitui orientação de médico, nutricionista ou educador físico. O aceite é registrado nas configurações (`consentAt` e `consentVersion`).
-- Painel de Privacidade nas Configurações: acesso rápido aos documentos legais, atalho para exportação de dados (backup JSON completo) e botão "Excluir todos os meus dados" com confirmação digitando `EXCLUIR`, que apaga todos os stores do IndexedDB, limpa os caches do Service Worker e reinicia o aplicativo.
-- Painel Sobre atualizado com contatos públicos, aviso de saúde e crédito obrigatório da base de produtos colaborativa Open Food Facts (ODbL).
-- Service Worker atualizado para a versão de cache `mab-beta-v0.2.0`, garantindo a disponibilidade offline das novas páginas legais.
-
 ## Versão 4.11.0 — Pausa no treino
 
 - Na musculação, toque em **Pausar** ao lado de **Finalizar** e em **Retomar** para continuar. O exercício, as séries e os campos preenchidos na tela são mantidos.
@@ -60,17 +52,6 @@ PWA mobile-first em HTML, CSS e JavaScript, com persistência em IndexedDB e bac
 - IndexedDB v3 e snapshots nutricionais históricos preservados.
 
 ## Roadmap
-
-- [x] **Etapa B0 — Estabilização e Validação do Beta** *(Concluído)*:
-  - Estabilização do diário de treino, nutrição com busca Open Food Facts, leitura de código de barras e exportações.
-  - Correção de rotação e rodízio de treinos ativos, métricas de frequência e evolução corporal.
-
-- [x] **Etapa B1 — Pronto para Loja** *(Concluído)*:
-  - Documentos e páginas estáticas legais na raiz: Política de Privacidade (`privacidade.html`), Termos de Uso (`termos.html`) e Exclusão de Dados (`exclusao-de-dados.html`) em conformidade com LGPD.
-  - Diálogo de consentimento obrigatório no primeiro acesso com links para as 3 páginas e aviso de responsabilidade em saúde; gravação de consentimento em settings (`consentAt` e `consentVersion '1'`).
-  - Configurações com seção dedicada de Privacidade: links legais, exportação de dados (backup JSON existente) e botão de exclusão total de dados com confirmação `EXCLUIR` (limpeza completa de stores IndexedDB e caches do app com recarga).
-  - Informações de Sobre atualizadas com versão Beta 0.2.0, contato, aviso de saúde e créditos de produtos Open Food Facts (ODbL).
-  - Cache e Service Worker atualizados para `mab-beta-v0.2.0` incluindo as páginas de privacidade e termos.
 
 - **Migração para Banco em Nuvem (Cloudflare D1 + Workers - Offline-First)** *(Planejado / Aguardando credenciais)*:
   - Objetivo: persistência na nuvem sem risco de expiração do IndexedDB no Safari/iOS e sincronização entre múltiplos dispositivos, mantendo o funcionamento 100% offline durante o treino.
